@@ -880,7 +880,7 @@ function build_distinct_alternatives($selectedProduct, $pool, $limit = 3){
 
   $collapsed = collapse_equivalent_products_cheapest_vendor($pool);
 
-  $alts = array_filter($collapsed, function($p) use ($selectedGroupKey, $selectedName, $selectedBrand){
+  $alts = array_values(array_filter($collapsed, function($p) use ($selectedGroupKey, $selectedName, $selectedBrand){
     $groupKey = trim((string)($p["product_group_key"] ?? ""));
     $name = strtolower(trim((string)($p["name"] ?? "")));
     $brand = strtolower(trim((string)($p["brand"] ?? "")));
@@ -894,7 +894,7 @@ function build_distinct_alternatives($selectedProduct, $pool, $limit = 3){
     }
 
     return true;
-  });
+  }));
 
   usort($alts, function($a, $b){
     $priceCmp = ((int)($a["price"] ?? 0) <=> (int)($b["price"] ?? 0));
@@ -903,7 +903,7 @@ function build_distinct_alternatives($selectedProduct, $pool, $limit = 3){
     return ((int)($b["stock_quantity"] ?? 0) <=> (int)($a["stock_quantity"] ?? 0));
   });
 
-  return array_slice(array_values($alts), 0, $limit);
+  return array_slice($alts, 0, $limit);
 }
 
 function build_item_alternatives($selectedProductId, $pool, $limit = 3){
@@ -1423,6 +1423,11 @@ if (isset($_POST["update_furniture_qty"])) {
         $_SESSION["wizard"]["pos_cart"]["items"][$type]["vendor_name"] = $p["vendor_name"] ?? null;
         $_SESSION["wizard"]["pos_cart"]["items"][$type]["vendor_user_id"] = $p["vendor_user_id"] ?? null;
         $_SESSION["wizard"]["pos_cart"]["items"][$type]["product_group_key"] = $p["product_group_key"] ?? null;
+        $_SESSION["wizard"]["pos_cart"]["items"][$type]["alternatives"] = build_distinct_alternatives(
+          $p,
+          $GLOBALS["POS_CATALOG_ACTIVE"][$type] ?? [],
+          3
+        );
       }
     }
 
@@ -1465,6 +1470,11 @@ if (isset($_POST["update_furniture_qty"])) {
         $_SESSION["wizard"]["kitchen_cart"]["items"][$type]["vendor_name"] = $p["vendor_name"] ?? null;
         $_SESSION["wizard"]["kitchen_cart"]["items"][$type]["vendor_user_id"] = $p["vendor_user_id"] ?? null;
         $_SESSION["wizard"]["kitchen_cart"]["items"][$type]["product_group_key"] = $p["product_group_key"] ?? null;
+        $_SESSION["wizard"]["kitchen_cart"]["items"][$type]["alternatives"] = build_distinct_alternatives(
+          $p,
+          $GLOBALS["KITCHEN_CATALOG_ACTIVE"][$type] ?? [],
+          3
+        );
       }
     }
 
@@ -1487,6 +1497,11 @@ if (isset($_POST["update_furniture_qty"])) {
       $_SESSION["wizard"]["furniture_cart"]["items"][$type]["vendor_name"] = $p["vendor_name"] ?? null;
       $_SESSION["wizard"]["furniture_cart"]["items"][$type]["vendor_user_id"] = $p["vendor_user_id"] ?? null;
       $_SESSION["wizard"]["furniture_cart"]["items"][$type]["product_group_key"] = $p["product_group_key"] ?? null;
+      $_SESSION["wizard"]["furniture_cart"]["items"][$type]["alternatives"] = build_distinct_alternatives(
+        $p,
+        $GLOBALS["FURNITURE_CATALOG_ACTIVE"][$type] ?? [],
+        3
+      );
     }
   }
 
