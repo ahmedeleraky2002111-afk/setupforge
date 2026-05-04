@@ -44,30 +44,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   $_SESSION["wizard"]["indoor_seats"]  = max(1, (int)($_POST["indoor_seats"]  ?? 1));
   $_SESSION["wizard"]["outdoor_seats"] = max(0, (int)($_POST["outdoor_seats"] ?? 0));
 
-  redirect_step(4);
+  $rt = $_SESSION["wizard"]["restaurant_type"] ?? "standard_dining";
+  if ($rt === "cloud_kitchen") {
+    $_SESSION["wizard"]["modules"] = ["kitchen","pos"];
+  } elseif ($rt === "premium_dining") {
+    $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ambience"];
+  } else {
+    $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics"];
+  }
+
+  redirect_step(5);
 }
 
 if ($currentStep === 4) {
-
-  $selectedModules = $_POST["modules"] ?? [];
-  if (!is_array($selectedModules)) $selectedModules = [];
-
-  $_SESSION["wizard"]["modules"] = $selectedModules;
-
-  $rawTiers = $_POST["module_tier"] ?? [];
-  if (!is_array($rawTiers)) $rawTiers = [];
-
-  $allowedTiers = ["Starter","Balanced","Premium"];
-  $cleanTiers = [];
-
-  foreach ($selectedModules as $m) {
-    $t = $rawTiers[$m] ?? "Balanced";
-    if (!in_array($t, $allowedTiers, true)) $t = "Balanced";
-    $cleanTiers[$m] = $t;
-  }
-
-  $_SESSION["wizard"]["module_tiers"] = $cleanTiers;
-
   redirect_step(5);
 }
 
@@ -535,88 +524,6 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
   </div>
 </form>
-<?php elseif ($step === 4): ?>
-
-<h1 class="sf-setup-hero-title">Which modules do you need?</h1>
-<p class="sf-card-hint">Pick what SetupForge should handle for your business.</p>
-
-<form method="post" id="sfModulesForm" class="sf-step4-form">
-    <input type="hidden" name="step" value="4">
-
-  <div class="sf-modules-grid">
-    <?php foreach($modulesList as $key => $label): ?>
-      <?php
-        $id = "mod_" . $key;
-        $checked = in_array($key, $modules, true);
-        $tier = $moduleTiers[$key] ?? "Balanced";
-      ?>
-      <label class="sf-module-pill <?= $checked ? "is-checked" : "" ?>" for="<?= h($id) ?>">
-        <div class="sf-module-left">
-          <input
-            id="<?= h($id) ?>"
-            type="checkbox"
-            name="modules[]"
-            value="<?= h($key) ?>"
-            <?= $checked ? "checked" : "" ?>  
-          >
-          <span class="sf-module-name"><?= h($label) ?></span>
-        </div>
-
-        <div class="sf-tier-wrap">
-          <span class="sf-tier-label">Tier</span>
-          <select
-            class="sf-tier-select"
-            name="module_tier[<?= h($key) ?>]"
-            <?= $checked ? "" : "disabled" ?>
-          >
-            <option value="Starter"  <?= $tier==="Starter" ? "selected" : "" ?>>Starter</option>
-            <option value="Balanced" <?= $tier==="Balanced" ? "selected" : "" ?>>Balanced</option>
-            <option value="Premium"  <?= $tier==="Premium" ? "selected" : "" ?>>Premium</option>
-          </select>
-        </div>
-      </label>
-    <?php endforeach; ?>
-  </div>
-
-
-  <div class="sf-actions">
-  <a class="sf-btn-main sf-btn-back" href="setup.php?step=3">← Back</a>
-  <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
-</div>
-</form>
-
-<script>
-(function(){
-  const form = document.getElementById('sfModulesForm');
-  if (!form) return;
-
-  const moduleInputs = form.querySelectorAll('input[name="modules[]"]');
-
-  function syncModuleTierUI(){
-    moduleInputs.forEach(chk => {
-      const pill = chk.closest(".sf-module-pill");
-      if (!pill) return;
-
-      const sel = pill.querySelector(".sf-tier-select");
-      const on = chk.checked;
-
-      pill.classList.toggle("is-checked", on);
-
-      if (sel) {
-        sel.disabled = !on;
-        if (on && !sel.value) sel.value = "Balanced";
-      }
-    });
-  }
-
-  moduleInputs.forEach(chk => {
-    chk.addEventListener('change', syncModuleTierUI);
-  });
-
-  syncModuleTierUI();
-})();
-</script> 
-
 <?php elseif ($step === 6): ?>
 
 <h1 class="sf-step-title">Additional Services</h1>
@@ -753,7 +660,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
   </div>
 
   <div class="sf-actions">
-    <a class="sf-btn-main sf-btn-back" href="setup.php?step=4">← Back</a>
+    <a class="sf-btn-main sf-btn-back" href="setup.php?step=3">← Back</a>
     <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
   </div>
 </form>

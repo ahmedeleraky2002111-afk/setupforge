@@ -30,7 +30,7 @@ $electronicsTier = $moduleTiers["electronics"] ?? "Balanced";
 $sizeNorm = ucfirst(strtolower($size));
 if (in_array($sizeNorm, ["Small","Medium","Large"], true)) $size = $sizeNorm;
 
-if (!$business || $indoorSeats < 1 || empty($modules) || $budget <= 0) {
+if (!$business || $indoorSeats < 1 || $budget <= 0) {
   header("Location: setup.php?step=1");
   exit;
 }
