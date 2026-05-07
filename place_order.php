@@ -140,28 +140,17 @@ try {
   $saveJobData = pg_query_params($conn, "
   UPDATE orders
   SET labor_data = $1,
-      technician_data = $2
+      installation_data = $2
   WHERE id = $3
 ", [
   json_encode($_SESSION["wizard"]["labor"] ?? []),
-  json_encode($_SESSION["wizard"]["technicians"] ?? []),
+  json_encode($_SESSION["wizard"]["installation_services"] ?? []),
   $orderId
 ]);
 
 if (!$saveJobData) {
-  throw new Exception("Failed to save labor/technician data: " . pg_last_error($conn));
+  throw new Exception("Failed to save labor/installation data: " . pg_last_error($conn));
 }
-
-  pg_query_params($conn, "
-  UPDATE orders
-  SET labor_data = $1,
-      technician_data = $2
-  WHERE id = $3
-", [
-  json_encode($_SESSION["wizard"]["labor"] ?? []),
-  json_encode($_SESSION["wizard"]["technicians"] ?? []),
-  $orderId
-]);
 
   if ($orderId <= 0) {
     throw new Exception("Insert order failed: no id returned.");
