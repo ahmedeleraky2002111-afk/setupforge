@@ -189,3 +189,30 @@ entered success block for order 90
 entered success block for order 90
 entered success block for order 90
 entered success block for order 90
+Array
+(
+    [time] => 2026-05-07 10:46:31
+    [order_id] => 92
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 138
+    [labor_data] => {"chef": 1, "waiter": 2, "barista": 0, "cashier": 3, "cleaner": 0, "security": 4, "kitchen_helper": 3}
+    [technician_data] => ["pos", "electrical"]
+    [txn_order_id] => 520742578
+    [merchant_order_id] => 92
+    [amount_cents] => 11579700
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 92
+entered success block for order 92
+entered success block for order 92
+entered success block for order 92
+entered success block for order 92
