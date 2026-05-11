@@ -191,7 +191,17 @@ if (!$success) {
 pg_query($conn, "BEGIN");
 
 try {
-  $alreadyPaid = (($order["payment_status"] ?? "") === "paid");
+  // Re-fetch with row lock inside transaction to prevent duplicate processing
+  $lockedRes = pg_query_params($conn, "
+    SELECT payment_status FROM orders WHERE id = $1 LIMIT 1 FOR UPDATE
+  ", [$orderId]);
+
+  if (!$lockedRes || pg_num_rows($lockedRes) === 0) {
+    throw new Exception("Order not found on lock.");
+  }
+
+  $lockedOrder = pg_fetch_assoc($lockedRes);
+  $alreadyPaid = ($lockedOrder["payment_status"] === "paid");
 
   if (!$alreadyPaid) {
     file_put_contents(__DIR__ . "/callback_debug.txt", "ENTERED !alreadyPaid block for order {$orderId}\n", FILE_APPEND);
@@ -293,14 +303,17 @@ try {
         $jobLocation = "Business Location";
       }
 
-          $laborMap = json_decode($order["labor_data"] ?? "[]", true);
+          $laborRaw           = json_decode($order["labor_data"] ?? "[]", true);
+          $laborMap           = $laborRaw["roles"] ?? $laborRaw; // fallback for old format
+          $salaryAmount       = (int)($laborRaw["salary_amount"] ?? 0);
+          $compensationType   = trim((string)($laborRaw["compensation_type"] ?? "monthly"));
           $technicians = json_decode($order["technician_data"] ?? "[]", true);
       if (is_array($laborMap) && !empty($laborMap)) {
-        $insJobSql = "
-          INSERT INTO jobs
-          (business_id, title, description, location, budget, status, price, worker_id, job_type)
-          VALUES ($1, $2, $3, $4, $5, 'available', $6, $7, 'labor')
-        ";
+       $insJobSql = "
+  INSERT INTO jobs
+  (business_id, title, description, location, salary_amount, compensation_type, status, price, worker_id, job_type, labor_role)
+  VALUES ($1, $2, $3, $4, $5, $6, 'available', 0, NULL, 'labor', $7)
+";
 
         foreach ($laborMap as $role => $qtyRaw) {
           $qty = (int)$qtyRaw;
@@ -312,14 +325,14 @@ try {
             $description = $roleLabel . " requested during setup (Order #{$orderId}).";
 
             $okJob = pg_query_params($conn, $insJobSql, [
-              $businessId,
-              $title,
-              $description,
-              $jobLocation,
-              0,
-              0,
-              null
-            ]);
+  $businessId,
+  $title,
+  $description,
+  $jobLocation,
+  $salaryAmount,
+  $compensationType,
+  strtolower(str_replace(" ", "_", $role)) // labor_role
+]);
 
             if (!$okJob) {
               throw new Exception("Insert labor job failed: " . pg_last_error($conn));
@@ -336,6 +349,7 @@ if (is_array($installationServices) && !empty($installationServices) && $busines
     INSERT INTO installation_requests
     (user_id, services, status, company_id, total_price)
     VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (user_id, services) DO NOTHING
   ";
 
   foreach ($installationServices as $service) {
@@ -365,5 +379,6 @@ if (is_array($installationServices) && !empty($installationServices) && $busines
 
 } catch (Throwable $e) {
   pg_query($conn, "ROLLBACK");
+  file_put_contents(__DIR__ . "/callback_debug.txt", "ROLLBACK ERROR for order {$orderId}: " . $e->getMessage() . "\n--------------------\n", FILE_APPEND);
   callback_fail("Callback processing failed: " . $e->getMessage(), 500);
 }

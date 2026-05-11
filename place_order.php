@@ -139,8 +139,11 @@ try {
       installation_data = $2
   WHERE id = $3
 ", [
-  json_encode($_SESSION["wizard"]["labor"] ?? []),
 json_encode([
+  "roles"             => $_SESSION["wizard"]["labor"] ?? [],
+  "salary_amount"     => (int)($_SESSION["wizard"]["salary_amount"] ?? 0),
+  "compensation_type" => $_SESSION["wizard"]["compensation_type"] ?? "monthly",
+]),json_encode([
   "services" => $_SESSION["wizard"]["installation_services"] ?? [],
   "area_sqm" => (int)($_SESSION["wizard"]["area_sqm"] ?? 50),
   "ac_units" => (int)($_SESSION["wizard"]["ac_units"] ?? 1),

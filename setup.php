@@ -98,6 +98,8 @@ if ($currentStep === 6) {
     "chef"    => in_array("chef",    $staffRoles, true) ? 1 : 0,
     "cleaner" => in_array("cleaner", $staffRoles, true) ? 1 : 0
   ];
+  $_SESSION["wizard"]["salary_amount"]     = (int)($_POST["salary_amount"] ?? 0);
+  $_SESSION["wizard"]["compensation_type"] = trim($_POST["compensation_type"] ?? "monthly");
 
   redirect_step(7);
 

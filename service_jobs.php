@@ -246,7 +246,36 @@ function formatInstallationServices($raw) {
                 <?= $filled ?> filled
               </div>
             </div>
-            <span class="sf-hc-tag"><?= $left ?> remaining</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <?php
+                $salaryRes = pg_query_params($conn, "
+                  SELECT salary_amount, compensation_type FROM jobs
+                  WHERE business_id = $1 AND title = $2 AND location = $3 AND job_type = 'labor'
+                  LIMIT 1
+                ", [$business_id, $labor["title"], $labor["location"]]);
+                $salaryRow = ($salaryRes && pg_num_rows($salaryRes) > 0) ? pg_fetch_assoc($salaryRes) : null;
+                $hasSalary = $salaryRow && (int)$salaryRow["salary_amount"] > 0;
+              ?>
+              <?php if ($hasSalary): ?>
+                <span style="font-size:.82rem;font-weight:700;color:#15803d;background:#d1fae5;padding:4px 12px;border-radius:999px;border:1px solid rgba(34,197,94,.2);">
+                  <?= number_format((int)$salaryRow["salary_amount"]) ?> EGP / <?= htmlspecialchars($salaryRow["compensation_type"]) ?>
+                </span>
+              <?php else: ?>
+                <span style="font-size:.78rem;font-weight:700;color:#b45309;background:#fef9c3;padding:4px 12px;border-radius:999px;border:1px solid rgba(234,179,8,.2);">
+                  No salary set
+                </span>
+              <?php endif; ?>
+              <button onclick='openSalaryModal(<?= htmlspecialchars(json_encode([
+                "title"    => $labor["title"],
+                "location" => $labor["location"],
+                "salary_amount"    => (int)($salaryRow["salary_amount"] ?? 0),
+                "compensation_type" => $salaryRow["compensation_type"] ?? "monthly",
+              ]), ENT_QUOTES) ?>)'
+                style="padding:7px 16px;border-radius:10px;background:#004cac;color:#fff;font-size:.8rem;font-weight:700;border:none;cursor:pointer;white-space:nowrap;">
+                <i class="bi bi-cash-coin me-1"></i> Set Salary
+              </button>
+              <span class="sf-hc-tag"><?= $left ?> remaining</span>
+            </div>
           </div>
 
           <div class="sf-hc-board">
@@ -373,6 +402,7 @@ function formatInstallationServices($raw) {
                     "labor_role"     => $app["labor_role"] ?? "—",
                     "title"          => $app["title"] ?? "",
                     "location"       => $app["location"] ?? "",
+                    "app_status" => $app["app_status"]
                   ]), ENT_QUOTES) ?>)'>
                     <i class="bi bi-eye me-1"></i> View
                   </button>
@@ -521,6 +551,40 @@ function formatInstallationServices($raw) {
     <?php endif; ?>
 
   </div>
+  <!-- Salary Modal -->
+<div id="sf-salary-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;width:min(400px,95vw);padding:28px;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.18);">
+    <button onclick="closeSalaryModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:1.3rem;color:#6b7280;cursor:pointer;">
+      <i class="bi bi-x-lg"></i>
+    </button>
+    <div style="font-size:1.05rem;font-weight:800;color:#111827;margin-bottom:4px;">Set Salary</div>
+    <div id="salary-modal-role" style="font-size:.82rem;color:#6b7280;margin-bottom:20px;"></div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Amount (EGP)</label>
+      <input type="number" id="salary-amount-input" min="0" placeholder="e.g. 5000"
+        style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(0,0,0,.14);font-size:.95rem;outline:none;">
+    </div>
+    <div style="margin-bottom:24px;">
+      <label style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Per</label>
+      <select id="salary-type-select"
+        style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(0,0,0,.14);font-size:.95rem;outline:none;background:#fff;">
+        <option value="monthly">Month</option>
+        <option value="daily">Day</option>
+        <option value="hourly">Hour</option>
+      </select>
+    </div>
+
+    <input type="hidden" id="salary-modal-title">
+    <input type="hidden" id="salary-modal-location">
+
+    <button onclick="saveSalary()"
+      style="width:100%;padding:12px;border-radius:10px;background:#004cac;color:#fff;font-weight:700;border:none;cursor:pointer;font-size:.95rem;">
+      <i class="bi bi-check2-circle me-1"></i> Save
+    </button>
+    <div id="salary-save-msg" style="margin-top:10px;font-size:.82rem;text-align:center;"></div>
+  </div>
+</div>
 </main>
 
 <footer class="sf-footer mt-5">
@@ -765,6 +829,18 @@ function openApplicantModal(data) {
       document.getElementById('modal-docs').textContent = 'Could not load documents.';
     });
 
+    // Hide hire button if already hired
+  const hireForm = document.getElementById('modal-hire-form');
+  if (data.app_status === 'accepted') {
+    hireForm.innerHTML = '<div style="width:100%;padding:11px;border-radius:10px;background:#d1fae5;color:#15803d;font-weight:700;font-size:.92rem;text-align:center;"><i class="bi bi-check2-circle me-1"></i> Hired</div>';
+  } else {
+    hireForm.innerHTML = '<input type="hidden" name="application_id" id="modal-app-id"><input type="hidden" name="labor_user_id" id="modal-labor-id"><input type="hidden" name="job_id" id="modal-job-id"><input type="hidden" name="title" id="modal-title"><input type="hidden" name="location" id="modal-location"><button type="submit" style="width:100%;padding:11px;border-radius:10px;background:#004cac;color:#fff;font-weight:700;border:none;cursor:pointer;font-size:.92rem;"><i class="bi bi-check2-circle me-1"></i> Hire</button>';
+    document.getElementById('modal-app-id').value   = data.application_id;
+    document.getElementById('modal-labor-id').value = data.labor_user_id;
+    document.getElementById('modal-job-id').value   = data.job_id;
+    document.getElementById('modal-title').value    = data.title;
+    document.getElementById('modal-location').value = data.location;
+  }
   // Show modal
   const modal = document.getElementById('sf-applicant-modal');
   modal.style.display = 'flex';
@@ -772,6 +848,47 @@ function openApplicantModal(data) {
 
 function closeApplicantModal() {
   document.getElementById('sf-applicant-modal').style.display = 'none';
+}
+
+function openSalaryModal(data) {
+  document.getElementById('salary-modal-role').textContent = data.title + ' · ' + data.location;
+  document.getElementById('salary-amount-input').value = data.salary_amount || '';
+  document.getElementById('salary-type-select').value = data.compensation_type || 'monthly';
+  document.getElementById('salary-modal-title').value = data.title;
+  document.getElementById('salary-modal-location').value = data.location;
+  document.getElementById('salary-save-msg').textContent = '';
+  document.getElementById('sf-salary-modal').style.display = 'flex';
+}
+function closeSalaryModal() {
+  document.getElementById('sf-salary-modal').style.display = 'none';
+}
+function saveSalary() {
+  const title    = document.getElementById('salary-modal-title').value;
+  const location = document.getElementById('salary-modal-location').value;
+  const amount   = parseInt(document.getElementById('salary-amount-input').value) || 0;
+  const type     = document.getElementById('salary-type-select').value;
+  const msg      = document.getElementById('salary-save-msg');
+
+  msg.textContent = 'Saving...';
+  msg.style.color = '#6b7280';
+
+  fetch('set_job_salary.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ title, location, salary_amount: amount, compensation_type: type })
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.ok) {
+      msg.textContent = 'Saved!';
+      msg.style.color = '#15803d';
+setTimeout(() => { closeSalaryModal(); window.location.reload(); }, 800);
+    } else {
+      msg.textContent = res.error || 'Failed to save.';
+      msg.style.color = '#dc2626';
+    }
+  })
+  .catch(() => { msg.textContent = 'Network error.'; msg.style.color = '#dc2626'; });
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
