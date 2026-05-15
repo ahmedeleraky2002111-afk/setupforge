@@ -152,7 +152,7 @@ $POS_CATALOG = [
 
 $KITCHEN_CATALOG_ACTIVE = [
   "oven"=>[], "fryer"=>[], "grill"=>[], "microwave"=>[],
-  "fridge"=>[], "freezer"=>[], "blender"=>[], "mixer"=>[], "coffee"=>[]
+  "fridge"=>[], "freezer"=>[], "blender"=>[], "mixer"=>[], "coffee"=>[], "stove"=>[]
 ];
 
 $POS_CATALOG_ACTIVE = $POS_CATALOG;
@@ -333,6 +333,7 @@ if (isset($conn) && $conn) {
   SELECT
     p.id,
     p.product_name,
+    p.product_type,
     p.price,
     p.priority,
     p.tier,
@@ -821,12 +822,8 @@ function pick_top_dining_set_options($catalog, $restaurantType, $size, $tier, $l
     if (!is_array($specs)) $specs = [];
 
     $seatCount = (int)($specs["seat_count"] ?? 0);
-    $layoutType = (string)($specs["layout_type"] ?? "");
-    $style = (string)($specs["restaurant_style"] ?? "");
 
     if ($seatCount !== (int)$target["seat_count"]) return false;
-    if ($layoutType !== $target["layout_type"]) return false;
-    if ($style !== $target["restaurant_style"]) return false;
 
     return true;
   });
@@ -937,39 +934,10 @@ function build_item_alternatives($selectedProductId, $pool, $limit = 3){
 }
 
 function tv_target_spec($restaurantType, $size){
-  $restaurantType = strtolower(trim((string)$restaurantType));
-  $size = ucfirst(strtolower(trim((string)$size)));
-
-  if ($restaurantType === "fast_food") {
-    return [
-      "screen_size" => match($size) {
-        "Small" => 43,
-        "Medium" => 50,
-        "Large" => 55,
-        default => 43
-      }
-    ];
-  }
-
-  if ($restaurantType === "premium_dining") {
-    return [
-      "screen_size" => match($size) {
-        "Small" => 43,
-        "Medium" => 50,
-        "Large" => 55,
-        default => 50
-      }
-    ];
-  }
-
-  return [
-    "screen_size" => match($size) {
-      "Small" => 43,
-      "Medium" => 50,
-      "Large" => 55,
-      default => 50
-    }
-  ];
+  $seats = (int)($GLOBALS["indoorSeats"] ?? 0);
+  if ($seats < 30)      return ["screen_size" => 43];
+  if ($seats <= 60)     return ["screen_size" => 50];
+  return                       ["screen_size" => 55];
 }
 
 
@@ -1286,7 +1254,7 @@ function build_furniture_cart_by_budget($catalog, $size, $cap){
 
   $cart = ["items" => []];
 
-  $setQty = dining_set_quantity_by_size($restaurantType, $size);
+$setQty = max(1, (int)ceil((int)($GLOBALS["indoorSeats"] ?? 0) / 4));
   $setOptions = pick_top_dining_set_options($catalog, $restaurantType, $size, $tier, 3);
 
   if (!empty($setOptions)) {
@@ -1319,7 +1287,7 @@ function build_furniture_cart_by_budget($catalog, $size, $cap){
     /* ===== PASTE TV CODE HERE ===== */
 
 $remaining = $cap - cart_total($cart);
-$tvQty = tv_quantity_by_context($restaurantType, $size);
+$tvQty = ($restaurantType === "cloud_kitchen") ? 0 : max(1, (int)ceil((int)($GLOBALS["indoorSeats"] ?? 0) / 20));
 $tvOptions = pick_top_tv_options($catalog, $restaurantType, $size, $tier, 3);
 
 if ($remaining > 0 && $tvQty > 0 && !empty($tvOptions)) {
@@ -1709,8 +1677,8 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                       </div>
                     </div>
 
-                    <?php if (!empty($it["alternatives"])): ?>
-                      <div class="sf-pkg-alts">
+                    <div class="sf-pkg-alts">
+                      <?php if (!empty($it["alternatives"])): ?>
                         <?php foreach (array_slice($it["alternatives"], 0, 3) as $alt): ?>
                           <form method="post" class="sf-pkg-chip m-0">
                             <input type="hidden" name="replace_item" value="1">
@@ -1730,8 +1698,10 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                             </button>
                           </form>
                         <?php endforeach; ?>
-                      </div>
-                    <?php endif; ?>
+                      <?php else: ?>
+                        <div class="sf-pkg-no-alts">No alternatives available</div>
+                      <?php endif; ?>
+                    </div>
 
                     <?php
                       $sellers = [];
@@ -1765,15 +1735,17 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                       }
                     ?>
 
-                    <?php if (!empty($it["product_group_key"])): ?>
-                      <div class="sf-pkg-sellers-trigger">
+                    <div class="sf-pkg-sellers-trigger">
+                      <?php if (!empty($it["product_group_key"])): ?>
                         <button type="button" class="btn btn-link p-0 sf-text-link"
                                 data-sellers-open="1"
                                 data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
                           View other sellers
                         </button>
-                      </div>
-                    <?php endif; ?>
+                      <?php else: ?>
+                        <span class="sf-pkg-no-sellers">No other sellers</span>
+                      <?php endif; ?>
+                    </div>
 
                     <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
                       <?php
@@ -1885,8 +1857,8 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                       </div>
                     </div>
 
-                    <?php if (!empty($it["alternatives"])): ?>
-                      <div class="sf-pkg-alts">
+                    <div class="sf-pkg-alts">
+                      <?php if (!empty($it["alternatives"])): ?>
                         <?php foreach (array_slice($it["alternatives"], 0, 3) as $alt): ?>
                           <form method="post" class="sf-pkg-chip m-0">
                             <input type="hidden" name="replace_kitchen_item" value="1">
@@ -1906,8 +1878,10 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                             </button>
                           </form>
                         <?php endforeach; ?>
-                      </div>
-                    <?php endif; ?>
+                      <?php else: ?>
+                        <div class="sf-pkg-no-alts">No alternatives available</div>
+                      <?php endif; ?>
+                    </div>
 
                     <?php
                       $sellers = [];
@@ -1941,15 +1915,17 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                       }
                     ?>
 
-                    <?php if (!empty($it["product_group_key"])): ?>
-                      <div class="sf-pkg-sellers-trigger">
+                    <div class="sf-pkg-sellers-trigger">
+                      <?php if (!empty($it["product_group_key"])): ?>
                         <button type="button" class="btn btn-link p-0 sf-text-link"
                                 data-sellers-open="1"
                                 data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
                           View other sellers
                         </button>
-                      </div>
-                    <?php endif; ?>
+                      <?php else: ?>
+                        <span class="sf-pkg-no-sellers">No other sellers</span>
+                      <?php endif; ?>
+                    </div>
 
                     <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
                       <?php
@@ -2055,8 +2031,8 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
               </div>
             </div>
 
-            <?php if (!empty($it["alternatives"])): ?>
-              <div class="sf-pkg-alts">
+            <div class="sf-pkg-alts">
+              <?php if (!empty($it["alternatives"])): ?>
                 <?php foreach (array_slice($it["alternatives"], 0, 3) as $alt): ?>
                   <form method="post" class="sf-pkg-chip m-0">
                     <input type="hidden" name="replace_furniture_item" value="1">
@@ -2076,18 +2052,22 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                     </button>
                   </form>
                 <?php endforeach; ?>
-              </div>
-            <?php endif; ?>
+              <?php else: ?>
+                <div class="sf-pkg-no-alts">No alternatives available</div>
+              <?php endif; ?>
+            </div>
 
-            <?php if (!empty($it["product_group_key"])): ?>
-              <div class="sf-pkg-sellers-trigger">
+            <div class="sf-pkg-sellers-trigger">
+              <?php if (!empty($it["product_group_key"])): ?>
                 <button type="button" class="btn btn-link p-0 sf-text-link"
                         data-sellers-open="1"
                         data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
                   View other sellers
                 </button>
-              </div>
-            <?php endif; ?>
+              <?php else: ?>
+                <span class="sf-pkg-no-sellers">No other sellers</span>
+              <?php endif; ?>
+            </div>
 
             <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
               <div class="sf-empty-inline">No other sellers available for this product.</div>

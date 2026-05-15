@@ -264,3 +264,31 @@
 - success.php Unauthorized — now restores session from order instead of dying
 - paymob_callback.php installation_data parsing — handles new JSON format
 - merchant_order_id now includes timestamp to prevent Paymob caching
+
+## Parked for Later (do not implement until DB products exist)
+
+### Dining / Tables
+- Table size ratio per restaurant type:
+  - Fast Food: 4-seater 50%, 2-seater 30%, 6-seater 20% + bar seating option
+  - Standard Dining: 4-seater 50%, 2-seater 25%, 6-seater 20%, 10-seater 5%
+  - Premium Dining: 4-seater 45%, 2-seater 20%, 8-seater 25%, 12-seater 10%
+- Requires these products in DB first: 2-seater, 8-seater, 10-seater, 12-seater dining sets
+- Bar seating option for fast food only
+- After products added → implement ratio recommendation in packages.php
+
+### Budget
+- Installation cost estimate included in total wizard budget
+- Real installation pricing per service type (AC per unit, POS per terminal, kitchen setup, infrastructure)
+
+### Furniture
+- TV mounting service
+- Furniture assembly service
+
+### Products / Recommendation Engine
+- Restaurant type affecting specific kitchen product recommendations
+- Cloud kitchen should not get premium combi oven
+- Fast food should not get luxury dining sets
+
+### Wizard
+- 3D table layout visualization (Three.js)
+- Ambience module for all restaurant types (currently premium only)

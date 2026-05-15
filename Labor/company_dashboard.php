@@ -17,7 +17,7 @@ $userName = $_SESSION["name"] ?? "Company";
 
 /* GET COMPANY INFO */
 $companyRes = pg_query_params($conn,
-    "SELECT company_id, company_name, services, availability_status, website
+    "SELECT company_id, company_name, services, availability_status, website, image
      FROM companies WHERE user_id = $1 LIMIT 1",
     [$company_user_id]
 );
@@ -156,11 +156,16 @@ function timeAgo($datetime) {
         <div class="sf-nav-actions">
             <div class="dropdown">
                 <button class="btn sf-profile-btn" data-bs-toggle="dropdown">
-                    <i class="bi bi-person-fill"></i>
+                    <?php if (!empty($company['image'])): ?>
+                        <img src="../<?= htmlspecialchars($company['image']) ?>" style="width:46px;height:46px;border-radius:50%;object-fit:cover;">
+                    <?php else: ?>
+                        <i class="bi bi-person-fill"></i>
+                    <?php endif; ?>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end sf-dropdown">
                     <li class="px-3 py-2 fw-semibold"><?= htmlspecialchars($userName) ?></li>
                     <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="edit_company_profile.php"><i class="bi bi-pencil me-2"></i>Edit Profile</a></li>
                     <li><a class="dropdown-item" href="../auth/logout.php">Logout</a></li>
                 </ul>
             </div>

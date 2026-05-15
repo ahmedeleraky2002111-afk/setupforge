@@ -13,16 +13,20 @@ $acRate    = 700;
 $acTonnage = "1.5";
 
 $orderRes = pg_query_params($conn, "
-    SELECT installation_data
+    SELECT id, installation_data
     FROM orders
     WHERE business_user_id = $1
     ORDER BY id DESC
     LIMIT 1
 ", [$business_id]);
 
+$orderId  = null;
+$instData = [];
+
 if ($orderRes && pg_num_rows($orderRes) > 0) {
     $orderRow = pg_fetch_assoc($orderRes);
-    $instData = json_decode($orderRow["installation_data"], true);
+    $orderId  = (int)$orderRow["id"];
+    $instData = json_decode($orderRow["installation_data"], true) ?? [];
     $areaSqm  = (int)($instData["area_sqm"] ?? 50);
     $acUnits  = max(1, (int)ceil($areaSqm / 40));
 
@@ -32,7 +36,8 @@ if ($orderRes && pg_num_rows($orderRes) > 0) {
     elseif  ($areaPerUnit <= 45) { $acTonnage = "2.5"; $acRate = 850; }
     else                         { $acTonnage = "3";   $acRate = 900; }
 }
-// Load per-company AC rates for the derived tonnage
+
+// Load per-company AC rates
 $acRatesMap = [];
 if ($acTonnage) {
     $ratesRes = pg_query_params($conn, "
@@ -40,12 +45,93 @@ if ($acTonnage) {
         FROM company_ac_rates
         WHERE tonnage = $1
     ", [$acTonnage]);
-
     if ($ratesRes) {
         while ($rateRow = pg_fetch_assoc($ratesRes)) {
             $acRatesMap[(int)$rateRow["company_id"]] = (int)$rateRow["rate_per_unit"];
         }
     }
+}
+
+// Load order items with product info (kitchen + pos only)
+$orderItems = [];
+if ($orderId) {
+    $itemsRes = pg_query_params($conn, "
+        SELECT oi.product_id, oi.quantity, p.product_name, p.product_type, p.module,
+               p.specs
+        FROM order_items oi
+        JOIN products p ON p.id = oi.product_id
+        WHERE oi.order_id = $1
+          AND p.module IN ('kitchen', 'pos')
+    ", [$orderId]);
+    if ($itemsRes) {
+        while ($item = pg_fetch_assoc($itemsRes)) {
+            $orderItems[] = $item;
+        }
+    }
+}
+
+// Build per-company kitchen breakdown
+// Structure: $kitchenBreakdown[company_id] = [['name'=>, 'qty'=>, 'rate'=>, 'subtotal'=>, 'image'=>], ...]
+$kitchenBreakdown = [];
+$kitchenRatesRes = pg_query($conn, "SELECT company_id, product_type, rate FROM company_kitchen_rates");
+$kitchenRatesAll = [];
+if ($kitchenRatesRes) {
+    while ($r = pg_fetch_assoc($kitchenRatesRes)) {
+        $kitchenRatesAll[(int)$r["company_id"]][$r["product_type"]] = (int)$r["rate"];
+    }
+}
+
+// Build per-company POS breakdown
+$posBreakdown = [];
+$posRatesRes = pg_query($conn, "SELECT company_id, terminal_type, rate FROM company_pos_rates");
+$posRatesAll = [];
+if ($posRatesRes) {
+    while ($r = pg_fetch_assoc($posRatesRes)) {
+        $posRatesAll[(int)$r["company_id"]][$r["terminal_type"]] = (int)$r["rate"];
+    }
+}
+
+foreach ($orderItems as $item) {
+    $ptype = strtolower(trim($item["product_type"]));
+    $qty   = (int)$item["quantity"];
+    $name  = $item["product_name"];
+    $imgRes = pg_query_params($conn, "SELECT image_url FROM product_images WHERE product_id = $1 LIMIT 1", [$item["product_id"]]);
+    $image = ($imgRes && pg_num_rows($imgRes) > 0) ? pg_fetch_assoc($imgRes)["image_url"] : null;
+
+    if ($item["module"] === "kitchen") {
+        foreach ($kitchenRatesAll as $cid => $rates) {
+            $rate = $rates[$ptype] ?? null;
+            if (!$rate) continue;
+            $kitchenBreakdown[$cid][] = [
+                "name"     => $name,
+                "qty"      => $qty,
+                "rate"     => $rate,
+                "subtotal" => $rate * $qty,
+                "image"    => $image,
+                "ptype"    => $ptype,
+            ];
+        }
+    }
+
+    if ($item["module"] === "pos") {
+        foreach ($posRatesAll as $cid => $rates) {
+            $rate = $rates[$ptype] ?? null;
+            if (!$rate) continue;
+            $posBreakdown[$cid][] = [
+                "name"     => $name,
+                "qty"      => $qty,
+                "rate"     => $rate,
+                "subtotal" => $rate * $qty,
+                "image"    => $image,
+                "ptype"    => $ptype,
+            ];
+        }
+    }
+}
+
+// Helper: sum a breakdown array
+function breakdownTotal($lines) {
+    return array_sum(array_column($lines, "subtotal"));
 }
 
 $installationRes = pg_query_params($conn, "
@@ -162,6 +248,13 @@ function formatInstallationServices($raw) {
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/style.css" rel="stylesheet">
+  <style>
+.sf-ins-company-top { display: flex !important; flex-direction: row !important; align-items: center !important; gap: 12px !important; padding-top: 6px; }
+.sf-ins-company-logo { flex-shrink: 0; }
+.sf-ins-company-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.sf-ins-company-name { font-size: .95rem; font-weight: 800; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.sf-ins-company-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+</style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
@@ -472,17 +565,30 @@ function formatInstallationServices($raw) {
                   $priceSub     = $co["message"] ? htmlspecialchars($co["message"]) : '';
                 } else {
                   if ($co["starting_from"]) {
+                    $cid = (int)$co["company_id"];
                     if ($serviceKey === 'ac') {
-                      $rateToUse    = $acRatesMap[(int)$co["company_id"]] ?? $acRate;
+                      $rateToUse    = $acRatesMap[$cid] ?? $acRate;
                       $displayPrice = number_format($rateToUse * $acUnits, 0) . ' EGP';
                       $priceSub     = $acTonnage . ' ton × ' . $acUnits . ' units';
+                      $breakdownLines = [];
+                    } elseif ($serviceKey === 'kitchen') {
+                      $breakdownLines = $kitchenBreakdown[$cid] ?? [];
+                      $total          = $breakdownLines ? breakdownTotal($breakdownLines) : ((int)$co["starting_from"] * (int)($instData["kitchen_item_count"] ?? 1));
+                      $displayPrice   = number_format($total, 0) . ' EGP';
+                      $priceSub       = count($breakdownLines) . ' item type' . (count($breakdownLines) !== 1 ? 's' : '');
+                    } elseif ($serviceKey === 'pos') {
+                      $breakdownLines = $posBreakdown[$cid] ?? [];
+                      $total          = $breakdownLines ? breakdownTotal($breakdownLines) : ((int)$co["starting_from"] * (int)($instData["terminal_count"] ?? 1));
+                      $displayPrice   = number_format($total, 0) . ' EGP';
+                      $priceSub       = count($breakdownLines) . ' item type' . (count($breakdownLines) !== 1 ? 's' : '');
                     } else {
-                      $displayPrice = number_format((int)$co["starting_from"], 0) . ' EGP';
-                      $priceSub     = '';
+                      $displayPrice   = number_format((int)$co["starting_from"], 0) . ' EGP';
+                      $priceSub       = '';
+                      $breakdownLines = [];
                     }
-                    $priceLabel = "Starting from";
+                    $priceLabel = "Est. Installation Cost";
                   } else {
-                    $displayPrice = 'TBD'; $priceLabel = "Price"; $priceSub = '';
+                    $displayPrice = 'TBD'; $priceLabel = "Price"; $priceSub = ''; $breakdownLines = [];
                   }
                 }
 
@@ -495,17 +601,31 @@ function formatInstallationServices($raw) {
                 <?php if ($idx === 0): ?><div class="sf-ins-recommended">Recommended</div><?php endif; ?>
 
                 <div class="sf-ins-company-top">
-                  <div>
-                    <div class="sf-ins-company-name"><?= htmlspecialchars($co["company_name"]) ?></div>
-                    <?php if ($co["avg_rating"]): ?>
-                    <div class="sf-ins-rating" style="margin-top:4px">
-                      <i class="bi bi-star-fill" style="font-size:.7rem"></i>
-                      <?= number_format((float)$co["avg_rating"], 1) ?>
-                    </div>
+                  <div class="sf-ins-company-logo">
+                    <?php
+                      $coImgRes = pg_query_params($conn, "SELECT image FROM companies WHERE company_id = $1 LIMIT 1", [$co["company_id"]]);
+                      $coImg = ($coImgRes && pg_num_rows($coImgRes) > 0) ? pg_fetch_assoc($coImgRes)["image"] : null;
+                    ?>
+                    <?php if ($coImg): ?>
+                      <img src="<?= htmlspecialchars($coImg) ?>" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid rgba(0,0,0,.08);">
+                    <?php else: ?>
+                      <div style="width:44px;height:44px;border-radius:10px;background:rgba(0,76,172,.08);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;color:#004cac;">
+                        <?= strtoupper(substr($co["company_name"], 0, 2)) ?>
+                      </div>
                     <?php endif; ?>
                   </div>
-                  <span class="sf-ins-badge <?= $badgeClass ?>"><?= $badgeText ?></span>
+                  <div class="sf-ins-company-info">
+                    <div class="sf-ins-company-name"><?= htmlspecialchars($co["company_name"]) ?></div>
+                    <div class="sf-ins-company-meta-row">
+                      <div class="sf-ins-rating">
+                        <i class="bi bi-star-fill" style="font-size:.7rem"></i>
+                        <?= number_format((float)($co["avg_rating"] ?? 0), 1) ?>
+                      </div>
+                      <span class="sf-ins-badge <?= $badgeClass ?>"><?= $badgeText ?></span>
+                    </div>
+                  </div>
                 </div>
+                  
 
                 <?php if ($co["description"]): ?>
                 <div class="sf-ins-company-desc"><?= htmlspecialchars($co["description"]) ?></div>
@@ -518,6 +638,18 @@ function formatInstallationServices($raw) {
                   <div class="sf-ins-price-sub"><?= $priceSub ?></div>
                   <?php endif; ?>
                 </div>
+<?php if (!empty($breakdownLines)): ?>
+                <button
+                  onclick='openBreakdownModal(<?= htmlspecialchars(json_encode([
+                    "company"   => $co["company_name"],
+                    "service"   => $serviceKey,
+                    "lines"     => $breakdownLines,
+                    "total"     => breakdownTotal($breakdownLines),
+                  ]), ENT_QUOTES) ?>)'
+                  style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:#f1f5f9;color:#004cac;font-weight:700;font-size:.82rem;border:1px solid rgba(0,76,172,.15);cursor:pointer;">
+                  <i class="bi bi-list-ul me-1"></i> View Details
+                </button>
+                <?php endif; ?>
 
                 <div class="sf-ins-actions">
                   <?php if ($co["website"] || $co["website_link"]): ?>
@@ -889,6 +1021,61 @@ setTimeout(() => { closeSalaryModal(); window.location.reload(); }, 800);
     }
   })
   .catch(() => { msg.textContent = 'Network error.'; msg.style.color = '#dc2626'; });
+}
+
+</script>
+<!-- Breakdown Modal -->
+<div id="sf-breakdown-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;width:min(480px,95vw);max-height:85vh;overflow-y:auto;padding:28px;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.18);">
+    <button onclick="closeBreakdownModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:1.3rem;color:#6b7280;cursor:pointer;">
+      <i class="bi bi-x-lg"></i>
+    </button>
+    <div id="bm-company" style="font-size:1.05rem;font-weight:800;color:#111827;margin-bottom:4px;"></div>
+    <div id="bm-service" style="font-size:.78rem;font-weight:700;color:#004cac;background:rgba(0,76,172,.08);padding:3px 10px;border-radius:999px;display:inline-block;margin-bottom:20px;"></div>
+
+    <div id="bm-lines" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;"></div>
+
+    <div style="border-top:2px solid rgba(0,0,0,.08);padding-top:14px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:.85rem;font-weight:700;color:#6b7280;">Estimated Total</span>
+      <span id="bm-total" style="font-size:1.2rem;font-weight:900;color:#004cac;"></span>
+    </div>
+    <div style="margin-top:8px;font-size:.72rem;color:#9ca3af;text-align:center;">
+      This is an estimate. Final price comes from the company's quote.
+    </div>
+  </div>
+</div>
+
+<script>
+function openBreakdownModal(data) {
+  document.getElementById('bm-company').textContent = data.company;
+  document.getElementById('bm-service').textContent = data.service.toUpperCase() + ' Installation';
+  document.getElementById('bm-total').textContent   = parseInt(data.total).toLocaleString() + ' EGP';
+
+  const lines = document.getElementById('bm-lines');
+  lines.innerHTML = '';
+
+  data.lines.forEach(line => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);';
+
+    const img = line.image
+      ? `<img src="${line.image}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0;">`
+      : `<div style="width:44px;height:44px;border-radius:8px;background:#e5e7eb;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi bi-box" style="color:#9ca3af;"></i></div>`;
+
+    row.innerHTML = img + `
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.88rem;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${line.name}</div>
+        <div style="font-size:.75rem;color:#6b7280;margin-top:2px;">${line.qty} × ${parseInt(line.rate).toLocaleString()} EGP</div>
+      </div>
+      <div style="font-size:.95rem;font-weight:800;color:#004cac;flex-shrink:0;">${parseInt(line.subtotal).toLocaleString()} EGP</div>
+    `;
+    lines.appendChild(row);
+  });
+
+  document.getElementById('sf-breakdown-modal').style.display = 'flex';
+}
+function closeBreakdownModal() {
+  document.getElementById('sf-breakdown-modal').style.display = 'none';
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

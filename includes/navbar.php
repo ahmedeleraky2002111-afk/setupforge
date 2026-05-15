@@ -26,7 +26,7 @@
 
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle sf-navlink"
-              href="products.php"
+              href="../products.php"
               data-bs-toggle="dropdown">
               Products
             </a>

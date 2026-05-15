@@ -134,6 +134,15 @@ try {
 
   $row = pg_fetch_assoc($resOrder);
   $orderId = (int)($row["id"] ?? 0);
+
+  // ---------- Derive counts from cart ----------
+  $kitchenItemCount = 0;
+  $terminalCount    = 0;
+  foreach ($allItems as $it) {
+    if ($it["module"] === "kitchen") $kitchenItemCount += $it["qty"];
+    if ($it["module"] === "pos")     $terminalCount    += $it["qty"];
+  }
+
   $saveJobData = pg_query_params($conn, "
   UPDATE orders
   SET labor_data = $1,
@@ -156,9 +165,11 @@ json_encode([
   "compensation_type" => $_SESSION["wizard"]["compensation_type"] ?? "monthly",
 ]),
 json_encode([
-  "services" => $_SESSION["wizard"]["installation_services"] ?? [],
-  "area_sqm" => (int)($_SESSION["wizard"]["area_sqm"] ?? 50),
-  "ac_units" => (int)($_SESSION["wizard"]["ac_units"] ?? 1),
+  "services"           => $_SESSION["wizard"]["installation_services"] ?? [],
+  "area_sqm"           => (int)($_SESSION["wizard"]["area_sqm"] ?? 50),   
+  "ac_units"           => (int)($_SESSION["wizard"]["ac_units"] ?? 1),
+  "kitchen_item_count" => $kitchenItemCount,
+  "terminal_count"     => $terminalCount,
 ]),  $orderId
 ]);
 
