@@ -1303,3 +1303,308 @@ entered success block for order 129
 entered success block for order 129
 entered success block for order 129
 entered success block for order 129
+Array
+(
+    [time] => 2026-05-17 21:24:29
+    [order_id] => 130
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 213
+    [labor_data] => {"roles": {"chef": 2, "host": 0, "busboy": 0, "waiter": 1, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["ac"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 527525914
+    [merchant_order_id] => 130_1779045740
+    [amount_cents] => 34628700
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 130
+entered success block for order 130
+entered success block for order 130
+entered success block for order 130
+entered success block for order 130
+entered success block for order 130
+entered success block for order 130
+Array
+(
+    [time] => 2026-05-18 12:00:59
+    [order_id] => 131
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 216
+    [labor_data] => {"roles": {"chef": 1, "host": 0, "busboy": 0, "waiter": 1, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["network", "ac"], "terminal_count": 2, "kitchen_item_count": 4}
+    [txn_order_id] => 527791643
+    [merchant_order_id] => 131_1779098400
+    [amount_cents] => 36788900
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 131
+entered success block for order 131
+entered success block for order 131
+entered success block for order 131
+entered success block for order 131
+entered success block for order 131
+Array
+(
+    [time] => 2026-05-18 12:15:20
+    [order_id] => 132
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 216
+    [labor_data] => {"roles": {"chef": 1, "host": 0, "busboy": 0, "waiter": 1, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["network", "ac"], "terminal_count": 2, "kitchen_item_count": 4}
+    [txn_order_id] => 527798539
+    [merchant_order_id] => 132_1779099265
+    [amount_cents] => 36788900
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 132
+entered success block for order 132
+entered success block for order 132
+entered success block for order 132
+entered success block for order 132
+entered success block for order 132
+Array
+(
+    [time] => 2026-05-18 21:55:42
+    [order_id] => 133
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 222
+    [labor_data] => {"roles": {"chef": 3, "host": 0, "busboy": 0, "waiter": 4, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["electrical", "network", "ac", "kitchen"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 528171748
+    [merchant_order_id] => 133_1779134061
+    [amount_cents] => 31859300
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 133
+entered success block for order 133
+entered success block for order 133
+entered success block for order 133
+entered success block for order 133
+entered success block for order 133
+ROLLBACK ERROR for order 133: Insert installation request failed: ERROR:  column "order_id" of relation "installation_requests" does not exist
+LINE 3:     (user_id, order_id, services, status, company_id, total_...
+                      ^
+--------------------
+Array
+(
+    [time] => 2026-05-18 21:57:14
+    [order_id] => 133
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 222
+    [labor_data] => {"roles": {"chef": 3, "host": 0, "busboy": 0, "waiter": 4, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["electrical", "network", "ac", "kitchen"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 528173239
+    [merchant_order_id] => 133_1779134191
+    [amount_cents] => 31859300
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 133
+entered success block for order 133
+entered success block for order 133
+entered success block for order 133
+entered success block for order 133
+entered success block for order 133
+ROLLBACK ERROR for order 133: Insert installation request failed: ERROR:  column "order_id" of relation "installation_requests" does not exist
+LINE 3:     (user_id, order_id, services, status, company_id, total_...
+                      ^
+--------------------
+Array
+(
+    [time] => 2026-05-18 22:01:06
+    [order_id] => 134
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 223
+    [labor_data] => {"roles": {"chef": 2, "host": 0, "busboy": 0, "waiter": 1, "barista": 1, "cashier": 1, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["pos", "electrical", "ac", "kitchen"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 528175792
+    [merchant_order_id] => 134_1779134421
+    [amount_cents] => 31859300
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+ROLLBACK ERROR for order 134: Insert installation request failed: ERROR:  column "order_id" of relation "installation_requests" does not exist
+LINE 3:     (user_id, order_id, services, status, company_id, total_...
+                      ^
+--------------------
+Array
+(
+    [time] => 2026-05-18 22:14:05
+    [order_id] => 134
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 223
+    [labor_data] => {"roles": {"chef": 2, "host": 0, "busboy": 0, "waiter": 1, "barista": 1, "cashier": 1, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["pos", "electrical", "ac", "kitchen"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 528184198
+    [merchant_order_id] => 134_1779135202
+    [amount_cents] => 31859300
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+ROLLBACK ERROR for order 134: Insert installation request failed: ERROR:  column "order_id" of relation "installation_requests" does not exist
+LINE 3:     (user_id, order_id, services, status, company_id, total_...
+                      ^
+--------------------
+Array
+(
+    [time] => 2026-05-18 22:19:20
+    [order_id] => 134
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 223
+    [labor_data] => {"roles": {"chef": 2, "host": 0, "busboy": 0, "waiter": 1, "barista": 1, "cashier": 1, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["pos", "electrical", "ac", "kitchen"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 528186920
+    [merchant_order_id] => 134_1779135481
+    [amount_cents] => 31859300
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+ROLLBACK ERROR for order 134: Insert installation request failed: ERROR:  column "order_id" of relation "installation_requests" does not exist
+LINE 3:     (user_id, order_id, services, status, company_id, total_...
+                      ^
+--------------------
+Array
+(
+    [time] => 2026-05-18 22:22:51
+    [order_id] => 134
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 223
+    [labor_data] => {"roles": {"chef": 2, "host": 0, "busboy": 0, "waiter": 1, "barista": 1, "cashier": 1, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["pos", "electrical", "ac", "kitchen"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 528189253
+    [merchant_order_id] => 134_1779135728
+    [amount_cents] => 31859300
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+ROLLBACK ERROR for order 134: Insert installation request failed: ERROR:  column "order_id" of relation "installation_requests" does not exist
+LINE 3:     (user_id, order_id, services, status, company_id, total_...
+                      ^
+--------------------
+Array
+(
+    [time] => 2026-05-18 22:29:30
+    [order_id] => 134
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 223
+    [labor_data] => {"roles": {"chef": 2, "host": 0, "busboy": 0, "waiter": 1, "barista": 1, "cashier": 1, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["pos", "electrical", "ac", "kitchen"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 528192655
+    [merchant_order_id] => 134_1779136107
+    [amount_cents] => 31859300
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134
+entered success block for order 134

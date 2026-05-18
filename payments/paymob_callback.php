@@ -347,8 +347,8 @@ $installationServices = $installationData["services"] ?? $installationData;
 if (is_array($installationServices) && !empty($installationServices) && $businessId !== null) {
   $insInstallationSql = "
     INSERT INTO installation_requests
-    (user_id, services, status, company_id, total_price)
-    VALUES ($1, $2, $3, $4, $5)
+    (user_id, order_id, services, status, company_id, total_price)
+    VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (user_id, services) DO NOTHING
   ";
 
@@ -358,19 +358,28 @@ if (is_array($installationServices) && !empty($installationServices) && $busines
 
     $okInstallation = pg_query_params($conn, $insInstallationSql, [
       $businessId,
+      $orderId,
       "{" . $service . "}",
       "pending",
       null,
       0
     ]);
-
     if (!$okInstallation) {
       throw new Exception("Insert installation request failed: " . pg_last_error($conn));
     }
   }
 }
     }
+    // ✅ Mark business setup as completed
+$bizUserId = isset($order["business_user_id"]) && $order["business_user_id"] !== null
+    ? (int)$order["business_user_id"] : null;
 
+if ($bizUserId) {
+    @pg_query_params($conn,
+        "UPDATE businesses SET setup_status = 'completed', updated_at = now() WHERE user_id = $1",
+        [$bizUserId]
+    );
+}
     }
 
   pg_query($conn, "COMMIT");

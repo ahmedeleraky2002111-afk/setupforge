@@ -189,20 +189,18 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                 wizard.businessName.isEmpty ? '—' : wizard.businessName,
               ),
               _snapshotItem(
-                'Size',
-                wizard.placeSize.isEmpty ? '—' : wizard.placeSize,
-              ),
-              _snapshotItem(
                 'Budget',
-                wizard.budget <= 0
-                    ? '—'
-                    : '${wizard.budget.toStringAsFixed(0)} EGP',
+                wizard.budgetRange.isEmpty ? '—' : wizard.budgetRange,
               ),
               _snapshotItem(
-                'Modules',
-                wizard.selectedModules.isEmpty
+                'Tables',
+                '${wizard.indoorTables + wizard.outdoorTables} total',
+              ),
+              _snapshotItem(
+                'Services',
+                wizard.installationServices.isEmpty
                     ? '—'
-                    : '${wizard.selectedModules.length} selected',
+                    : '${wizard.installationServices.length} selected',
               ),
             ],
           ),

@@ -3,13 +3,23 @@ import 'package:flutter/foundation.dart';
 class WizardState extends ChangeNotifier {
   String businessType = '';
   String businessName = '';
-  String placeSize = '';
-  double budget = 0;
-
-  List<String> selectedModules = [];
-  Map<String, String> moduleTiers = {};
-  String posAddOn = '';
-  Map<String, int> staffCounts = {'baristas': 0, 'cashiers': 0, 'waiters': 0};
+  String restaurantType = '';
+  int indoorTables = 0;
+  int outdoorTables = 0;
+  int tableSize = 4;
+  int areaSqm = 0;
+  String budgetRange = '';
+  List<String> installationServices = [];
+  Map<String, int> staffCounts = {
+    'waiter': 0,
+    'chef': 0,
+    'cashier': 0,
+    'security': 0,
+    'barista': 0,
+    'busboy': 0,
+    'host': 0,
+    'kitchen_helper': 0,
+  };
 
   List<Map<String, dynamic>> cartItems = [];
 
@@ -33,28 +43,38 @@ class WizardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setPlaceSize(String value) {
-    placeSize = value;
+  void setRestaurantType(String value) {
+    restaurantType = value;
     notifyListeners();
   }
 
-  void setBudget(double value) {
-    budget = value;
+  void setIndoorTables(int value) {
+    indoorTables = value;
     notifyListeners();
   }
 
-  void setModules(List<String> modules) {
-    selectedModules = modules;
+  void setOutdoorTables(int value) {
+    outdoorTables = value;
     notifyListeners();
   }
 
-  void setModuleTiers(Map<String, String> tiers) {
-    moduleTiers = Map<String, String>.from(tiers);
+  void setTableSize(int value) {
+    tableSize = value;
     notifyListeners();
   }
 
-  void setPosAddOn(String value) {
-    posAddOn = value;
+  void setAreaSqm(int value) {
+    areaSqm = value;
+    notifyListeners();
+  }
+
+  void setBudgetRange(String value) {
+    budgetRange = value;
+    notifyListeners();
+  }
+
+  void setInstallationServices(List<String> value) {
+    installationServices = List<String>.from(value);
     notifyListeners();
   }
 
@@ -89,20 +109,24 @@ class WizardState extends ChangeNotifier {
   void saveSetup({
     required String businessType,
     required String businessName,
-    required String placeSize,
-    required double budget,
-    required List<String> selectedModules,
-    required Map<String, String> moduleTiers,
-    required String posAddOn,
+    required String restaurantType,
+    required int indoorTables,
+    required int outdoorTables,
+    required int tableSize,
+    required int areaSqm,
+    required String budgetRange,
+    required List<String> installationServices,
     required Map<String, int> staffCounts,
   }) {
     this.businessType = businessType;
     this.businessName = businessName;
-    this.placeSize = placeSize;
-    this.budget = budget;
-    this.selectedModules = List<String>.from(selectedModules);
-    this.moduleTiers = Map<String, String>.from(moduleTiers);
-    this.posAddOn = posAddOn;
+    this.restaurantType = restaurantType;
+    this.indoorTables = indoorTables;
+    this.outdoorTables = outdoorTables;
+    this.tableSize = tableSize;
+    this.areaSqm = areaSqm;
+    this.budgetRange = budgetRange;
+    this.installationServices = List<String>.from(installationServices);
     this.staffCounts = Map<String, int>.from(staffCounts);
     notifyListeners();
   }
@@ -110,12 +134,23 @@ class WizardState extends ChangeNotifier {
   void resetAll() {
     businessType = '';
     businessName = '';
-    placeSize = '';
-    budget = 0;
-    selectedModules = [];
-    moduleTiers = {};
-    posAddOn = '';
-    staffCounts = {'baristas': 0, 'cashiers': 0, 'waiters': 0};
+    restaurantType = '';
+    indoorTables = 0;
+    outdoorTables = 0;
+    tableSize = 4;
+    areaSqm = 0;
+    budgetRange = '';
+    installationServices = [];
+    staffCounts = {
+      'waiter': 0,
+      'chef': 0,
+      'cashier': 0,
+      'security': 0,
+      'barista': 0,
+      'busboy': 0,
+      'host': 0,
+      'kitchen_helper': 0,
+    };
     cartItems = [];
     notifyListeners();
   }

@@ -11,25 +11,16 @@ function egp($n){ return number_format((float)$n, 0) . " EGP"; }
 
 /**
  * UNIVERSAL CART LOADER
- * - Prefer $_SESSION["carts"]
- * - If not set, fallback to wizard carts
  */
 if (!isset($_SESSION["carts"]) || !is_array($_SESSION["carts"])) {
   $_SESSION["carts"] = [];
 }
-if (!empty($_SESSION["wizard"]["pos_cart"])) {
-  $_SESSION["carts"]["pos"] = $_SESSION["wizard"]["pos_cart"];
-}
-if (!empty($_SESSION["wizard"]["kitchen_cart"])) {
-  $_SESSION["carts"]["kitchen"] = $_SESSION["wizard"]["kitchen_cart"];
-}
-if (!empty($_SESSION["wizard"]["furniture_cart"])) {
-  $_SESSION["carts"]["furniture"] = $_SESSION["wizard"]["furniture_cart"];
-}
+if (!empty($_SESSION["wizard"]["pos_cart"]))       $_SESSION["carts"]["pos"]       = $_SESSION["wizard"]["pos_cart"];
+if (!empty($_SESSION["wizard"]["kitchen_cart"]))   $_SESSION["carts"]["kitchen"]   = $_SESSION["wizard"]["kitchen_cart"];
+if (!empty($_SESSION["wizard"]["furniture_cart"])) $_SESSION["carts"]["furniture"] = $_SESSION["wizard"]["furniture_cart"];
 
 $carts = $_SESSION["carts"];
 
-/** helpers */
 function cart_items($cart){
   return ($cart && isset($cart["items"]) && is_array($cart["items"])) ? $cart["items"] : [];
 }
@@ -41,44 +32,68 @@ function cart_total($cart){
   return $sum;
 }
 
-/**
- * Flatten all carts into one list for summary table (universal)
- * Each row will keep:
- * - module
- * - name
- * - vendor_name (if exists)
- * - product_id (if exists)
- * - qty/unit
- */
+// Load product images
+$productImages = [];
+$imgResult = pg_query($conn, "
+  SELECT p.id, pi.image_url
+  FROM products p
+  LEFT JOIN product_images pi ON pi.product_id = p.id
+");
+if ($imgResult) {
+  while ($row = pg_fetch_assoc($imgResult)) {
+    if (!empty($row["image_url"])) {
+      $productImages[(int)$row["id"]] = $row["image_url"];
+    }
+  }
+}
+
 $allRows = [];
 $grandTotal = 0;
 
 foreach($carts as $module => $cart){
   $items = cart_items($cart);
   if (!$items) continue;
-
   foreach($items as $type => $it){
     $qty  = (int)($it["qty"] ?? 0);
     $unit = (float)($it["unit"] ?? 0);
     if ($qty <= 0 || $unit <= 0) continue;
-
     $rowTotal = $qty * $unit;
     $grandTotal += $rowTotal;
-
     $allRows[] = [
-      "module" => $module,
-      "type" => $type,
-      "name" => (string)($it["name"] ?? ""),
+      "module"      => $module,
+      "type"        => $type,
+      "name"        => (string)($it["name"] ?? ""),
       "vendor_name" => (string)($it["vendor_name"] ?? ""),
-      "product_id" => $it["product_id"] ?? null,
-      "qty" => $qty,
-      "unit" => $unit,
-      "total" => $rowTotal,
+      "product_id"  => $it["product_id"] ?? null,
+      "qty"         => $qty,
+      "unit"        => $unit,
+      "total"       => $rowTotal,
     ];
   }
 }
 
 $hasAnyItems = ($grandTotal > 0);
+$moduleIcons = [
+  "pos"         => "🖥",
+  "kitchen"     => "🍳",
+  "furniture"   => "🪑",
+  "ac"          => "❄️",
+  "electronics" => "📺",
+  "infra"       => "🔌",
+];
+$moduleLabels = [
+  "pos"         => "POS system",
+  "kitchen"     => "Kitchen",
+  "furniture"   => "Furniture & dining",
+  "ac"          => "AC & ambience",
+  "electronics" => "Electronics",
+  "infra"       => "Infrastructure",
+];
+
+$rowsByModule = [];
+foreach($allRows as $r){
+  $rowsByModule[$r["module"]][] = $r;
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -94,84 +109,207 @@ $hasAnyItems = ($grandTotal > 0);
 
 <?php include "includes/navbar.php"; ?>
 
-<main class="container py-4">
-  <div class="p-3 p-lg-4 border rounded-4 bg-white">
 
-    <div class="d-flex justify-content-between align-items-start gap-3">
-      <div>
-        <h2 class="fw-bold mb-1">Order Summary</h2>
-        <div class="text-secondary">Review everything before placing the order.</div>
-      </div>
-      <div class="text-end">
-        <div class="text-secondary small">Grand Total</div>
-        <div class="fw-bold fs-4"><?= egp($grandTotal) ?></div>
-      </div>
+<!-- Hero bar: lighter blue, bigger title -->
+<div style="background:#1a6dd4; padding:1.5rem; color:#fff;">
+  <h1 style="font-size:26px; font-weight:700; margin-bottom:4px; color:#fff;">Setup review</h1>
+  <p style="font-size:13px; color:rgba(255,255,255,0.7); margin:0;">Review your selected items before confirming</p>
+  <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+    <?php if(!empty($_SESSION["wizard"]["business_name"])): ?>
+      <span style="font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.12);">
+        🏪 <?= htmlspecialchars($_SESSION["wizard"]["business_name"]) ?>
+      </span>
+    <?php endif; ?>
+    <?php if(!empty($_SESSION["wizard"]["restaurant_type"])): ?>
+      <span style="font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.12);">
+        🍽 <?= htmlspecialchars($_SESSION["wizard"]["restaurant_type"]) ?>
+      </span>
+    <?php endif; ?>
+    <?php 
+      $seats = ((int)($_SESSION["wizard"]["indoor_tables"] ?? 0) + (int)($_SESSION["wizard"]["outdoor_tables"] ?? 0)) * 4;
+      if($seats > 0):
+    ?>
+      <span style="font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.12);">
+        🪑 <?= $seats ?> seats
+      </span>
+    <?php endif; ?>
+    <?php if(!empty($_SESSION["wizard"]["budget_range"])): ?>
+      <span style="font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.4);color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.12);">
+        💰 <?= htmlspecialchars($_SESSION["wizard"]["budget_range"]) ?>
+      </span>
+    <?php endif; ?>
+  </div>
+</div>
+
+<main class="container-fluid px-0">
+<form id="order-form" action="place_order.php" method="POST">
+<div style="display:grid; grid-template-columns:1fr 280px; gap:1.25rem; padding:1.25rem; align-items:start;">
+  <?php if(!$hasAnyItems): ?>
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:2rem;text-align:center;color:var(--color-text-secondary);">
+      Your order is empty. <a href="packages.php">Go back to packages</a>.
     </div>
+  <?php else: ?>
 
-    <hr>
+<!-- Left column: items grouped by module -->
+<form id="order-form" action="place_order.php" method="POST" style="display:flex; flex-direction:column; gap:1rem;">
 
-    <?php if(!$hasAnyItems): ?>
-      <div class="alert alert-warning">Your order is empty. Go back and add items.</div>
-    <?php else: ?>
 
-      <div class="table-responsive">
-        <table class="table align-middle">
-          <thead>
-            <tr>
-              <th>Module</th>
-              <th>Item</th>
-              <th class="text-end">Unit</th>
-              <th class="text-end">Qty</th>
-              <th class="text-end">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach($allRows as $r): ?>
-              <tr>
-                <td class="text-uppercase fw-semibold"><?= htmlspecialchars($r["module"]) ?></td>
-                <td>
-                  <div class="fw-semibold"><?= htmlspecialchars($r["name"]) ?></div>
-                  <?php if(!empty($r["vendor_name"])): ?>
-                    <div class="text-secondary small">Vendor: <?= htmlspecialchars($r["vendor_name"]) ?></div>
-                  <?php endif; ?>
-                </td>
-                <td class="text-end"><?= egp($r["unit"]) ?></td>
-                <td class="text-end"><?= (int)$r["qty"] ?></td>
-                <td class="text-end fw-semibold"><?= egp($r["total"]) ?></td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
+    <?php foreach($rowsByModule as $module => $rows): 
+      $modTotal = array_sum(array_column($rows, "total"));
+      $icon  = $moduleIcons[$module]  ?? "📦";
+      $label = $moduleLabels[$module] ?? ucfirst($module);
+    ?>
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;overflow:hidden;">
+
+      <div style="padding:0.75rem 1rem;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px;">
+        <div style="width:28px;height:28px;background:#e6f1fb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;"><?= $icon ?></div>
+        <span style="font-size:13px;font-weight:500;color:var(--color-text-primary);"><?= $label ?></span>
+        <span style="margin-left:auto;font-size:11px;color:var(--color-text-secondary);background:var(--color-background-secondary);padding:2px 8px;border-radius:20px;border:0.5px solid var(--color-border-tertiary);"><?= count($rows) ?> item<?= count($rows) > 1 ? "s" : "" ?></span>
       </div>
 
-      <div class="text-end text-secondary small">
-        Grand Total: <span class="fw-semibold"><?= egp($grandTotal) ?></span>
-      </div>
+      <?php foreach($rows as $r):
+        $pid    = (int)($r["product_id"] ?? 0);
+        $imgUrl = $pid && isset($productImages[$pid]) ? $productImages[$pid] : null;
+      ?>
+      <div style="display:flex;align-items:center;gap:12px;padding:0.75rem 1rem;border-bottom:0.5px solid var(--color-border-tertiary);">
 
-      <hr>
+        <!-- Product image or fallback emoji -->
+        <div style="width:44px;height:44px;border-radius:8px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+          <?php if($imgUrl): ?>
+            <img src="<?= htmlspecialchars($imgUrl) ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
+          <?php else: ?>
+            <span style="font-size:20px;">📦</span>
+          <?php endif; ?>
+        </div>
 
-      <!-- optional delivery location -->
-      <form method="post" action="place_order.php" class="m-0">
-        <div class="row g-2 align-items-end">
-          <div class="col-12 col-lg-8">
-            <label class="form-label text-secondary small mb-1">Delivery location (optional)</label>
-            <input type="text" name="delivery_location" class="form-control" placeholder="Ex: Cairo, Nasr City, Street ...">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;color:var(--color-text-primary);"><?= htmlspecialchars($r["name"]) ?></div>
+          <?php if(!empty($r["vendor_name"])): ?>
+            <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px;">Vendor: <?= htmlspecialchars($r["vendor_name"]) ?></div>
+          <?php endif; ?>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:16px;text-align:right;">
+          <div>
+            <div style="font-size:11px;color:var(--color-text-secondary);">Unit price</div>
+            <div style="font-size:15px;font-weight:700;"><?= egp($r["unit"]) ?></div>
           </div>
-          <div class="col-12 col-lg-4 text-lg-end">
-            <button type="submit" class="btn btn-dark px-4">Confirm & Place Order</button>
+          <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:2px 10px;font-size:12px;color:var(--color-text-primary);">
+            × <?= $r["qty"] ?>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--color-text-secondary);">Total</div>
+            <div style="font-size:15px;font-weight:700;color:#004cac;"><?= egp($r["total"]) ?></div>
           </div>
         </div>
-      </form>
 
-    <?php endif; ?>
+      </div>
+      <?php endforeach; ?>
 
-    <div class="mt-3">
-      <a href="packages.php" class="btn btn-outline-secondary px-4">← Back</a>
     </div>
+    <?php endforeach; ?>
+
+    <form id="order-form" action="place_order.php" method="POST">
+<input type="text" name="delivery_location" style="display:none">
+</form>
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1rem;">
+  <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:6px;">Delivery location (optional)</label>
+  <input type="text" id="delivery_location_visible" style="width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="e.g. Cairo, Nasr City, Street name...">
+</div>
 
   </div>
-</main>
 
+  <!-- Right column: sticky sidebar -->
+  <div style="position:sticky;top:1rem;display:flex;flex-direction:column;gap:1rem;">
+
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;overflow:hidden;">
+      <div style="background:#004cac;padding:0.75rem 1rem;color:#fff;font-size:13px;font-weight:500;">Order summary</div>
+      <div style="padding:0.75rem 1rem;">
+        <?php foreach($rowsByModule as $module => $rows):
+          $modTotal = array_sum(array_column($rows, "total"));
+          $label = $moduleLabels[$module] ?? ucfirst($module);
+        ?>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;border-bottom:0.5px solid var(--color-border-tertiary);">
+          <span style="color:var(--color-text-secondary);"><?= $label ?></span>
+          <span style="font-weight:500;"><?= egp($modTotal) ?></span>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:0.75rem 1rem;border-top:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);">
+        <span style="font-size:13px;color:var(--color-text-secondary);">Grand total</span>
+        <span style="font-size:20px;font-weight:700;color:#004cac;"><?= egp($grandTotal) ?></span>
+      </div>
+    </div>
+
+    <?php 
+      $indoorT  = (int)($_SESSION["wizard"]["indoor_tables"]  ?? 0);
+      $outdoorT = (int)($_SESSION["wizard"]["outdoor_tables"] ?? 0);
+      $seats    = ($indoorT + $outdoorT) * 4;
+      $area     = $_SESSION["wizard"]["area_sqm"]       ?? null;
+      $budget   = $_SESSION["wizard"]["budget_range"]   ?? null;
+      $resType  = $_SESSION["wizard"]["restaurant_type"] ?? null;
+    ?>
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:0.75rem 1rem;">
+      <div style="font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Business info</div>
+      <?php if($resType): ?>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
+        <span style="color:var(--color-text-secondary);">Type</span>
+        <span style="font-weight:500;"><?= htmlspecialchars($resType) ?></span>
+      </div>
+      <?php endif; ?>
+      <?php if($indoorT): ?>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
+        <span style="color:var(--color-text-secondary);">Indoor tables</span>
+        <span style="font-weight:500;"><?= $indoorT ?></span>
+      </div>
+      <?php endif; ?>
+      <?php if($outdoorT): ?>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
+        <span style="color:var(--color-text-secondary);">Outdoor tables</span>
+        <span style="font-weight:500;"><?= $outdoorT ?></span>
+      </div>
+      <?php endif; ?>
+      <?php if($seats): ?>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
+        <span style="color:var(--color-text-secondary);">Total seats</span>
+        <span style="font-weight:500;"><?= $seats ?></span>
+      </div>
+      <?php endif; ?>
+      <?php if($area): ?>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
+        <span style="color:var(--color-text-secondary);">Area</span>
+        <span style="font-weight:500;"><?= htmlspecialchars($area) ?> m²</span>
+      </div>
+      <?php endif; ?>
+      <?php if($budget): ?>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
+        <span style="color:var(--color-text-secondary);">Budget</span>
+        <span style="font-weight:500;"><?= htmlspecialchars($budget) ?></span>
+      </div>
+      <?php endif; ?>
+    </div>
+
+    <button type="submit" form="order-form" style="width:100%;background:#004cac;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:500;cursor:pointer;">
+      ✓ Confirm & place order
+    </button>
+    <a href="packages.php" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary);border-radius:8px;padding:8px;font-size:13px;text-decoration:none;">
+      ← Back to packages
+    </a>
+
+  </div>
+
+  <?php endif; ?>
+
+</div>
+</main>
+<script>
+document.querySelector('button[form="order-form"]').addEventListener('click', function(e) {
+  e.preventDefault();
+  document.querySelector('input[name="delivery_location"]').value = 
+    document.getElementById('delivery_location_visible').value;
+  document.getElementById('order-form').submit();
+});
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

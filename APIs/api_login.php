@@ -20,19 +20,24 @@ try {
         exit;
     }
 
-    if (!isset($pdo)) {
-        echo json_encode(["ok" => false, "error" => "DB connection not available (\$pdo missing)"]);
+    if (!isset($conn) || !$conn) {
+        echo json_encode(["ok" => false, "error" => "DB connection not available (\$conn missing)"]);
         exit;
     }
 
-    $stmt = $pdo->prepare("
+    $res = pg_query_params($conn, "
         SELECT id, name, email, user_type, password_hash
         FROM users
-        WHERE email = :email
+        WHERE email = $1
         LIMIT 1
-    ");
-    $stmt->execute([":email" => $email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    ", [$email]);
+
+    if (!$res) {
+        echo json_encode(["ok" => false, "error" => "Database query failed"]);
+        exit;
+    }
+
+    $user = pg_fetch_assoc($res);
 
     if (!$user) {
         echo json_encode(["ok" => false, "error" => "User not found"]);
@@ -42,30 +47,37 @@ try {
     if (!password_verify($password, $user["password_hash"])) {
         echo json_encode([
             "ok" => false,
-            "error" => "Wrong password",
-            "stored_hash" => $user["password_hash"]
+            "error" => "Wrong password"
         ]);
         exit;
     }
 
     $token = bin2hex(random_bytes(32));
 
-    $upd = $pdo->prepare("UPDATE users SET api_token = :t WHERE id = :id");
-    $upd->execute([
-        ":t" => $token,
-        ":id" => $user["id"]
-    ]);
+    $upd = pg_query_params($conn, "
+        UPDATE users
+        SET api_token = $1
+        WHERE id = $2
+    ", [$token, $user["id"]]);
+
+    if (!$upd) {
+        echo json_encode(["ok" => false, "error" => "Failed to save token"]);
+        exit;
+    }
 
     echo json_encode([
-        "ok" => true,
-        "token" => $token,
-        "user" => [
-            "id" => $user["id"],
-            "name" => $user["name"],
-            "email" => $user["email"],
-            "user_type" => $user["user_type"]
-        ]
-    ]);
+    "ok"        => true,
+    "token"     => $token,
+    "name"      => $user["name"],
+    "email"     => $user["email"],
+    "user_type" => $user["user_type"],
+    "user"      => [
+        "id"        => (int)$user["id"],
+        "name"      => $user["name"],
+        "email"     => $user["email"],
+        "user_type" => $user["user_type"]
+    ]
+]);
 } catch (Throwable $e) {
     file_put_contents(
         __DIR__ . "/api_error.log",

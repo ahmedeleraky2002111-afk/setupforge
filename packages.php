@@ -1784,154 +1784,163 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
             <?php if(!$posCart): ?>
               <div class="alert alert-warning mt-3">No POS cart yet.</div>
             <?php else: ?>
-              <div class="sf-pkg-grid">
-                <?php foreach($posCart["items"] as $type=>$it): ?>
-                  <article class="sf-pkg-card" id="row_<?= htmlspecialchars($activeModule) ?>_<?= htmlspecialchars($type) ?>">
+              <?php
+              $posSectionLabels = [
+                "terminal" => "POS Terminals",
+                "printer"  => "Receipt Printers",
+                "drawer"   => "Cash Drawers",
+                "software" => "POS Software / License",
+                "scanner"  => "Barcode Scanners",
+                "kds"      => "Kitchen Display Screens (KDS)",
+                "tablet"   => "Ordering Tablets",
+              ];
+              ?>
+              <div class="sf-pkg-sections">
+                <?php foreach($posCart["items"] as $type => $it): ?>
+                <div class="sf-pkg-section">
 
-                    <div class="sf-pkg-card-media">
-                      <?php if(!empty($it["image_url"])): ?>
-                        <img src="<?= htmlspecialchars($it["image_url"]) ?>" alt="">
-                      <?php else: ?>
-                        <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
-                      <?php endif; ?>
-                    </div>
+                  <div class="sf-pkg-section-head">
+                    <h4 class="sf-pkg-section-title">
+                      <?= htmlspecialchars($posSectionLabels[$type] ?? ucfirst($type)) ?>
+                    </h4>
+                    <span class="sf-pkg-section-count">
+                      <?= 1 + count($it["alternatives"] ?? []) ?> option<?= (1 + count($it["alternatives"] ?? [])) !== 1 ? 's' : '' ?>
+                    </span>
+                  </div>
 
-                    <div class="sf-pkg-card-body">
-                      <h3 class="sf-pkg-card-name"><?= htmlspecialchars($it["name"]) ?></h3>
-                      <div class="sf-pkg-card-meta">
-                        <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
-                        <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
-                      </div>
-                      <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
-                    </div>
+                  <div class="sf-pkg-slider-wrap">
+                    <div class="sf-pkg-slider">
 
-                    <div class="sf-pkg-card-footer">
-                      <div class="sf-pkg-qty">
-                        <form method="post" class="m-0">
-                          <input type="hidden" name="update_qty" value="1">
-                          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                          <input type="hidden" name="delta" value="-1">
-                          <button class="sf-pkg-qty-btn" <?= $type==="software" ? "disabled" : "" ?>>−</button>
-                        </form>
-                        <span class="sf-pkg-qty-val"><?= (int)$it["qty"] ?></span>
-                        <form method="post" class="m-0">
-                          <input type="hidden" name="update_qty" value="1">
-                          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                          <input type="hidden" name="delta" value="1">
-                          <button class="sf-pkg-qty-btn" <?= $type==="software" ? "disabled" : "" ?>>+</button>
-                        </form>
-                      </div>
-                    </div>
+                      <!-- RECOMMENDED CARD -->
+                      <article class="sf-pkg-card sf-pkg-card--rec" id="row_pos_<?= htmlspecialchars($type) ?>">
+                        <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
 
-                    <div class="sf-pkg-alts">
-                      <?php if (!empty($it["alternatives"])): ?>
-                        <?php foreach (array_slice($it["alternatives"], 0, 3) as $alt): ?>
-                          <form method="post" class="sf-pkg-chip m-0">
+                        <div class="sf-pkg-card-media">
+                          <?php if(!empty($it["image_url"])): ?>
+                            <img src="<?= htmlspecialchars($it["image_url"]) ?>" alt="">
+                          <?php else: ?>
+                            <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="sf-pkg-card-body">
+                          <h3 class="sf-pkg-card-name"><?= htmlspecialchars($it["name"]) ?></h3>
+                          <div class="sf-pkg-card-meta">
+                            <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
+                            <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
+                          </div>
+                          <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
+                        </div>
+
+                        <div class="sf-pkg-card-footer">
+                          <div class="sf-pkg-qty">
+                            <form method="post" class="m-0">
+                              <input type="hidden" name="update_qty" value="1">
+                              <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                              <input type="hidden" name="delta" value="-1">
+                              <button class="sf-pkg-qty-btn" <?= $type==="software"?"disabled":"" ?>>−</button>
+                            </form>
+                            <span class="sf-pkg-qty-val"><?= (int)$it["qty"] ?></span>
+                            <form method="post" class="m-0">
+                              <input type="hidden" name="update_qty" value="1">
+                              <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                              <input type="hidden" name="delta" value="1">
+                              <button class="sf-pkg-qty-btn" <?= $type==="software"?"disabled":"" ?>>+</button>
+                            </form>
+                          </div>
+                          <span class="sf-pkg-line-total"><?= egp((int)$it["qty"] * (int)$it["unit"]) ?></span>
+                        </div>
+
+                        <div class="sf-pkg-sellers-trigger">
+                          <?php if(!empty($it["product_group_key"])): ?>
+                            <button type="button" class="btn btn-link p-0 sf-text-link"
+                                    data-sellers-open="1"
+                                    data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
+                              View other sellers
+                            </button>
+                          <?php else: ?>
+                            <span class="sf-pkg-no-sellers">No other sellers</span>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
+                          <?php
+                            $sellers = [];
+                            if (!empty($it["product_name"])) {
+                              $sellers = load_vendor_offers_for_same_product(
+                                $conn, $it["product_name"], $it["brand"] ?? "",
+                                "pos", $posTier, $it["category_id"] ?? null, $FILTER
+                              );
+                            }
+                            $sellerChoices = [];
+                            foreach ($sellers as $offer) {
+                              if ((string)$offer["id"] === (string)$it["product_id"]) continue;
+                              if ((string)($offer["vendor_user_id"] ?? "") === (string)($it["vendor_user_id"] ?? "")) continue;
+                              $sellerChoices[] = $offer;
+                            }
+                          ?>
+                          <?php if(empty($sellerChoices)): ?>
+                            <div class="sf-empty-inline">No other sellers available.</div>
+                          <?php else: ?>
+                            <div class="sf-seller-list">
+                              <?php foreach($sellerChoices as $offer): ?>
+                                <form method="post" class="m-0">
+                                  <input type="hidden" name="replace_item" value="1">
+                                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                                  <input type="hidden" name="new_product_id" value="<?= htmlspecialchars($offer["id"]) ?>">
+                                  <button type="submit" class="sf-seller-card-btn">
+                                    <div class="sf-seller-card-top">
+                                      <div class="sf-seller-name"><?= htmlspecialchars($offer["vendor_name"]) ?></div>
+                                      <div class="sf-seller-price"><?= egp($offer["price"]) ?></div>
+                                    </div>
+                                  </button>
+                                </form>
+                              <?php endforeach; ?>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+
+                      </article>
+
+                      <!-- ALTERNATIVE CARDS -->
+                      <?php foreach(($it["alternatives"] ?? []) as $alt): ?>
+                      <article class="sf-pkg-card sf-pkg-card--alt">
+
+                        <div class="sf-pkg-card-media">
+                          <?php if(!empty($alt["image_url"])): ?>
+                            <img src="<?= htmlspecialchars($alt["image_url"]) ?>" alt="">
+                          <?php else: ?>
+                            <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="sf-pkg-card-body">
+                          <h3 class="sf-pkg-card-name"><?= htmlspecialchars($alt["name"]) ?></h3>
+                          <div class="sf-pkg-card-meta">
+                            <?php if(!empty($alt["brand"])): ?><span><?= htmlspecialchars($alt["brand"]) ?></span><?php endif; ?>
+                            <?php if(!empty($alt["vendor_name"])): ?><span><?= htmlspecialchars($alt["vendor_name"]) ?></span><?php endif; ?>
+                          </div>
+                          <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
+                        </div>
+
+                        <div class="sf-pkg-card-footer">
+                          <form method="post" class="m-0 w-100">
                             <input type="hidden" name="replace_item" value="1">
                             <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
                             <input type="hidden" name="new_product_id" value="<?= htmlspecialchars($alt["id"]) ?>">
-                            <button type="submit" class="sf-pkg-chip-btn">
-                              <div class="sf-pkg-chip-thumb">
-                                <?php if(!empty($alt["image_url"])): ?>
-                                  <img src="<?= htmlspecialchars($alt["image_url"]) ?>" class="sf-pkg-chip-img" alt=""
-                                       onerror="this.style.display='none'">
-                                <?php else: ?>
-                                  <div class="sf-pkg-chip-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
-                                <?php endif; ?>
-                              </div>
-                              <span class="sf-pkg-chip-name"><?= htmlspecialchars($alt["name"]) ?></span>
-                              <span class="sf-pkg-chip-price"><?= egp($alt["price"]) ?></span>
-                            </button>
+                            <button type="submit" class="sf-pkg-select-btn">Select this</button>
                           </form>
-                        <?php endforeach; ?>
-                      <?php else: ?>
-                        <div class="sf-pkg-no-alts">No alternatives available</div>
-                      <?php endif; ?>
-                    </div>
-
-                    <?php
-                      $sellers = [];
-                      if (!empty($it["product_name"])) {
-                        $sellers = load_vendor_offers_for_same_product(
-                          $conn,
-                          $it["product_name"],
-                          $it["brand"] ?? "",
-                          "pos",
-                          $posTier,
-                          $it["category_id"] ?? null,
-                          $FILTER
-                        );
-                      }
-
-                      $sellers_hint = [];
-                      if (!empty($it["product_name"])) {
-                        $hintFilter = $FILTER;
-                        $hintFilter["min_price"] = null;
-                        $hintFilter["max_price"] = null;
-                        $hintFilter["vendor"] = "";
-                        $sellers_hint = load_vendor_offers_for_same_product(
-                          $conn,
-                          $it["product_name"],
-                          $it["brand"] ?? "",
-                          "pos",
-                          $posTier,
-                          $it["category_id"] ?? null,
-                          $hintFilter
-                        );
-                      }
-                    ?>
-
-                    <div class="sf-pkg-sellers-trigger">
-                      <?php if (!empty($it["product_group_key"])): ?>
-                        <button type="button" class="btn btn-link p-0 sf-text-link"
-                                data-sellers-open="1"
-                                data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
-                          View other sellers
-                        </button>
-                      <?php else: ?>
-                        <span class="sf-pkg-no-sellers">No other sellers</span>
-                      <?php endif; ?>
-                    </div>
-
-                    <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
-                      <?php
-                        $sellerChoices = [];
-                        foreach ($sellers as $offer) {
-                          if ((string)$offer["id"] === (string)$it["product_id"]) continue;
-                          if ((string)($offer["vendor_user_id"] ?? "") === (string)($it["vendor_user_id"] ?? "")) continue;
-                          $sellerChoices[] = $offer;
-                        }
-                      ?>
-                      <?php if (empty($sellerChoices)): ?>
-                        <div class="sf-empty-inline">No other sellers available for this product.</div>
-                      <?php else: ?>
-                        <div class="sf-seller-list">
-                          <?php foreach ($sellerChoices as $offer): ?>
-                            <form method="post" class="m-0">
-                              <?php if ($activeModule === "pos"): ?>
-                                <input type="hidden" name="replace_item" value="1">
-                              <?php elseif ($activeModule === "kitchen"): ?>
-                                <input type="hidden" name="replace_kitchen_item" value="1">
-                              <?php elseif ($activeModule === "furniture"): ?>
-                                <input type="hidden" name="replace_furniture_item" value="1">
-                              <?php endif; ?>
-                              <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                              <input type="hidden" name="new_product_id" value="<?= htmlspecialchars($offer["id"]) ?>">
-                              <button type="submit" class="sf-seller-card-btn">
-                                <div class="sf-seller-card-top">
-                                  <div class="sf-seller-name"><?= htmlspecialchars($offer["vendor_name"]) ?></div>
-                                  <div class="sf-seller-price"><?= egp($offer["price"]) ?></div>
-                                </div>
-                              </button>
-                            </form>
-                          <?php endforeach; ?>
                         </div>
-                      <?php endif; ?>
-                    </div>
 
-                  </article>
+                      </article>
+                      <?php endforeach; ?>
+
+                    </div><!-- /.sf-pkg-slider -->
+                  </div><!-- /.sf-pkg-slider-wrap -->
+
+                </div><!-- /.sf-pkg-section -->
                 <?php endforeach; ?>
-              </div>
+              </div><!-- /.sf-pkg-sections -->
             <?php endif; ?>
           </div>
 
@@ -1964,148 +1973,171 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
             <?php if(!$kitchenCart): ?>
               <div class="alert alert-warning mt-3">No Kitchen cart yet.</div>
             <?php else: ?>
-              <div class="sf-pkg-grid">
-                <?php foreach($kitchenCart["items"] as $type=>$it): ?>
-                  <article class="sf-pkg-card" id="row_<?= htmlspecialchars($activeModule) ?>_<?= htmlspecialchars($type) ?>">
+              <?php
+              $kitchenSectionLabels = [
+                "oven"        => "Ovens",
+                "stove"       => "Stoves / Cookers",
+                "fryer"       => "Fryers",
+                "grill"       => "Grills / Griddles",
+                "fridge"      => "Display Fridges",
+                "refrigerator"=> "Refrigerators",
+                "freezer"     => "Freezers",
+                "blender"     => "Blenders",
+                "mixer"       => "Mixers",
+                "coffee"      => "Coffee / Espresso Machines",
+                "microwave"   => "Microwaves",
+                "food_warmer" => "Food Warmers / Bain Marie",
+                "dishwasher"  => "Dishwashers",
+                "slicer"      => "Food Prep / Slicers",
+                "exhaust_hood"=> "Exhaust Hoods",
+              ];
+              ?>
+              <div class="sf-pkg-sections">
+                <?php foreach($kitchenCart["items"] as $type => $it): ?>
+                <div class="sf-pkg-section">
 
-                    <div class="sf-pkg-card-media">
-                      <?php if(!empty($it["image_url"])): ?>
-                        <img src="<?= htmlspecialchars($it["image_url"]) ?>" alt="">
-                      <?php else: ?>
-                        <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
-                      <?php endif; ?>
-                    </div>
+                  <div class="sf-pkg-section-head">
+                    <h4 class="sf-pkg-section-title">
+                      <?= htmlspecialchars($kitchenSectionLabels[$type] ?? ucfirst($type)) ?>
+                    </h4>
+                    <span class="sf-pkg-section-count">
+                      <?= 1 + count($it["alternatives"] ?? []) ?> option<?= (1 + count($it["alternatives"] ?? [])) !== 1 ? 's' : '' ?>
+                    </span>
+                  </div>
 
-                    <div class="sf-pkg-card-body">
-                      <h3 class="sf-pkg-card-name"><?= htmlspecialchars($it["name"]) ?></h3>
-                      <div class="sf-pkg-card-meta">
-                        <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
-                        <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
-                      </div>
-                      <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
-                    </div>
+                  <div class="sf-pkg-slider-wrap">
+                    <div class="sf-pkg-slider">
 
-                    <div class="sf-pkg-card-footer">
-                      <div class="sf-pkg-qty">
-                        <form method="post" class="m-0">
-                          <input type="hidden" name="update_kitchen_qty" value="1">
-                          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                          <input type="hidden" name="delta" value="-1">
-                          <button class="sf-pkg-qty-btn">−</button>
-                        </form>
-                        <span class="sf-pkg-qty-val"><?= (int)$it["qty"] ?></span>
-                        <form method="post" class="m-0">
-                          <input type="hidden" name="update_kitchen_qty" value="1">
-                          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                          <input type="hidden" name="delta" value="1">
-                          <button class="sf-pkg-qty-btn">+</button>
-                        </form>
-                      </div>
-                    </div>
+                      <!-- RECOMMENDED CARD -->
+                      <article class="sf-pkg-card sf-pkg-card--rec" id="row_kitchen_<?= htmlspecialchars($type) ?>">
+                        <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
 
-                    <div class="sf-pkg-alts">
-                      <?php if (!empty($it["alternatives"])): ?>
-                        <?php foreach (array_slice($it["alternatives"], 0, 3) as $alt): ?>
-                          <form method="post" class="sf-pkg-chip m-0">
+                        <div class="sf-pkg-card-media">
+                          <?php if(!empty($it["image_url"])): ?>
+                            <img src="<?= htmlspecialchars($it["image_url"]) ?>" alt="">
+                          <?php else: ?>
+                            <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="sf-pkg-card-body">
+                          <h3 class="sf-pkg-card-name"><?= htmlspecialchars($it["name"]) ?></h3>
+                          <div class="sf-pkg-card-meta">
+                            <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
+                            <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
+                          </div>
+                          <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
+                        </div>
+
+                        <div class="sf-pkg-card-footer">
+                          <div class="sf-pkg-qty">
+                            <form method="post" class="m-0">
+                              <input type="hidden" name="update_kitchen_qty" value="1">
+                              <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                              <input type="hidden" name="delta" value="-1">
+                              <button class="sf-pkg-qty-btn">−</button>
+                            </form>
+                            <span class="sf-pkg-qty-val"><?= (int)$it["qty"] ?></span>
+                            <form method="post" class="m-0">
+                              <input type="hidden" name="update_kitchen_qty" value="1">
+                              <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                              <input type="hidden" name="delta" value="1">
+                              <button class="sf-pkg-qty-btn">+</button>
+                            </form>
+                          </div>
+                          <span class="sf-pkg-line-total"><?= egp((int)$it["qty"] * (int)$it["unit"]) ?></span>
+                        </div>
+
+                        <div class="sf-pkg-sellers-trigger">
+                          <?php if(!empty($it["product_group_key"])): ?>
+                            <button type="button" class="btn btn-link p-0 sf-text-link"
+                                    data-sellers-open="1"
+                                    data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
+                              View other sellers
+                            </button>
+                          <?php else: ?>
+                            <span class="sf-pkg-no-sellers">No other sellers</span>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
+                          <?php
+                            $sellers = [];
+                            if (!empty($it["product_name"])) {
+                              $sellers = load_vendor_offers_for_same_product(
+                                $conn, $it["product_name"], $it["brand"] ?? "",
+                                "kitchen", $kitchenTier, $it["category_id"] ?? null, $FILTER
+                              );
+                            }
+                            $sellerChoices = [];
+                            foreach ($sellers as $offer) {
+                              if ((string)$offer["id"] === (string)$it["product_id"]) continue;
+                              if ((string)($offer["vendor_user_id"] ?? "") === (string)($it["vendor_user_id"] ?? "")) continue;
+                              $sellerChoices[] = $offer;
+                            }
+                          ?>
+                          <?php if(empty($sellerChoices)): ?>
+                            <div class="sf-empty-inline">No other sellers available.</div>
+                          <?php else: ?>
+                            <div class="sf-seller-list">
+                              <?php foreach($sellerChoices as $offer): ?>
+                                <form method="post" class="m-0">
+                                  <input type="hidden" name="replace_kitchen_item" value="1">
+                                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                                  <input type="hidden" name="new_product_id" value="<?= htmlspecialchars($offer["id"]) ?>">
+                                  <button type="submit" class="sf-seller-card-btn">
+                                    <div class="sf-seller-card-top">
+                                      <div class="sf-seller-name"><?= htmlspecialchars($offer["vendor_name"]) ?></div>
+                                      <div class="sf-seller-price"><?= egp($offer["price"]) ?></div>
+                                    </div>
+                                  </button>
+                                </form>
+                              <?php endforeach; ?>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+
+                      </article>
+
+                      <!-- ALTERNATIVE CARDS -->
+                      <?php foreach(($it["alternatives"] ?? []) as $alt): ?>
+                      <article class="sf-pkg-card sf-pkg-card--alt">
+
+                        <div class="sf-pkg-card-media">
+                          <?php if(!empty($alt["image_url"])): ?>
+                            <img src="<?= htmlspecialchars($alt["image_url"]) ?>" alt="">
+                          <?php else: ?>
+                            <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="sf-pkg-card-body">
+                          <h3 class="sf-pkg-card-name"><?= htmlspecialchars($alt["name"]) ?></h3>
+                          <div class="sf-pkg-card-meta">
+                            <?php if(!empty($alt["brand"])): ?><span><?= htmlspecialchars($alt["brand"]) ?></span><?php endif; ?>
+                            <?php if(!empty($alt["vendor_name"])): ?><span><?= htmlspecialchars($alt["vendor_name"]) ?></span><?php endif; ?>
+                          </div>
+                          <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
+                        </div>
+
+                        <div class="sf-pkg-card-footer">
+                          <form method="post" class="m-0 w-100">
                             <input type="hidden" name="replace_kitchen_item" value="1">
                             <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
                             <input type="hidden" name="new_product_id" value="<?= htmlspecialchars($alt["id"]) ?>">
-                            <button type="submit" class="sf-pkg-chip-btn">
-                              <div class="sf-pkg-chip-thumb">
-                                <?php if(!empty($alt["image_url"])): ?>
-                                  <img src="<?= htmlspecialchars($alt["image_url"]) ?>" class="sf-pkg-chip-img" alt=""
-                                       onerror="this.style.display='none'">
-                                <?php else: ?>
-                                  <div class="sf-pkg-chip-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
-                                <?php endif; ?>
-                              </div>
-                              <span class="sf-pkg-chip-name"><?= htmlspecialchars($alt["name"]) ?></span>
-                              <span class="sf-pkg-chip-price"><?= egp($alt["price"]) ?></span>
-                            </button>
+                            <button type="submit" class="sf-pkg-select-btn">Select this</button>
                           </form>
-                        <?php endforeach; ?>
-                      <?php else: ?>
-                        <div class="sf-pkg-no-alts">No alternatives available</div>
-                      <?php endif; ?>
-                    </div>
-
-                    <?php
-                      $sellers = [];
-                      if (!empty($it["product_name"])) {
-                        $sellers = load_vendor_offers_for_same_product(
-                          $conn,
-                          $it["product_name"],
-                          $it["brand"] ?? "",
-                          "kitchen",
-                          $kitchenTier,
-                          $it["category_id"] ?? null,
-                          $FILTER
-                        );
-                      }
-
-                      $sellers_hint = [];
-                      if (!empty($it["product_name"])) {
-                        $hintFilter = $FILTER;
-                        $hintFilter["min_price"] = null;
-                        $hintFilter["max_price"] = null;
-                        $hintFilter["vendor"] = "";
-                        $sellers_hint = load_vendor_offers_for_same_product(
-                          $conn,
-                          $it["product_name"],
-                          $it["brand"] ?? "",
-                          "kitchen",
-                          $kitchenTier,
-                          $it["category_id"] ?? null,
-                          $hintFilter
-                        );
-                      }
-                    ?>
-
-                    <div class="sf-pkg-sellers-trigger">
-                      <?php if (!empty($it["product_group_key"])): ?>
-                        <button type="button" class="btn btn-link p-0 sf-text-link"
-                                data-sellers-open="1"
-                                data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
-                          View other sellers
-                        </button>
-                      <?php else: ?>
-                        <span class="sf-pkg-no-sellers">No other sellers</span>
-                      <?php endif; ?>
-                    </div>
-
-                    <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
-                      <?php
-                        $sellerChoices = [];
-                        foreach ($sellers as $offer) {
-                          if ((string)$offer["id"] === (string)$it["product_id"]) continue;
-                          if ((string)($offer["vendor_user_id"] ?? "") === (string)($it["vendor_user_id"] ?? "")) continue;
-                          $sellerChoices[] = $offer;
-                        }
-                      ?>
-                      <?php if (empty($sellerChoices)): ?>
-                        <div class="sf-empty-inline">No other sellers available for this product.</div>
-                      <?php else: ?>
-                        <div class="sf-seller-list">
-                          <?php foreach ($sellerChoices as $offer): ?>
-                            <form method="post" class="m-0">
-                              <input type="hidden" name="replace_kitchen_item" value="1">
-                              <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                              <input type="hidden" name="new_product_id" value="<?= htmlspecialchars($offer["id"]) ?>">
-                              <button type="submit" class="sf-seller-card-btn">
-                                <div class="sf-seller-card-top">
-                                  <div class="sf-seller-name"><?= htmlspecialchars($offer["vendor_name"]) ?></div>
-                                  <div class="sf-seller-price"><?= egp($offer["price"]) ?></div>
-                                </div>
-                              </button>
-                            </form>
-                          <?php endforeach; ?>
                         </div>
-                      <?php endif; ?>
-                    </div>
 
-                  </article>
+                      </article>
+                      <?php endforeach; ?>
+
+                    </div><!-- /.sf-pkg-slider -->
+                  </div><!-- /.sf-pkg-slider-wrap -->
+
+                </div><!-- /.sf-pkg-section -->
                 <?php endforeach; ?>
-              </div>
+              </div><!-- /.sf-pkg-sections -->
             <?php endif; ?>
           </div>
 
@@ -2138,90 +2170,134 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
     <?php if(!$furnitureCart): ?>
       <div class="alert alert-warning mt-3">No Dining Area cart yet.</div>
     <?php else: ?>
-      <div class="sf-pkg-grid">
-        <?php foreach($furnitureCart["items"] as $type=>$it): ?>
-          <article class="sf-pkg-card" id="row_<?= htmlspecialchars($activeModule) ?>_<?= htmlspecialchars($type) ?>">
+      <?php
+      $furnitureSectionLabels = [
+        "dining_set"        => "Dining Sets",
+        "sofa"              => "Waiting Area Sofas",
+        "chair"             => "Chairs",
+        "table"             => "Tables",
+        "tv"                => "TVs",
+        "light"             => "Decorative Lighting",
+        "bar_stool"         => "Bar Stools / Counter Seating",
+        "outdoor_furniture" => "Outdoor Furniture",
+        "reception_desk"    => "Host / Reception Desk",
+        "shelving"          => "Counter Displays / Shelving",
+        "speaker"           => "Speakers / Sound System",
+      ];
+      ?>
+      <div class="sf-pkg-sections">
+        <?php foreach($furnitureCart["items"] as $type => $it): ?>
+        <div class="sf-pkg-section">
 
-            <div class="sf-pkg-card-media">
-              <?php if(!empty($it["image_url"])): ?>
-                <img src="<?= htmlspecialchars($it["image_url"]) ?>" alt="">
-              <?php else: ?>
-                <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
-              <?php endif; ?>
-            </div>
+          <div class="sf-pkg-section-head">
+            <h4 class="sf-pkg-section-title">
+              <?= htmlspecialchars($furnitureSectionLabels[$type] ?? ucfirst($type)) ?>
+            </h4>
+            <span class="sf-pkg-section-count">
+              <?= 1 + count($it["alternatives"] ?? []) ?> option<?= (1 + count($it["alternatives"] ?? [])) !== 1 ? 's' : '' ?>
+            </span>
+          </div>
 
-            <div class="sf-pkg-card-body">
-              <h3 class="sf-pkg-card-name"><?= htmlspecialchars($it["name"]) ?></h3>
-              <div class="sf-pkg-card-meta">
-                <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
-                <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
-              </div>
-              <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
-            </div>
+          <div class="sf-pkg-slider-wrap">
+            <div class="sf-pkg-slider">
 
-            <div class="sf-pkg-card-footer">
-              <div class="sf-pkg-qty">
-                <form method="post" class="m-0">
-                  <input type="hidden" name="update_furniture_qty" value="1">
-                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                  <input type="hidden" name="delta" value="-1">
-                  <button class="sf-pkg-qty-btn">−</button>
-                </form>
-                <span class="sf-pkg-qty-val"><?= (int)$it["qty"] ?></span>
-                <form method="post" class="m-0">
-                  <input type="hidden" name="update_furniture_qty" value="1">
-                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                  <input type="hidden" name="delta" value="1">
-                  <button class="sf-pkg-qty-btn">+</button>
-                </form>
-              </div>
-            </div>
+              <!-- RECOMMENDED CARD -->
+              <article class="sf-pkg-card sf-pkg-card--rec" id="row_furniture_<?= htmlspecialchars($type) ?>">
+                <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
 
-            <div class="sf-pkg-alts">
-              <?php if (!empty($it["alternatives"])): ?>
-                <?php foreach (array_slice($it["alternatives"], 0, 3) as $alt): ?>
-                  <form method="post" class="sf-pkg-chip m-0">
+                <div class="sf-pkg-card-media">
+                  <?php if(!empty($it["image_url"])): ?>
+                    <img src="<?= htmlspecialchars($it["image_url"]) ?>" alt="">
+                  <?php else: ?>
+                    <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
+                  <?php endif; ?>
+                </div>
+
+                <div class="sf-pkg-card-body">
+                  <h3 class="sf-pkg-card-name"><?= htmlspecialchars($it["name"]) ?></h3>
+                  <div class="sf-pkg-card-meta">
+                    <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
+                    <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
+                  </div>
+                  <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
+                </div>
+
+                <div class="sf-pkg-card-footer">
+                  <div class="sf-pkg-qty">
+                    <form method="post" class="m-0">
+                      <input type="hidden" name="update_furniture_qty" value="1">
+                      <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                      <input type="hidden" name="delta" value="-1">
+                      <button class="sf-pkg-qty-btn">−</button>
+                    </form>
+                    <span class="sf-pkg-qty-val"><?= (int)$it["qty"] ?></span>
+                    <form method="post" class="m-0">
+                      <input type="hidden" name="update_furniture_qty" value="1">
+                      <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                      <input type="hidden" name="delta" value="1">
+                      <button class="sf-pkg-qty-btn">+</button>
+                    </form>
+                  </div>
+                  <span class="sf-pkg-line-total"><?= egp((int)$it["qty"] * (int)$it["unit"]) ?></span>
+                </div>
+
+                <div class="sf-pkg-sellers-trigger">
+                  <?php if(!empty($it["product_group_key"])): ?>
+                    <button type="button" class="btn btn-link p-0 sf-text-link"
+                            data-sellers-open="1"
+                            data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
+                      View other sellers
+                    </button>
+                  <?php else: ?>
+                    <span class="sf-pkg-no-sellers">No other sellers</span>
+                  <?php endif; ?>
+                </div>
+
+                <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
+                  <div class="sf-empty-inline">No other sellers available for this product.</div>
+                </div>
+
+              </article>
+
+              <!-- ALTERNATIVE CARDS -->
+              <?php foreach(($it["alternatives"] ?? []) as $alt): ?>
+              <article class="sf-pkg-card sf-pkg-card--alt">
+
+                <div class="sf-pkg-card-media">
+                  <?php if(!empty($alt["image_url"])): ?>
+                    <img src="<?= htmlspecialchars($alt["image_url"]) ?>" alt="">
+                  <?php else: ?>
+                    <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
+                  <?php endif; ?>
+                </div>
+
+                <div class="sf-pkg-card-body">
+                  <h3 class="sf-pkg-card-name"><?= htmlspecialchars($alt["name"]) ?></h3>
+                  <div class="sf-pkg-card-meta">
+                    <?php if(!empty($alt["brand"])): ?><span><?= htmlspecialchars($alt["brand"]) ?></span><?php endif; ?>
+                    <?php if(!empty($alt["vendor_name"])): ?><span><?= htmlspecialchars($alt["vendor_name"]) ?></span><?php endif; ?>
+                  </div>
+                  <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
+                </div>
+
+                <div class="sf-pkg-card-footer">
+                  <form method="post" class="m-0 w-100">
                     <input type="hidden" name="replace_furniture_item" value="1">
                     <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
                     <input type="hidden" name="new_product_id" value="<?= htmlspecialchars($alt["id"]) ?>">
-                    <button type="submit" class="sf-pkg-chip-btn">
-                      <div class="sf-pkg-chip-thumb">
-                        <?php if(!empty($alt["image_url"])): ?>
-                          <img src="<?= htmlspecialchars($alt["image_url"]) ?>" class="sf-pkg-chip-img" alt=""
-                               onerror="this.style.display='none'">
-                        <?php else: ?>
-                          <div class="sf-pkg-chip-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
-                        <?php endif; ?>
-                      </div>
-                      <span class="sf-pkg-chip-name"><?= htmlspecialchars($alt["name"]) ?></span>
-                      <span class="sf-pkg-chip-price"><?= egp($alt["price"]) ?></span>
-                    </button>
+                    <button type="submit" class="sf-pkg-select-btn">Select this</button>
                   </form>
-                <?php endforeach; ?>
-              <?php else: ?>
-                <div class="sf-pkg-no-alts">No alternatives available</div>
-              <?php endif; ?>
-            </div>
+                </div>
 
-            <div class="sf-pkg-sellers-trigger">
-              <?php if (!empty($it["product_group_key"])): ?>
-                <button type="button" class="btn btn-link p-0 sf-text-link"
-                        data-sellers-open="1"
-                        data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
-                  View other sellers
-                </button>
-              <?php else: ?>
-                <span class="sf-pkg-no-sellers">No other sellers</span>
-              <?php endif; ?>
-            </div>
+              </article>
+              <?php endforeach; ?>
 
-            <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
-              <div class="sf-empty-inline">No other sellers available for this product.</div>
-            </div>
+            </div><!-- /.sf-pkg-slider -->
+          </div><!-- /.sf-pkg-slider-wrap -->
 
-          </article>
+        </div><!-- /.sf-pkg-section -->
         <?php endforeach; ?>
-      </div>
+      </div><!-- /.sf-pkg-sections -->
     <?php endif; ?>
   </div>
 
@@ -2266,71 +2342,129 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
     <?php if (!$acCart || empty($acCart["items"])): ?>
       <div class="alert alert-warning mt-3">No AC products available yet. Add products from the vendor panel.</div>
     <?php else: ?>
-      <div class="sf-pkg-grid">
+      <?php
+      $acSectionLabels = [
+        "ac"          => "AC Units",
+        "exhaust_fan" => "Exhaust / Ventilation Fans",
+        "air_curtain" => "Air Curtains",
+      ];
+      ?>
+      <div class="sf-pkg-sections">
         <?php foreach ($acCart["items"] as $type => $it): ?>
-          <article class="sf-pkg-card" id="row_ac_<?= htmlspecialchars($type) ?>">
-            <div class="sf-pkg-card-media">
-              <?php if (!empty($it["image_url"])): ?>
-                <img src="<?= htmlspecialchars($it["image_url"]) ?>" alt="">
-              <?php else: ?>
-                <div class="sf-pkg-card-fallback">AC</div>
-              <?php endif; ?>
-            </div>
-            <div class="sf-pkg-card-body">
-              <h3 class="sf-pkg-card-name"><?= htmlspecialchars($it["name"]) ?></h3>
-              <div class="sf-pkg-card-meta">
-                <?php if (!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
-                <?php if (!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
-                <?php if (!empty($it["tonnage"])): ?>
-                  <span style="color:#004cac;font-weight:700;"><?= htmlspecialchars($it["tonnage"]) ?> Ton</span>
-                <?php endif; ?>
-              </div>
-              <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
-            </div>
-            <div class="sf-pkg-card-footer">
-              <div class="sf-pkg-qty">
-                <form method="post" class="m-0">
-                  <input type="hidden" name="update_ac_qty" value="1">
-                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                  <input type="hidden" name="delta" value="-1">
-                  <button class="sf-pkg-qty-btn">−</button>
-                </form>
-                <span class="sf-pkg-qty-val"><?= (int)$it["qty"] ?></span>
-                <form method="post" class="m-0">
-                  <input type="hidden" name="update_ac_qty" value="1">
-                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                  <input type="hidden" name="delta" value="1">
-                  <button class="sf-pkg-qty-btn">+</button>
-                </form>
-              </div>
-            </div>
-            <div class="sf-pkg-alts">
-              <?php if (!empty($it["alternatives"])): ?>
-                <?php foreach (array_slice($it["alternatives"], 0, 3) as $alt): ?>
-                  <form method="post" class="sf-pkg-chip m-0">
+        <div class="sf-pkg-section">
+
+          <div class="sf-pkg-section-head">
+            <h4 class="sf-pkg-section-title">
+              <?= htmlspecialchars($acSectionLabels[$type] ?? ucfirst($type)) ?>
+            </h4>
+            <span class="sf-pkg-section-count">
+              <?= 1 + count($it["alternatives"] ?? []) ?> option<?= (1 + count($it["alternatives"] ?? [])) !== 1 ? 's' : '' ?>
+            </span>
+          </div>
+
+          <div class="sf-pkg-slider-wrap">
+            <div class="sf-pkg-slider">
+
+              <!-- RECOMMENDED CARD -->
+              <article class="sf-pkg-card sf-pkg-card--rec" id="row_ac_<?= htmlspecialchars($type) ?>">
+                <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
+
+                <div class="sf-pkg-card-media">
+                  <?php if (!empty($it["image_url"])): ?>
+                    <img src="<?= htmlspecialchars($it["image_url"]) ?>" alt="">
+                  <?php else: ?>
+                    <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
+                  <?php endif; ?>
+                </div>
+
+                <div class="sf-pkg-card-body">
+                  <h3 class="sf-pkg-card-name"><?= htmlspecialchars($it["name"]) ?></h3>
+                  <div class="sf-pkg-card-meta">
+                    <?php if (!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
+                    <?php if (!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
+                    <?php if (!empty($it["tonnage"])): ?>
+                      <span style="color:#004cac;font-weight:700;"><?= htmlspecialchars($it["tonnage"]) ?> Ton</span>
+                    <?php endif; ?>
+                  </div>
+                  <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
+                </div>
+
+                <div class="sf-pkg-card-footer">
+                  <div class="sf-pkg-qty">
+                    <form method="post" class="m-0">
+                      <input type="hidden" name="update_ac_qty" value="1">
+                      <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                      <input type="hidden" name="delta" value="-1">
+                      <button class="sf-pkg-qty-btn">−</button>
+                    </form>
+                    <span class="sf-pkg-qty-val"><?= (int)$it["qty"] ?></span>
+                    <form method="post" class="m-0">
+                      <input type="hidden" name="update_ac_qty" value="1">
+                      <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                      <input type="hidden" name="delta" value="1">
+                      <button class="sf-pkg-qty-btn">+</button>
+                    </form>
+                  </div>
+                  <span class="sf-pkg-line-total"><?= egp((int)$it["qty"] * (int)$it["unit"]) ?></span>
+                </div>
+
+                <div class="sf-pkg-sellers-trigger">
+                  <?php if(!empty($it["product_group_key"])): ?>
+                    <button type="button" class="btn btn-link p-0 sf-text-link"
+                            data-sellers-open="1"
+                            data-group="<?= htmlspecialchars($it["product_group_key"]) ?>">
+                      View other sellers
+                    </button>
+                  <?php else: ?>
+                    <span class="sf-pkg-no-sellers">No other sellers</span>
+                  <?php endif; ?>
+                </div>
+
+                <div class="sf-sellers-panel d-none" data-group="<?= htmlspecialchars($it["product_group_key"] ?? "") ?>">
+                  <div class="sf-empty-inline">No other sellers available for this product.</div>
+                </div>
+
+              </article>
+
+              <!-- ALTERNATIVE CARDS -->
+              <?php foreach(($it["alternatives"] ?? []) as $alt): ?>
+              <article class="sf-pkg-card sf-pkg-card--alt">
+
+                <div class="sf-pkg-card-media">
+                  <?php if (!empty($alt["image_url"])): ?>
+                    <img src="<?= htmlspecialchars($alt["image_url"]) ?>" alt="">
+                  <?php else: ?>
+                    <div class="sf-pkg-card-fallback"><?= strtoupper(substr($type,0,2)) ?></div>
+                  <?php endif; ?>
+                </div>
+
+                <div class="sf-pkg-card-body">
+                  <h3 class="sf-pkg-card-name"><?= htmlspecialchars($alt["name"]) ?></h3>
+                  <div class="sf-pkg-card-meta">
+                    <?php if(!empty($alt["brand"])): ?><span><?= htmlspecialchars($alt["brand"]) ?></span><?php endif; ?>
+                    <?php if(!empty($alt["vendor_name"])): ?><span><?= htmlspecialchars($alt["vendor_name"]) ?></span><?php endif; ?>
+                  </div>
+                  <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
+                </div>
+
+                <div class="sf-pkg-card-footer">
+                  <form method="post" class="m-0 w-100">
                     <input type="hidden" name="replace_ac_item" value="1">
                     <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
                     <input type="hidden" name="new_product_id" value="<?= htmlspecialchars($alt["id"]) ?>">
-                    <button type="submit" class="sf-pkg-chip-btn">
-                      <div class="sf-pkg-chip-thumb">
-                        <?php if (!empty($alt["image_url"])): ?>
-                          <img src="<?= htmlspecialchars($alt["image_url"]) ?>" class="sf-pkg-chip-img" alt="" onerror="this.style.display='none'">
-                        <?php else: ?>
-                          <div class="sf-pkg-chip-fallback">AC</div>
-                        <?php endif; ?>
-                      </div>
-                      <span class="sf-pkg-chip-name"><?= htmlspecialchars($alt["name"]) ?></span>
-                      <span class="sf-pkg-chip-price"><?= egp($alt["price"]) ?></span>
-                    </button>
+                    <button type="submit" class="sf-pkg-select-btn">Select this</button>
                   </form>
-                <?php endforeach; ?>
-              <?php else: ?>
-                <div class="sf-pkg-no-alts">No alternatives available</div>
-              <?php endif; ?>
-            </div>
-          </article>
+                </div>
+
+              </article>
+              <?php endforeach; ?>
+
+            </div><!-- /.sf-pkg-slider -->
+          </div><!-- /.sf-pkg-slider-wrap -->
+
+        </div><!-- /.sf-pkg-section -->
         <?php endforeach; ?>
-      </div>
+      </div><!-- /.sf-pkg-sections -->
     <?php endif; ?>
   </div>
 

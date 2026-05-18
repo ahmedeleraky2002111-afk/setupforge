@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import 'app_shell.dart';
 
@@ -25,26 +26,64 @@ class _SignupScreenState extends State<SignupScreen> {
   bool loading = false;
   bool obscurePass = true;
 
+  // Set by setup_screen.dart before pushing to this screen
+  // If true → user came from end of wizard → signup as business
+  // If false → user signed up directly → signup as customer
+  bool comingFromWizard = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkWizardIntent();
+  }
+
+  Future<void> _checkWizardIntent() async {
+    final prefs = await SharedPreferences.getInstance();
+    final intent = prefs.getString('signup_intent');
+    if (mounted) {
+      setState(() => comingFromWizard = intent == 'business');
+    }
+  }
+
   Future<void> _signup() async {
     FocusScope.of(context).unfocus();
     setState(() => loading = true);
 
     try {
+      final userType = comingFromWizard ? 'business' : 'customer';
+
       final res = await api.signupFull(
         name: nameC.text.trim(),
         email: emailC.text.trim(),
         phone: phoneC.text.trim(),
         password: passC.text,
+        userType: userType,
       );
 
       if (!mounted) return;
 
       if (res["ok"] == true) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const AppShell(initialIndex: 0)),
-          (route) => false,
-        );
+        // Clear the signup intent
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('signup_intent');
+
+        if (!mounted) return;
+
+        if (comingFromWizard) {
+          // Came from wizard → go to packages
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/packages',
+            (route) => false,
+          );
+        } else {
+          // Regular signup → go to app shell
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const AppShell(initialIndex: 0)),
+            (route) => false,
+          );
+        }
       } else {
         final msg = (res["error"] ?? "Signup failed").toString();
         ScaffoldMessenger.of(
@@ -87,7 +126,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      // ignore: deprecated_member_use
                       color: Colors.black.withOpacity(0.06),
                       blurRadius: 24,
                       offset: const Offset(0, 10),
@@ -119,11 +157,13 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     const SizedBox(height: 8),
 
-                    const Center(
+                    Center(
                       child: Text(
-                        "Sign up to save your setup and get personalized recommendations.",
+                        comingFromWizard
+                            ? "Sign up to save your setup and view your generated packages."
+                            : "Create an account to get started with SetupForge.",
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 13.5,
                           height: 1.5,
                           color: sfMuted,
@@ -138,36 +178,29 @@ class _SignupScreenState extends State<SignupScreen> {
                       hint: "Full Name",
                       prefix: const Icon(Icons.person_outline),
                     ),
-
                     const SizedBox(height: 16),
-
                     _field(
                       controller: emailC,
                       hint: "Email Address",
                       keyboardType: TextInputType.emailAddress,
                       prefix: const Icon(Icons.email_outlined),
                     ),
-
                     const SizedBox(height: 16),
-
                     _field(
                       controller: phoneC,
-                      hint: "Phone Number",
+                      hint: "Phone Number (optional)",
                       keyboardType: TextInputType.phone,
                       prefix: const Icon(Icons.phone_outlined),
                     ),
-
                     const SizedBox(height: 16),
-
                     _field(
                       controller: passC,
                       hint: "Password",
                       obscureText: obscurePass,
                       prefix: const Icon(Icons.lock_outline),
                       suffix: IconButton(
-                        onPressed: () {
-                          setState(() => obscurePass = !obscurePass);
-                        },
+                        onPressed: () =>
+                            setState(() => obscurePass = !obscurePass),
                         icon: Icon(
                           obscurePass ? Icons.visibility_off : Icons.visibility,
                         ),
@@ -191,9 +224,14 @@ class _SignupScreenState extends State<SignupScreen> {
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
-                            : const Text(
-                                "Create Account",
-                                style: TextStyle(fontWeight: FontWeight.w800),
+                            : Text(
+                                comingFromWizard
+                                    ? "Create Account & View Packages"
+                                    : "Create Account",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
                               ),
                       ),
                     ),
@@ -204,21 +242,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       width: double.infinity,
                       height: 52,
                       child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/login');
-                        },
+                        onPressed: () =>
+                            Navigator.pushReplacementNamed(context, '/login'),
                         child: const Text("Already have an account? Sign In"),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/welcome');
-                        },
-                        child: const Text("Back to Welcome"),
                       ),
                     ),
                   ],

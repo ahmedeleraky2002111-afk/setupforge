@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import '../state/wizard_state.dart';
 import 'success_screen.dart';
 
@@ -73,16 +74,80 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
   Future<void> _confirmOrder() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    final wizard = context.read<WizardState>();
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('api_token') ?? '';
+    if (token.isEmpty) {
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/signup');
+      return;
+    }
+
     setState(() => _submitting = true);
 
-    await Future.delayed(const Duration(milliseconds: 700));
+    final items = wizard.cartItems
+        .map(
+          (item) => {
+            'product_id': item['product_id'] ?? item['id'] ?? 0,
+            'name': item['name'] ?? '',
+            'module': item['module'] ?? '',
+            'qty': (item['qty'] as num?)?.toInt() ?? 1,
+            'price': (item['price'] as num?)?.toDouble() ?? 0.0,
+          },
+        )
+        .toList();
 
-    if (!mounted) return;
+    try {
+      final api = ApiService();
+      final result = await api.placeOrder(
+        token: token,
+        items: items,
+        businessName: _businessNameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
+        notes: _notesController.text.trim(),
+        businessType: wizard.businessType,
+        restaurantType: wizard.restaurantType,
+        indoorTables: wizard.indoorTables,
+        outdoorTables: wizard.outdoorTables,
+        areaSqm: wizard.areaSqm,
+        budgetRange: wizard.budgetRange,
+        installationServices: wizard.installationServices,
+        staffCounts: wizard.staffCounts,
+        paymentMethod: _paymentMethod.toLowerCase(),
+      );
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const SuccessScreen()),
-    );
+      if (!mounted) return;
+
+      if (result['ok'] == true) {
+        wizard.clearCart();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SuccessScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['error']?.toString() ??
+                  'Failed to place order. Try again.',
+            ),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Network error: $e'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
@@ -429,14 +494,14 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
             wizard.businessType.isEmpty ? '—' : wizard.businessType,
           ),
           _previewInfo(
-            'Size',
-            wizard.placeSize.isEmpty ? '—' : wizard.placeSize,
+            'Budget',
+            wizard.budgetRange.isEmpty ? '—' : wizard.budgetRange,
           ),
           _previewInfo(
-            'Modules',
-            wizard.selectedModules.isEmpty
+            'Services',
+            wizard.installationServices.isEmpty
                 ? '—'
-                : wizard.selectedModules.join(', '),
+                : wizard.installationServices.join(', '),
           ),
           _previewInfo('Payment', _paymentMethod),
           const SizedBox(height: 14),

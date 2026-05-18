@@ -1,24 +1,52 @@
 <?php
 // home.php
 session_start();
+require_once "db.php";
 
 /*
 |--------------------------------------------------------------------------
-| Hero button logic idea (safe placeholder for now)
+| Hero button logic
 |--------------------------------------------------------------------------
 */
-$hasCompletedSetup = false;
+$setupBtnText = "Start Your Setup";
+$setupBtnLink = "setup.php?step=0";
 
-// Future DB idea:
-// require_once "db.php";
-// if (isset($_SESSION["user_id"])) {
-//   $userId = (int) $_SESSION["user_id"];
-//   $q = pg_query_params($conn, "SELECT 1 FROM business_setups WHERE user_id = $1 LIMIT 1", [$userId]);
-//   $hasCompletedSetup = ($q && pg_num_rows($q) > 0);
-// }
+// Guest with active wizard session
+if (!isset($_SESSION["user_id"]) && !empty($_SESSION["wizard"])) {
+    $guestStep = (int)($_SESSION["wizard"]["indoor_seats"] ?? 0) > 0 ? 3 : 
+                 (!empty($_SESSION["wizard"]["business_type"]) ? 1 : 0);
+    if ($guestStep > 0) {
+        $setupBtnText = "Resume Setup";
+        $setupBtnLink = "setup.php";
+    }
+}
 
-$setupBtnText = $hasCompletedSetup ? "View Setup" : "Start Your Setup";
-$setupBtnLink = $hasCompletedSetup ? "packages.php" : "setup.php?step=0";
+if (isset($_SESSION["user_id"]) && $conn) {
+    $userId = (int)$_SESSION["user_id"];
+
+    // Check for completed (paid) order
+    $paidRes = @pg_query_params($conn,
+        "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' LIMIT 1",
+        [$userId]
+    );
+    if ($paidRes && pg_num_rows($paidRes) > 0) {
+        $setupBtnText = "My business";
+        $setupBtnLink = "business_overview.php";
+    } else {
+        // Check for in-progress setup
+        $bizRes = @pg_query_params($conn,
+            "SELECT setup_status, setup_step FROM businesses WHERE user_id = $1 LIMIT 1",
+            [$userId]
+        );
+        if ($bizRes && pg_num_rows($bizRes) > 0) {
+            $biz = pg_fetch_assoc($bizRes);
+            if (($biz['setup_status'] ?? '') === 'in_progress' && (int)($biz['setup_step'] ?? 0) > 0) {
+                $setupBtnText = "Resume Setup";
+                $setupBtnLink = "setup.php";
+            }
+        }
+    }
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -54,7 +82,7 @@ $setupBtnLink = $hasCompletedSetup ? "packages.php" : "setup.php?step=0";
         </h1>
 
         <p class="sf-home-hero-sub">
-          Buy the right equipment and we’ll deliver, install, and prepare your place so you can open faster.
+          Buy the right equipment and we'll deliver, install, and prepare your place so you can open faster.
         </p>
 
         <div class="sf-hero-actions">

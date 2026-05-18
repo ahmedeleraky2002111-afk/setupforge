@@ -676,8 +676,8 @@ function formatInstallationServices($raw) {
                     <i class="bi bi-box-arrow-up-right me-1"></i> Website
                   </a>
                   <?php endif; ?>
-                  <?php if ($hasQuote && $co["quote_status"] === 'pending' && $reqStatus === 'pending'): ?>
-                  <form action="accept_quote.php" method="POST" class="m-0">
+                  <?php if ($hasQuote && !$quoteAccepted && !$quoteRejected && $reqStatus === 'pending'): ?>
+                    <form action="accept_quote.php" method="POST" class="m-0">
                     <input type="hidden" name="quote_id" value="<?= (int)$co["quote_id"] ?>">
                     <input type="hidden" name="request_id" value="<?= $req_id ?>">
                     <button type="submit" class="sf-ins-btn-accept">Accept Quote</button>

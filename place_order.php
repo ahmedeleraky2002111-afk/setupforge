@@ -91,9 +91,13 @@ $preferredDeliveryDate = trim((string)($_POST["preferred_delivery_date"] ?? ""))
 // ---------- Decide maker ----------
 $userId = (int)$_SESSION["user_id"];
 
-// ONLY treat user as business if they actually exist in businesses table
-$userType = $_SESSION["user_type"] ?? "customer";
-$businessExists = ($userType === "business");
+// Check businesses table directly — don't rely on user_type
+// This handles customers who go through the wizard without being a 'business' user_type
+$bizCheck = @pg_query_params($conn,
+    "SELECT 1 FROM businesses WHERE user_id = $1 LIMIT 1",
+    [$userId]
+);
+$businessExists = ($bizCheck && pg_num_rows($bizCheck) > 0);
 
 $customerId = $businessExists ? null : $userId;
 $businessId = $businessExists ? $userId : null;

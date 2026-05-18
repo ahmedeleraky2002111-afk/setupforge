@@ -7,7 +7,6 @@ header("Content-Type: application/json");
 try {
   require_once __DIR__ . "/../db.php";
 
-  // Get Authorization header (Bearer TOKEN)
   $headers = function_exists('getallheaders') ? getallheaders() : [];
   $auth = $headers["Authorization"] ?? $headers["authorization"] ?? "";
 
@@ -22,14 +21,13 @@ try {
     exit;
   }
 
-  if (!isset($pdo)) {
-    echo json_encode(["ok"=>false, "error"=>"DB connection not available (\$pdo missing)"]);
+  if (!isset($conn)) {
+    echo json_encode(["ok"=>false, "error"=>"DB connection not available"]);
     exit;
   }
 
-  $stmt = $pdo->prepare("SELECT id, name, email FROM users WHERE api_token = :t LIMIT 1");
-  $stmt->execute([":t" => $token]);
-  $user = $stmt->fetch(PDO::FETCH_ASSOC);
+  $result = pg_query_params($conn, "SELECT id, name, email FROM users WHERE api_token = $1 LIMIT 1", [$token]);
+  $user = pg_fetch_assoc($result);
 
   if (!$user) {
     echo json_encode(["ok" => false, "error" => "Invalid token"]);

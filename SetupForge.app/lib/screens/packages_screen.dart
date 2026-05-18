@@ -47,6 +47,20 @@ class _PackagesScreenState extends State<PackagesScreen> {
   static const Color muted = Color(0xFF6C757D);
   static const Color text = Color(0xFF121212);
   static const Color border = Color(0x22000000);
+  int _budgetRangeToInt(String range) {
+    switch (range) {
+      case 'Under 500k':
+        return 500000;
+      case '500k-1.5M':
+        return 1500000;
+      case '1.5M-3M':
+        return 3000000;
+      case '3M+':
+        return 5000000;
+      default:
+        return 3000000;
+    }
+  }
 
   late SetupPackageArgs data;
 
@@ -78,21 +92,13 @@ class _PackagesScreenState extends State<PackagesScreen> {
           ? (widget.args?.businessType ?? wizard.businessType)
           : "Restaurant",
       businessName: widget.args?.businessName ?? wizard.businessName,
-      size: (widget.args?.size ?? wizard.placeSize).isNotEmpty
-          ? (widget.args?.size ?? wizard.placeSize)
-          : "Large",
-      budgetEGP: (widget.args?.budgetEGP ?? wizard.budget.toInt()) > 0
-          ? (widget.args?.budgetEGP ?? wizard.budget.toInt())
-          : 3000000,
-      selectedModules: _normalizeSelectedModules(
-        widget.args?.selectedModules ?? wizard.selectedModules,
-      ),
-      moduleTiers: _normalizeModuleTiers(
-        widget.args?.moduleTiers ?? wizard.moduleTiers,
-      ),
-      posAddOn: (widget.args?.posAddOn ?? wizard.posAddOn).isNotEmpty
-          ? (widget.args?.posAddOn ?? wizard.posAddOn)
-          : "Printed Receipts",
+      size: wizard.budgetRange.isNotEmpty ? wizard.budgetRange : "500k-1.5M",
+      budgetEGP: _budgetRangeToInt(wizard.budgetRange),
+      selectedModules: _normalizeSelectedModules(wizard.installationServices),
+      moduleTiers: _normalizeModuleTiers({}),
+      posAddOn: wizard.installationServices.contains('pos')
+          ? "Printed Receipts"
+          : "",
       staffCounts: widget.args?.staffCounts ?? wizard.staffCounts,
     );
 
@@ -119,39 +125,26 @@ class _PackagesScreenState extends State<PackagesScreen> {
 
   List<String> _normalizeSelectedModules(List<String> modules) {
     final out = <String>[];
-
     for (final m in modules) {
       final v = m.trim().toLowerCase();
-
-      if (v.contains("kitchen")) {
-        out.add("kitchen");
-      } else if (v.contains("furniture") ||
-          v.contains("dining") ||
-          v.contains("ambience") ||
-          v.contains("decor") ||
-          v.contains("ac") ||
-          v.contains("lighting")) {
-        out.add("furniture");
-      } else if (v.contains("pos") || v.contains("operations")) {
-        out.add("pos");
+      if (v == 'kitchen') {
+        out.add('kitchen');
+      } else if (v == 'pos') {
+        out.add('pos');
+      } else if (v == 'ac') {
+        out.add('ac');
+      } else if (v == 'electrical' || v == 'network') {
+        out.add('furniture');
       }
-
-      // TEMP: do NOT add electronics until backend supports it fully
-      // else if (v.contains("electronic") ||
-      //     v.contains("tv") ||
-      //     v.contains("screen") ||
-      //     v.contains("display")) {
-      //   out.add("electronics");
-      // }
     }
+    final unique = out.toSet();
 
-    final unique = out.toSet().toList();
+    // kitchen and pos are always core modules
+    unique.add('kitchen');
+    unique.add('pos');
+    unique.add('furniture');
 
-    if (unique.isEmpty) {
-      return ["kitchen", "furniture", "pos"];
-    }
-
-    return unique;
+    return unique.toList();
   }
 
   Map<String, String> _normalizeModuleTiers(Map<String, String> tiers) {
@@ -204,6 +197,8 @@ class _PackagesScreenState extends State<PackagesScreen> {
   }
 
   Future<void> _loadPackagesFromBackend() async {
+    final wizard = context.read<WizardState>(); // ADD THIS
+
     setState(() {
       loading = true;
       loadError = null;
@@ -221,7 +216,13 @@ class _PackagesScreenState extends State<PackagesScreen> {
         budget: data.budgetEGP,
         modules: data.selectedModules,
         moduleTiers: data.moduleTiers,
-        restaurantType: 'standard_dining',
+        restaurantType: wizard.restaurantType.isNotEmpty
+            ? wizard.restaurantType
+            : 'standard_dining',
+        indoorTables: wizard.indoorTables,
+        outdoorTables: wizard.outdoorTables,
+        areaSqm: wizard.areaSqm,
+        budgetRange: wizard.budgetRange,
       );
 
       if (!mounted) return;
@@ -372,6 +373,8 @@ class _PackagesScreenState extends State<PackagesScreen> {
         return "POS & Operations";
       case "electronics":
         return "Electronic Devices";
+      case "ac":
+        return "Ambience & AC";
       default:
         return module;
     }
@@ -387,6 +390,8 @@ class _PackagesScreenState extends State<PackagesScreen> {
         return "Auto-generated based on your selected setup and budget cap.";
       case "electronics":
         return "Generated electronics package based on your selected tier and budget.";
+      case "ac":
+        return "Auto-calculated based on your venue area in sqm.";
       default:
         return "Generated package items.";
     }

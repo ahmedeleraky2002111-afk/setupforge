@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
-import 'setup_screen.dart';
-import 'packages_screen.dart';
-import 'profile_screen.dart';
+import 'my_business_screen.dart';
+import 'explore_screen.dart';
+import 'services_screen.dart';
 
 class AppShell extends StatefulWidget {
   final int initialIndex;
@@ -17,30 +17,27 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   late int _selectedIndex;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const SetupScreen(),
-    const PackagesScreen(),
-    const ProfileScreen(),
-  ];
-
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
   }
 
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    MyBusinessScreen(),
+    ExploreScreen(),
+    ServicesScreen(),
+  ];
+
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex],
-
+      body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -55,27 +52,26 @@ class _AppShellState extends State<AppShell> {
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF004CAC), // your primary
-          unselectedItemColor: Colors.grey,
-          selectedFontSize: 12,
+          selectedItemColor: const Color(0xFF004CAC),
+          unselectedItemColor: const Color(0xFF9CA3AF),
+          selectedFontSize: 11.5,
           unselectedFontSize: 11,
-
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_rounded),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.build_rounded),
-              label: 'Setup',
+              icon: Icon(Icons.storefront_rounded),
+              label: 'My Business',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_rounded),
-              label: 'Packages',
+              icon: Icon(Icons.explore_rounded),
+              label: 'Explore',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'Profile',
+              icon: Icon(Icons.build_circle_rounded),
+              label: 'Services',
             ),
           ],
         ),

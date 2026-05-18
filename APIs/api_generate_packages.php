@@ -12,31 +12,55 @@ try {
         exit;
     }
 
-    if (!isset($pdo)) {
-        echo json_encode(["ok" => false, "error" => "DB connection not available (\$pdo missing)"]);
-        exit;
-    }
+if (!isset($conn)) {
+    echo json_encode(["ok" => false, "error" => "DB connection not available"]);
+    exit;
+}
 
     // ---------- Read input ----------
     $raw = file_get_contents("php://input");
     $json = json_decode($raw, true);
     $input = is_array($json) ? $json : $_POST;
 
-    $business = trim((string)($input["business_type"] ?? ""));
-    $size = trim((string)($input["size"] ?? ""));
-    $budget = (int)($input["budget"] ?? 0);
+$business      = trim((string)($input["business_type"] ?? ""));
+$budget        = (int)($input["budget"] ?? 0);
+$restaurantType = trim((string)($input["restaurant_type"] ?? "standard_dining"));
+$indoorTables  = (int)($input["indoor_tables"] ?? 0);
+$outdoorTables = (int)($input["outdoor_tables"] ?? 0);
+$areaSqm       = (int)($input["area_sqm"] ?? 0);
+$budgetRange   = trim((string)($input["budget_range"] ?? ""));
+$staffCounts   = $input["staff_counts"] ?? [];
 
-    $modules = $input["modules"] ?? [];
-    $moduleTiers = $input["module_tiers"] ?? [];
-    $restaurantType = trim((string)($input["restaurant_type"] ?? "standard_dining"));
+$modules    = $input["modules"] ?? [];
+$moduleTiers = $input["module_tiers"] ?? [];
 
-    if (!is_array($modules)) $modules = [];
-    if (!is_array($moduleTiers)) $moduleTiers = [];
+if (!is_array($modules)) $modules = [];
+if (!is_array($moduleTiers)) $moduleTiers = [];
 
-    $sizeNorm = ucfirst(strtolower($size));
-    if (in_array($sizeNorm, ["Small", "Medium", "Large"], true)) {
-        $size = $sizeNorm;
+// Derive size from total tables (app no longer sends Small/Medium/Large)
+$totalTables = $indoorTables + $outdoorTables;
+if ($totalTables <= 5) {
+    $size = "Small";
+} elseif ($totalTables <= 15) {
+    $size = "Medium";
+} else {
+    $size = "Large";
+}
+
+// Also derive tier from budget range if module_tiers not sent
+if (empty($moduleTiers)) {
+    $tierFromBudget = "Balanced";
+    if ($budgetRange === "1.5M-3M" || $budgetRange === "3M+") {
+        $tierFromBudget = "Premium";
+    } elseif ($budgetRange === "Under 500k") {
+        $tierFromBudget = "Starter";
     }
+    $moduleTiers = [
+        "kitchen"   => $tierFromBudget,
+        "furniture" => $tierFromBudget,
+        "pos"       => $tierFromBudget,
+    ];
+}
 
     if ($business === "" || $size === "" || empty($modules) || $budget <= 0) {
         echo json_encode([
@@ -48,17 +72,19 @@ try {
 
     // ---------- Labels + weights ----------
     $labels = [
-        "kitchen" => "Kitchen / Equipment",
-        "furniture" => "Dining Area",
-        "pos" => "POS & Operations",
-        "electronics" => "Electronic Devices"
-    ];
+    "kitchen"     => "Kitchen / Equipment",
+    "furniture"   => "Dining Area",
+    "pos"         => "POS & Operations",
+    "electronics" => "Electronic Devices",
+    "ac"          => "Ambience & AC"   // add this
+];
 
     $baseWeights = [
         "kitchen" => 5,
         "furniture" => 3,
         "pos" => 2,
-        "electronics" => 2
+        "electronics" => 2,
+        "ac" => 2
     ];
 
     $selectedWeights = [];
@@ -440,171 +466,147 @@ try {
         "tv" => []
     ];
 
-    if (in_array("pos", $modules, true)) {
-        $stmt = $pdo->prepare("
-            SELECT
-                p.id,
-                p.product_name,
-                p.product_type,
-                p.price,
-                p.priority,
-                p.tier,
-                p.brand,
-                p.vendor_user_id,
-                p.product_group_key,
-                p.created_at,
-                u.name AS vendor_name,
-                c.name AS category_name,
-                (
-                    SELECT pi.image_url
-                    FROM product_images pi
-                    WHERE pi.product_id = p.id
-                    ORDER BY pi.id ASC
-                    LIMIT 1
-                ) AS image_url
-            FROM products p
-            LEFT JOIN users u ON u.id = p.vendor_user_id
-            LEFT JOIN categories c ON c.id = p.category_id
-            WHERE p.module = 'pos'
-              AND LOWER(p.tier) = LOWER(:tier)
-            ORDER BY p.priority ASC, p.price ASC
-        ");
-        $stmt->execute([":tier" => $posTier]);
+    $AC_CATALOG_ACTIVE = ["ac" => []];
 
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $type = guess_pos_type($row["product_name"] ?? "");
-            if (!$type) continue;
+if (in_array("pos", $modules, true)) {
+    $res = pg_query_params($conn, "
+        SELECT
+            p.id, p.product_name, p.product_type, p.price, p.priority,
+            p.tier, p.brand, p.vendor_user_id, p.product_group_key, p.created_at,
+            u.name AS vendor_name, c.name AS category_name,
+            (SELECT pi.image_url FROM product_images pi
+             WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+        FROM products p
+        LEFT JOIN users u ON u.id = p.vendor_user_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        WHERE p.module = 'pos' AND LOWER(p.tier) = LOWER($1)
+        ORDER BY p.priority ASC, p.price ASC
+    ", [$posTier]);
 
-            $POS_CATALOG_ACTIVE[$type][] = [
-                "id" => (string)$row["id"],
-                "name" => $row["product_name"],
-                "brand" => $row["brand"] ?: null,
-                "tier" => $row["tier"] ?: null,
-                "vendor_name" => $row["vendor_name"] ?: null,
-                "category_name" => $row["category_name"] ?: null,
-                "price" => (int)$row["price"],
-                "image_url" => $row["image_url"] ?: null,
-                "vendor_user_id" => $row["vendor_user_id"] ?? null,
-                "product_group_key" => $row["product_group_key"] ?? null,
-                "created_at" => $row["created_at"] ?? null,
-            ];
-        }
+    while ($row = pg_fetch_assoc($res)) {
+        $type = guess_pos_type($row["product_name"] ?? "");
+        if (!$type) continue;
+        $POS_CATALOG_ACTIVE[$type][] = [
+            "id" => (string)$row["id"],
+            "name" => $row["product_name"],
+            "brand" => $row["brand"] ?: null,
+            "tier" => $row["tier"] ?: null,
+            "vendor_name" => $row["vendor_name"] ?: null,
+            "category_name" => $row["category_name"] ?: null,
+            "price" => (int)$row["price"],
+            "image_url" => $row["image_url"] ?: null,
+            "vendor_user_id" => $row["vendor_user_id"] ?? null,
+            "product_group_key" => $row["product_group_key"] ?? null,
+            "created_at" => $row["created_at"] ?? null,
+        ];
     }
+}
 
     if (in_array("kitchen", $modules, true)) {
-        $stmt = $pdo->prepare("
-            SELECT
-                p.id,
-                p.product_name,
-                p.price,
-                p.priority,
-                p.tier,
-                p.brand,
-                p.vendor_user_id,
-                p.product_group_key,
-                p.created_at,
-                p.stock_quantity,
-                p.specs,
-                u.name AS vendor_name,
-                c.name AS category_name,
-                (
-                    SELECT pi.image_url
-                    FROM product_images pi
-                    WHERE pi.product_id = p.id
-                    ORDER BY pi.id ASC
-                    LIMIT 1
-                ) AS image_url
-            FROM products p
-            LEFT JOIN users u ON u.id = p.vendor_user_id
-            LEFT JOIN categories c ON c.id = p.category_id
-            WHERE p.module = 'kitchen'
-              AND LOWER(p.tier) = LOWER(:tier)
-            ORDER BY p.priority ASC, p.price ASC
-        ");
-        $stmt->execute([":tier" => $kitchenTier]);
+    $res = pg_query_params($conn, "
+        SELECT
+            p.id, p.product_name, p.price, p.priority, p.tier, p.brand,
+            p.vendor_user_id, p.product_group_key, p.created_at,
+            p.stock_quantity, p.specs,
+            u.name AS vendor_name, c.name AS category_name,
+            (SELECT pi.image_url FROM product_images pi
+             WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+        FROM products p
+        LEFT JOIN users u ON u.id = p.vendor_user_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        WHERE p.module = 'kitchen' AND LOWER(p.tier) = LOWER($1)
+        ORDER BY p.priority ASC, p.price ASC
+    ", [$kitchenTier]);
 
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $type = guess_kitchen_type($row["product_name"] ?? "");
-            if (!$type) continue;
-
-            $KITCHEN_CATALOG_ACTIVE[$type][] = [
-                "id" => (string)$row["id"],
-                "name" => $row["product_name"],
-                "brand" => $row["brand"] ?: null,
-                "tier" => $row["tier"] ?: null,
-                "vendor_name" => $row["vendor_name"] ?: null,
-                "category_name" => $row["category_name"] ?: null,
-                "price" => (int)$row["price"],
-                "image_url" => $row["image_url"] ?: null,
-                "vendor_user_id" => $row["vendor_user_id"] ?? null,
-                "product_group_key" => $row["product_group_key"] ?? null,
-                "created_at" => $row["created_at"] ?? null,
-                "stock_quantity" => isset($row["stock_quantity"]) ? (int)$row["stock_quantity"] : 0,
-                "specs" => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
-            ];
-        }
+    while ($row = pg_fetch_assoc($res)) {
+        $type = guess_kitchen_type($row["product_name"] ?? "");
+        if (!$type) continue;
+        $KITCHEN_CATALOG_ACTIVE[$type][] = [
+            "id" => (string)$row["id"],
+            "name" => $row["product_name"],
+            "brand" => $row["brand"] ?: null,
+            "tier" => $row["tier"] ?: null,
+            "vendor_name" => $row["vendor_name"] ?: null,
+            "category_name" => $row["category_name"] ?: null,
+            "price" => (int)$row["price"],
+            "image_url" => $row["image_url"] ?: null,
+            "vendor_user_id" => $row["vendor_user_id"] ?? null,
+            "product_group_key" => $row["product_group_key"] ?? null,
+            "created_at" => $row["created_at"] ?? null,
+            "stock_quantity" => (int)($row["stock_quantity"] ?? 0),
+            "specs" => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
+        ];
     }
+}
 
     if (in_array("furniture", $modules, true)) {
-        $stmt = $pdo->prepare("
-            SELECT
-                p.id,
-                p.product_name,
-                p.product_type,
-                p.price,
-                p.priority,
-                p.tier,
-                p.brand,
-                p.stock_quantity,
-                p.specs,
-                p.category_id,
-                p.vendor_user_id,
-                p.product_group_key,
-                p.created_at,
-                u.name AS vendor_name,
-                c.name AS category_name,
-                (
-                    SELECT pi.image_url
-                    FROM product_images pi
-                    WHERE pi.product_id = p.id
-                    ORDER BY pi.id ASC
-                    LIMIT 1
-                ) AS image_url
-            FROM products p
-            LEFT JOIN users u ON u.id = p.vendor_user_id
-            LEFT JOIN categories c ON c.id = p.category_id
-            WHERE p.module = 'furniture'
-              AND LOWER(p.tier) = LOWER(:tier)
-            ORDER BY p.priority ASC, p.price ASC
-        ");
-        $stmt->execute([":tier" => $furnitureTier]);
+    $res = pg_query_params($conn, "
+        SELECT
+            p.id, p.product_name, p.product_type, p.price, p.priority, p.tier,
+            p.brand, p.stock_quantity, p.specs, p.category_id,
+            p.vendor_user_id, p.product_group_key, p.created_at,
+            u.name AS vendor_name, c.name AS category_name,
+            (SELECT pi.image_url FROM product_images pi
+             WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+        FROM products p
+        LEFT JOIN users u ON u.id = p.vendor_user_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        WHERE p.module = 'furniture' AND LOWER(p.tier) = LOWER($1)
+        ORDER BY p.priority ASC, p.price ASC
+    ", [$furnitureTier]);
 
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $type = guess_furniture_type($row);
-            if (!$type) continue;
-
-            if (!isset($FURNITURE_CATALOG_ACTIVE[$type])) {
-                $FURNITURE_CATALOG_ACTIVE[$type] = [];
-            }
-
-            $FURNITURE_CATALOG_ACTIVE[$type][] = [
-                "id" => (string)$row["id"],
-                "name" => $row["product_name"],
-                "brand" => $row["brand"] ?: null,
-                "tier" => $row["tier"] ?: null,
-                "vendor_name" => $row["vendor_name"] ?: null,
-                "category_name" => $row["category_name"] ?: null,
-                "category_id" => $row["category_id"] ?? null,
-                "price" => (int)$row["price"],
-                "image_url" => $row["image_url"] ?: null,
-                "vendor_user_id" => $row["vendor_user_id"] ?? null,
-                "product_group_key" => $row["product_group_key"] ?? null,
-                "created_at" => $row["created_at"] ?? null,
-                "stock_quantity" => isset($row["stock_quantity"]) ? (int)$row["stock_quantity"] : 0,
-                "specs" => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
-            ];
+    while ($row = pg_fetch_assoc($res)) {
+        $type = guess_furniture_type($row);
+        if (!$type) continue;
+        if (!isset($FURNITURE_CATALOG_ACTIVE[$type])) {
+            $FURNITURE_CATALOG_ACTIVE[$type] = [];
         }
+        $FURNITURE_CATALOG_ACTIVE[$type][] = [
+            "id" => (string)$row["id"],
+            "name" => $row["product_name"],
+            "brand" => $row["brand"] ?: null,
+            "tier" => $row["tier"] ?: null,
+            "vendor_name" => $row["vendor_name"] ?: null,
+            "category_name" => $row["category_name"] ?: null,
+            "category_id" => $row["category_id"] ?? null,
+            "price" => (int)$row["price"],
+            "image_url" => $row["image_url"] ?: null,
+            "vendor_user_id" => $row["vendor_user_id"] ?? null,
+            "product_group_key" => $row["product_group_key"] ?? null,
+            "created_at" => $row["created_at"] ?? null,
+            "stock_quantity" => (int)($row["stock_quantity"] ?? 0),
+            "specs" => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
+        ];
     }
+}
+
+if (in_array("ac", $modules, true)) {
+    $res = pg_query_params($conn, "
+        SELECT p.id, p.product_name, p.price, p.priority, p.tier, p.brand,
+               p.stock_quantity, p.specs, p.vendor_user_id, p.product_group_key, p.created_at,
+               u.name AS vendor_name,
+               (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+        FROM products p
+        LEFT JOIN users u ON u.id = p.vendor_user_id
+        WHERE p.module = 'ac'
+        ORDER BY p.priority ASC, p.price ASC
+    ", []);
+    while ($row = pg_fetch_assoc($res)) {
+        $AC_CATALOG_ACTIVE["ac"][] = [
+            "id"                => (string)$row["id"],
+            "name"              => $row["product_name"],
+            "brand"             => $row["brand"] ?: null,
+            "tier"              => $row["tier"] ?: null,
+            "vendor_name"       => $row["vendor_name"] ?: null,
+            "price"             => (int)$row["price"],
+            "image_url"         => $row["image_url"] ?: null,
+            "vendor_user_id"    => $row["vendor_user_id"] ?? null,
+            "product_group_key" => $row["product_group_key"] ?? null,
+            "stock_quantity"    => (int)($row["stock_quantity"] ?? 0),
+            "specs"             => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
+        ];
+    }
+}
 
     // ---------- Builders ----------
     function build_pos_cart_by_budget($catalog, $size, $cap, $tier) {
@@ -908,6 +910,49 @@ try {
         return $cart;
     }
 
+    function build_ac_cart_by_budget($catalog, $areaSqm) {
+        $acUnits = max(1, (int)ceil($areaSqm / 40));
+        $areaPerUnit = $areaSqm / max(1, $acUnits);
+        if ($areaPerUnit <= 20)      { $tonnage = "1.5"; }
+        elseif ($areaPerUnit <= 30)  { $tonnage = "2"; }
+        elseif ($areaPerUnit <= 45)  { $tonnage = "2.5"; }
+        else                         { $tonnage = "3"; }
+
+        $cart = ["items" => []];
+        if (empty($catalog["ac"])) return $cart;
+
+        $matching = array_filter($catalog["ac"], function($p) use ($tonnage) {
+            $specs = $p["specs"] ?? [];
+            $hp = (float)($specs["hp"] ?? 0);
+            $hpMap = ["1.5" => [1.5,1.5], "2" => [2.0,2.25], "2.5" => [2.5,2.5], "3" => [3.0,3.0]];
+            $range = $hpMap[$tonnage] ?? null;
+            if (!$range) return true;
+            return $hp >= $range[0] && $hp <= $range[1];
+        });
+
+        $matching = array_values($matching);
+        usort($matching, fn($a,$b) => (int)$a["price"] <=> (int)$b["price"]);
+        if (empty($matching)) $matching = array_values($catalog["ac"]);
+
+        $recommended = $matching[0];
+        $cart["items"]["ac"] = [
+            "type"              => "ac",
+            "product_id"        => $recommended["id"],
+            "name"              => $recommended["name"],
+            "unit"              => (int)$recommended["price"],
+            "qty"               => $acUnits,
+            "image_url"         => $recommended["image_url"] ?? null,
+            "brand"             => $recommended["brand"] ?? null,
+            "vendor_name"       => $recommended["vendor_name"] ?? null,
+            "tonnage"           => $tonnage,
+            "product_group_key" => $recommended["product_group_key"] ?? null,
+            "vendor_user_id"    => $recommended["vendor_user_id"] ?? null,
+            "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
+            "specs"             => $recommended["specs"] ?? [],
+        ];
+        return $cart;
+    }
+
     // ---------- Build carts ----------
     $moduleCarts = [];
 
@@ -937,6 +982,10 @@ try {
             $restaurantType,
             $furnitureTier
         );
+    }
+
+    if (in_array("ac", $modules, true) && ($alloc["ac"] ?? 0) > 0) {
+        $moduleCarts["ac"] = build_ac_cart_by_budget($AC_CATALOG_ACTIVE, $areaSqm);
     }
 
     // ---------- Flatten summary ----------

@@ -19,21 +19,22 @@ class _AuthGateState extends State<AuthGate> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 400));
 
     if (!mounted) return;
 
     if (token != null && token.isNotEmpty) {
-      // ✅ User is logged in → go to main app
       Navigator.pushReplacementNamed(context, '/app-shell');
     } else {
-      // 🔥 NEW: go to welcome instead of login
-      Navigator.pushReplacementNamed(context, '/welcome');
+      Navigator.pushReplacementNamed(context, '/login');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return const Scaffold(
+      backgroundColor: Color(0xFFF5F7FB),
+      body: Center(child: CircularProgressIndicator(color: Color(0xFF004CAC))),
+    );
   }
 }

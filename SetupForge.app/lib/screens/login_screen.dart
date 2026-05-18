@@ -251,29 +251,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 18),
-
-                    Center(
-                      child: TextButton(
-                        onPressed: loading
-                            ? null
-                            : () {
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  '/welcome',
-                                );
-                              },
-                        child: const Text(
-                          "Back to Welcome",
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: sfMuted,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

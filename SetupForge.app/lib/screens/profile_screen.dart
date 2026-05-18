@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   static const Color _blue = Color(0xFF004CAC);
   static const Color _teal = Color(0xFF009994);
   static const Color _bg = Color(0xFFF5F7FB);
@@ -11,23 +17,42 @@ class ProfileScreen extends StatelessWidget {
   static const Color _textMuted = Color(0xFF6C757D);
   static const Color _border = Color(0x1A000000);
 
-  void _toast(BuildContext context, String msg) {
+  String? _userName;
+  String? _userEmail;
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = token != null && token.isNotEmpty;
+        _userName = prefs.getString('user_name');
+        _userEmail = prefs.getString('user_email');
+      });
+    }
+  }
+
+  void _toast(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), duration: const Duration(seconds: 1)),
     );
   }
 
-  Future<void> _logout(BuildContext context) async {
+  Future<void> _logout() async {
     try {
       final api = ApiService();
       await api.clearToken();
-
-      if (!context.mounted) return;
-
-      Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } catch (e) {
-      if (!context.mounted) return;
-      _toast(context, "Logout error: $e");
+      _toast("Logout error: $e");
     }
   }
 
@@ -40,7 +65,7 @@ class ProfileScreen extends StatelessWidget {
         elevation: 0,
         foregroundColor: _textDark,
         title: const Text(
-          "Profile",
+          'Profile',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
@@ -49,80 +74,42 @@ class ProfileScreen extends StatelessWidget {
         children: [
           _buildProfileHeader(),
           const SizedBox(height: 16),
-          _buildJourneyCard(),
-          const SizedBox(height: 16),
-          _buildSectionTitle("Account"),
-          const SizedBox(height: 10),
-          _actionTile(
-            icon: Icons.login_rounded,
-            title: "Login",
-            subtitle: "Access your account and continue your setup",
-            onTap: () => Navigator.pushNamed(context, '/login'),
-          ),
-          const SizedBox(height: 10),
-          _actionTile(
-            icon: Icons.person_add_alt_1_rounded,
-            title: "Create Account",
-            subtitle: "Save your setup progress and recommendations",
-            onTap: () => Navigator.pushNamed(context, '/signup'),
-          ),
-          const SizedBox(height: 10),
-          _actionTile(
-            icon: Icons.settings_outlined,
-            title: "Settings",
-            subtitle: "Manage app preferences",
-            onTap: () => _toast(context, "Settings screen not added yet"),
-          ),
-          const SizedBox(height: 10),
-          _actionTile(
-            icon: Icons.logout_rounded,
-            title: "Logout",
-            subtitle: "Sign out from the current session",
-            danger: true,
-            onTap: () => _logout(context),
-          ),
-          const SizedBox(height: 18),
-          _buildSectionTitle("Quick Access"),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _miniCard(
-                  icon: Icons.home_rounded,
-                  title: "Home",
-                  onTap: () => Navigator.pushNamed(context, '/app-shell'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _miniCard(
-                  icon: Icons.build_rounded,
-                  title: "Setup",
-                  onTap: () => Navigator.pushNamed(context, '/setup'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _miniCard(
-                  icon: Icons.inventory_2_rounded,
-                  title: "Packages",
-                  onTap: () => Navigator.pushNamed(context, '/packages'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _miniCard(
-                  icon: Icons.shopping_bag_outlined,
-                  title: "Orders",
-                  onTap: () => _toast(context, "Orders screen not added yet"),
-                ),
-              ),
-            ],
-          ),
+
+          if (_isLoggedIn) ...[
+            _buildSectionTitle("Account"),
+            const SizedBox(height: 10),
+            _actionTile(
+              icon: Icons.settings_outlined,
+              title: "Settings",
+              subtitle: "Manage app preferences",
+              onTap: () => _toast("Settings coming soon"),
+            ),
+            const SizedBox(height: 10),
+            _actionTile(
+              icon: Icons.logout_rounded,
+              title: "Logout",
+              subtitle: "Sign out from the current session",
+              danger: true,
+              onTap: _logout,
+            ),
+          ] else ...[
+            _buildSectionTitle("Account"),
+            const SizedBox(height: 10),
+            _actionTile(
+              icon: Icons.login_rounded,
+              title: "Sign In",
+              subtitle: "Access your account and continue your setup",
+              onTap: () => Navigator.pushNamed(context, '/login'),
+            ),
+            const SizedBox(height: 10),
+            _actionTile(
+              icon: Icons.person_add_alt_1_rounded,
+              title: "Create Account",
+              subtitle: "Save your setup progress and recommendations",
+              onTap: () => Navigator.pushNamed(context, '/signup'),
+            ),
+          ],
+
           const SizedBox(height: 24),
         ],
       ),
@@ -147,71 +134,38 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         children: [
-          CircleAvatar(
-            radius: 30,
+          const CircleAvatar(
+            radius: 28,
             backgroundColor: Colors.white24,
-            child: Icon(Icons.person_rounded, color: Colors.white, size: 30),
+            child: Icon(Icons.person_rounded, color: Colors.white, size: 28),
           ),
-          SizedBox(width: 14),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Your SetupForge Profile",
-                  style: TextStyle(
-                    fontSize: 18,
+                  _isLoggedIn && _userName != null ? _userName! : 'Guest User',
+                  style: const TextStyle(
+                    fontSize: 17,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
-                  "Manage your setup journey, account access, and quick actions.",
-                  style: TextStyle(
+                  _isLoggedIn && _userEmail != null
+                      ? _userEmail!
+                      : 'Sign in to save your progress',
+                  style: const TextStyle(
                     fontSize: 12.5,
-                    height: 1.4,
-                    color: Colors.white,
+                    color: Colors.white70,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildJourneyCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _border),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Your Journey",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: _textDark,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            "Use your account to keep your business setup progress, review generated packages, and continue placing orders anytime.",
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: _textMuted,
-              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -292,42 +246,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
               const Icon(Icons.chevron_right_rounded, color: _textMuted),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _miniCard({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _border),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: _blue),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: _textDark,
-                ),
-              ),
             ],
           ),
         ),
