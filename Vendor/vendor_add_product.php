@@ -16,213 +16,240 @@ if ($catsQuery) {
   $cats = pg_fetch_all($catsQuery) ?: [];
 }
 
-$moduleOptions = ["pos", "kitchen", "furniture", "electronics", "infra"];
+// Modules must match packages.php exactly
+$moduleOptions = ["pos", "kitchen", "furniture", "ac"];
 
 $businessTypeOptions = ["restaurant", "cafe", "gym", "salon"];
 
+// Product types per module — must match packages.php $KITCHEN_CATALOG_ACTIVE, $POS_CATALOG_ACTIVE etc.
 $productTypesByModule = [
-  "pos"         => ["terminal","printer","drawer","software","kds","scanner","tablet"],
-  "kitchen"     => ["oven","stove","fryer","fridge","freezer","blender","mixer","coffee"],
-  "furniture"   => ["dining_set","table","chair","tv"],
-  "infra"       => ["ac","router","switch","cable","ups","panel"],
-  "electronics" => ["tv","tablet","laptop","monitor","speaker","camera"],
+  "pos"       => ["terminal", "printer", "drawer", "software", "kds", "scanner", "tablet"],
+  "kitchen"   => ["oven", "stove", "fryer", "grill", "microwave", "fridge", "freezer", "blender", "mixer", "coffee"],
+  "furniture" => ["dining_set", "tv", "table", "chair", "sofa", "bar_stool", "outdoor_furniture", "reception_desk", "shelving", "speaker", "light"],
+  "ac"        => ["ac", "exhaust_fan", "air_curtain"],
 ];
 
+// CRITICAL: spec field names must match what packages.php reads from specs JSON
+// packages.php reads: dining_set → specs.seat_count | tv → specs.screen_size | ac → specs.hp
 $specsSchemas = [
-  "terminal"    => [
-    ["name"=>"screen_size",    "label"=>"Screen Size",      "type"=>"number", "unit"=>"inch",  "placeholder"=>"e.g. 15"],
-    ["name"=>"connectivity",   "label"=>"Connectivity",     "type"=>"select", "options"=>["WiFi","Ethernet","WiFi + Ethernet","4G"]],
-    ["name"=>"os",             "label"=>"Operating System", "type"=>"select", "options"=>["Android","Windows","Linux","Proprietary"]],
-    ["name"=>"receipt_printer","label"=>"Built-in Printer", "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
+  // ── POS ──────────────────────────────────────────────────────────────────
+  "terminal" => [
+    ["name"=>"screen_size",     "label"=>"Screen Size",       "type"=>"number", "unit"=>"inch", "placeholder"=>"e.g. 15"],
+    ["name"=>"connectivity",    "label"=>"Connectivity",      "type"=>"select", "options"=>["WiFi","Ethernet","WiFi + Ethernet","4G"]],
+    ["name"=>"os",              "label"=>"Operating System",  "type"=>"select", "options"=>["Android","Windows","Linux","Proprietary"]],
+    ["name"=>"receipt_printer", "label"=>"Built-in Printer",  "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"warranty",        "label"=>"Warranty",          "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
   ],
-  "printer"     => [
-    ["name"=>"print_width",    "label"=>"Print Width",      "type"=>"select", "options"=>["58mm","80mm"]],
-    ["name"=>"connectivity",   "label"=>"Connectivity",     "type"=>"select", "options"=>["USB","Bluetooth","WiFi","Ethernet"]],
-    ["name"=>"print_speed",    "label"=>"Print Speed",      "type"=>"number", "unit"=>"mm/s", "placeholder"=>"e.g. 200"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "printer" => [
+    ["name"=>"print_width",  "label"=>"Print Width",   "type"=>"select", "options"=>["58mm","80mm"]],
+    ["name"=>"connectivity", "label"=>"Connectivity",  "type"=>"select", "options"=>["USB","Bluetooth","WiFi","Ethernet"]],
+    ["name"=>"print_speed",  "label"=>"Print Speed",   "type"=>"number", "unit"=>"mm/s", "placeholder"=>"e.g. 200"],
+    ["name"=>"warranty",     "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "drawer"      => [
-    ["name"=>"size",           "label"=>"Size",             "type"=>"select", "options"=>["Small (16\")","Medium (24\")","Large (32\")"]],
-    ["name"=>"connectivity",   "label"=>"Connectivity",     "type"=>"select", "options"=>["RJ11 (via printer)","USB","Manual"]],
-    ["name"=>"bill_slots",     "label"=>"Bill Slots",       "type"=>"number", "placeholder"=>"e.g. 5"],
-    ["name"=>"coin_slots",     "label"=>"Coin Slots",       "type"=>"number", "placeholder"=>"e.g. 8"],
+  "drawer" => [
+    ["name"=>"size",         "label"=>"Size",          "type"=>"select", "options"=>["Small (16\")","Medium (24\")","Large (32\")"]],
+    ["name"=>"connectivity", "label"=>"Connectivity",  "type"=>"select", "options"=>["RJ11 (via printer)","USB","Manual"]],
+    ["name"=>"bill_slots",   "label"=>"Bill Slots",    "type"=>"number", "placeholder"=>"e.g. 5"],
+    ["name"=>"coin_slots",   "label"=>"Coin Slots",    "type"=>"number", "placeholder"=>"e.g. 8"],
   ],
-  "software"    => [
-    ["name"=>"license_type",   "label"=>"License Type",     "type"=>"select", "options"=>["Monthly","Yearly","Lifetime","Per Device"]],
-    ["name"=>"cloud_based",    "label"=>"Cloud Based",      "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"offline_mode",   "label"=>"Offline Mode",     "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"max_devices",    "label"=>"Max Devices",      "type"=>"number", "placeholder"=>"e.g. 3"],
+  "software" => [
+    ["name"=>"license_type", "label"=>"License Type",  "type"=>"select", "options"=>["Monthly","Yearly","Lifetime","Per Device"]],
+    ["name"=>"cloud_based",  "label"=>"Cloud Based",   "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"offline_mode", "label"=>"Offline Mode",  "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"max_devices",  "label"=>"Max Devices",   "type"=>"number", "placeholder"=>"e.g. 3"],
   ],
-  "kds"         => [
-    ["name"=>"screen_size",    "label"=>"Screen Size",      "type"=>"number", "unit"=>"inch", "placeholder"=>"e.g. 17"],
-    ["name"=>"display_type",   "label"=>"Display Type",     "type"=>"select", "options"=>["LCD","LED","Touchscreen"]],
-    ["name"=>"connectivity",   "label"=>"Connectivity",     "type"=>"select", "options"=>["WiFi","Ethernet","WiFi + Ethernet"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "kds" => [
+    ["name"=>"screen_size",  "label"=>"Screen Size",   "type"=>"number", "unit"=>"inch", "placeholder"=>"e.g. 17"],
+    ["name"=>"display_type", "label"=>"Display Type",  "type"=>"select", "options"=>["LCD","LED","Touchscreen"]],
+    ["name"=>"connectivity", "label"=>"Connectivity",  "type"=>"select", "options"=>["WiFi","Ethernet","WiFi + Ethernet"]],
+    ["name"=>"warranty",     "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "scanner"     => [
-    ["name"=>"scan_type",      "label"=>"Scan Type",        "type"=>"select", "options"=>["1D Barcode","2D / QR","1D + 2D"]],
-    ["name"=>"connectivity",   "label"=>"Connectivity",     "type"=>"select", "options"=>["USB","Bluetooth","Wireless"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "scanner" => [
+    ["name"=>"scan_type",    "label"=>"Scan Type",     "type"=>"select", "options"=>["1D Barcode","2D / QR","1D + 2D"]],
+    ["name"=>"connectivity", "label"=>"Connectivity",  "type"=>"select", "options"=>["USB","Bluetooth","Wireless"]],
+    ["name"=>"warranty",     "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "tablet"      => [
-    ["name"=>"screen_size",    "label"=>"Screen Size",      "type"=>"number", "unit"=>"inch", "placeholder"=>"e.g. 10"],
-    ["name"=>"os",             "label"=>"Operating System", "type"=>"select", "options"=>["Android","iOS","Windows"]],
-    ["name"=>"ram",            "label"=>"RAM",              "type"=>"select", "options"=>["2GB","3GB","4GB","6GB","8GB"]],
-    ["name"=>"storage",        "label"=>"Storage",          "type"=>"select", "options"=>["32GB","64GB","128GB","256GB"]],
-    ["name"=>"connectivity",   "label"=>"Connectivity",     "type"=>"select", "options"=>["WiFi","WiFi + 4G"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "tablet" => [
+    ["name"=>"screen_size",  "label"=>"Screen Size",   "type"=>"number", "unit"=>"inch", "placeholder"=>"e.g. 10"],
+    ["name"=>"os",           "label"=>"Operating System","type"=>"select","options"=>["Android","iOS","Windows"]],
+    ["name"=>"ram",          "label"=>"RAM",            "type"=>"select", "options"=>["2GB","3GB","4GB","6GB","8GB"]],
+    ["name"=>"storage",      "label"=>"Storage",        "type"=>"select", "options"=>["32GB","64GB","128GB","256GB"]],
+    ["name"=>"connectivity", "label"=>"Connectivity",   "type"=>"select", "options"=>["WiFi","WiFi + 4G"]],
+    ["name"=>"warranty",     "label"=>"Warranty",       "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "oven"        => [
-    ["name"=>"oven_type",      "label"=>"Oven Type",        "type"=>"select", "options"=>["Combi","Convection","Deck","Conveyor","Pizza"]],
-    ["name"=>"fuel_type",      "label"=>"Fuel Type",        "type"=>"select", "options"=>["Electric","Gas","Dual"]],
-    ["name"=>"capacity_trays", "label"=>"Capacity (Trays)", "type"=>"number", "placeholder"=>"e.g. 6"],
-    ["name"=>"power_kw",       "label"=>"Power",            "type"=>"number", "unit"=>"kW",  "placeholder"=>"e.g. 12"],
-    ["name"=>"dimensions",     "label"=>"Dimensions (WxDxH)","type"=>"text",  "placeholder"=>"e.g. 80x80x60 cm"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
+  // ── Kitchen ──────────────────────────────────────────────────────────────
+  "oven" => [
+    ["name"=>"oven_type",       "label"=>"Oven Type",         "type"=>"select", "options"=>["Combi","Convection","Deck","Conveyor","Pizza"]],
+    ["name"=>"fuel_type",       "label"=>"Fuel Type",         "type"=>"select", "options"=>["Electric","Gas","Dual"]],
+    ["name"=>"capacity_trays",  "label"=>"Capacity (Trays)",  "type"=>"number", "placeholder"=>"e.g. 6"],
+    ["name"=>"power_kw",        "label"=>"Power",             "type"=>"number", "unit"=>"kW", "placeholder"=>"e.g. 12"],
+    ["name"=>"dimensions",      "label"=>"Dimensions (WxDxH)","type"=>"text",   "placeholder"=>"e.g. 80x80x60 cm"],
+    ["name"=>"warranty",        "label"=>"Warranty",          "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
   ],
-  "stove"       => [
-  ["name"=>"stove_type",     "label"=>"Stove Type",       "type"=>"select", "options"=>["Gas","Electric","Induction","Commercial Range"]],
-  ["name"=>"burners",        "label"=>"Burners",          "type"=>"select", "options"=>["2","4","6","8"]],
-  ["name"=>"fuel_type",      "label"=>"Fuel Type",        "type"=>"select", "options"=>["Gas","Electric"]],
-  ["name"=>"power_kw",       "label"=>"Power",            "type"=>"number", "unit"=>"kW", "placeholder"=>"e.g. 10"],
-  ["name"=>"dimensions",     "label"=>"Dimensions",       "type"=>"text", "placeholder"=>"e.g. 90x70x85 cm"],
-  ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
-],
-  "fryer"       => [
-    ["name"=>"fryer_type",     "label"=>"Fryer Type",       "type"=>"select", "options"=>["Single Tank","Double Tank","Countertop","Floor"]],
-    ["name"=>"fuel_type",      "label"=>"Fuel Type",        "type"=>"select", "options"=>["Electric","Gas"]],
-    ["name"=>"capacity_liters","label"=>"Oil Capacity",     "type"=>"number", "unit"=>"L",  "placeholder"=>"e.g. 8"],
-    ["name"=>"power_kw",       "label"=>"Power",            "type"=>"number", "unit"=>"kW", "placeholder"=>"e.g. 6"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "stove" => [
+    ["name"=>"stove_type",  "label"=>"Stove Type",  "type"=>"select", "options"=>["Gas","Electric","Induction","Commercial Range"]],
+    ["name"=>"burners",     "label"=>"Burners",     "type"=>"select", "options"=>["2","4","6","8"]],
+    ["name"=>"fuel_type",   "label"=>"Fuel Type",   "type"=>"select", "options"=>["Gas","Electric"]],
+    ["name"=>"power_kw",    "label"=>"Power",       "type"=>"number", "unit"=>"kW", "placeholder"=>"e.g. 10"],
+    ["name"=>"dimensions",  "label"=>"Dimensions",  "type"=>"text",   "placeholder"=>"e.g. 90x70x85 cm"],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
   ],
-  "fridge"      => [
-    ["name"=>"fridge_type",    "label"=>"Fridge Type",      "type"=>"select", "options"=>["Upright","Under-counter","Prep Table","Display","Walk-in"]],
-    ["name"=>"capacity_liters","label"=>"Capacity",         "type"=>"number", "unit"=>"L",  "placeholder"=>"e.g. 400"],
-    ["name"=>"doors",          "label"=>"No. of Doors",     "type"=>"select", "options"=>["1","2","3","4"]],
-    ["name"=>"temp_range",     "label"=>"Temp Range",       "type"=>"text",   "placeholder"=>"e.g. 2°C to 8°C"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
+  "fryer" => [
+    ["name"=>"fryer_type",      "label"=>"Fryer Type",    "type"=>"select", "options"=>["Single Tank","Double Tank","Countertop","Floor"]],
+    ["name"=>"fuel_type",       "label"=>"Fuel Type",     "type"=>"select", "options"=>["Electric","Gas"]],
+    ["name"=>"capacity_liters", "label"=>"Oil Capacity",  "type"=>"number", "unit"=>"L", "placeholder"=>"e.g. 8"],
+    ["name"=>"power_kw",        "label"=>"Power",         "type"=>"number", "unit"=>"kW","placeholder"=>"e.g. 6"],
+    ["name"=>"warranty",        "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "freezer"     => [
-    ["name"=>"freezer_type",   "label"=>"Freezer Type",     "type"=>"select", "options"=>["Chest","Upright","Under-counter","Walk-in"]],
-    ["name"=>"capacity_liters","label"=>"Capacity",         "type"=>"number", "unit"=>"L",  "placeholder"=>"e.g. 300"],
-    ["name"=>"temp_range",     "label"=>"Temp Range",       "type"=>"text",   "placeholder"=>"e.g. -18°C to -22°C"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
+  "grill" => [
+    ["name"=>"grill_type",  "label"=>"Grill Type",  "type"=>"select", "options"=>["Flat Top / Griddle","Char Grill","Contact Grill","Salamander"]],
+    ["name"=>"fuel_type",   "label"=>"Fuel Type",   "type"=>"select", "options"=>["Electric","Gas"]],
+    ["name"=>"surface_cm",  "label"=>"Surface Area","type"=>"text",   "placeholder"=>"e.g. 60x40 cm"],
+    ["name"=>"power_kw",    "label"=>"Power",       "type"=>"number", "unit"=>"kW", "placeholder"=>"e.g. 4"],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "blender"     => [
-    ["name"=>"power_watts",    "label"=>"Power",            "type"=>"number", "unit"=>"W",  "placeholder"=>"e.g. 1500"],
-    ["name"=>"capacity_liters","label"=>"Jug Capacity",     "type"=>"number", "unit"=>"L",  "placeholder"=>"e.g. 2"],
-    ["name"=>"speeds",         "label"=>"Speed Settings",   "type"=>"number", "placeholder"=>"e.g. 10"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "microwave" => [
+    ["name"=>"power_watts",     "label"=>"Power",      "type"=>"number", "unit"=>"W",  "placeholder"=>"e.g. 1800"],
+    ["name"=>"capacity_liters", "label"=>"Capacity",   "type"=>"number", "unit"=>"L",  "placeholder"=>"e.g. 25"],
+    ["name"=>"warranty",        "label"=>"Warranty",   "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "mixer"       => [
-    ["name"=>"mixer_type",     "label"=>"Mixer Type",       "type"=>"select", "options"=>["Stand","Planetary","Spiral","Hand"]],
-    ["name"=>"capacity_liters","label"=>"Bowl Capacity",    "type"=>"number", "unit"=>"L",  "placeholder"=>"e.g. 7"],
-    ["name"=>"power_watts",    "label"=>"Power",            "type"=>"number", "unit"=>"W",  "placeholder"=>"e.g. 800"],
-    ["name"=>"speeds",         "label"=>"Speed Settings",   "type"=>"number", "placeholder"=>"e.g. 6"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "fridge" => [
+    ["name"=>"fridge_type",     "label"=>"Fridge Type",   "type"=>"select", "options"=>["Upright","Under-counter","Prep Table","Display","Walk-in"]],
+    ["name"=>"capacity_liters", "label"=>"Capacity",      "type"=>"number", "unit"=>"L", "placeholder"=>"e.g. 400"],
+    ["name"=>"doors",           "label"=>"No. of Doors",  "type"=>"select", "options"=>["1","2","3","4"]],
+    ["name"=>"temp_range",      "label"=>"Temp Range",    "type"=>"text",   "placeholder"=>"e.g. 2°C to 8°C"],
+    ["name"=>"warranty",        "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
   ],
-  "coffee"      => [
-    ["name"=>"machine_type",   "label"=>"Machine Type",     "type"=>"select", "options"=>["Espresso","Filter","Pod","Bean-to-Cup","Cold Brew"]],
-    ["name"=>"group_heads",    "label"=>"Group Heads",      "type"=>"select", "options"=>["1","2","3","4"]],
-    ["name"=>"boiler_type",    "label"=>"Boiler Type",      "type"=>"select", "options"=>["Single","Dual","Multi"]],
-    ["name"=>"steam_wand",     "label"=>"Steam Wand",       "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
+  "freezer" => [
+    ["name"=>"freezer_type",    "label"=>"Freezer Type",  "type"=>"select", "options"=>["Chest","Upright","Under-counter","Walk-in"]],
+    ["name"=>"capacity_liters", "label"=>"Capacity",      "type"=>"number", "unit"=>"L", "placeholder"=>"e.g. 300"],
+    ["name"=>"temp_range",      "label"=>"Temp Range",    "type"=>"text",   "placeholder"=>"e.g. -18°C to -22°C"],
+    ["name"=>"warranty",        "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
   ],
-  "dining_set"  => [
-    ["name"=>"seats",          "label"=>"Seats Included",   "type"=>"number", "placeholder"=>"e.g. 4"],
-    ["name"=>"material",       "label"=>"Material",         "type"=>"select", "options"=>["Wood","Metal","Plastic","Mixed"]],
-    ["name"=>"color",          "label"=>"Color",            "type"=>"text",   "placeholder"=>"e.g. Walnut Brown"],
-    ["name"=>"table_shape",    "label"=>"Table Shape",      "type"=>"select", "options"=>["Round","Square","Rectangle"]],
-    ["name"=>"dimensions",     "label"=>"Table Dimensions", "type"=>"text",   "placeholder"=>"e.g. 120x80 cm"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "blender" => [
+    ["name"=>"power_watts",     "label"=>"Power",          "type"=>"number", "unit"=>"W", "placeholder"=>"e.g. 1500"],
+    ["name"=>"capacity_liters", "label"=>"Jug Capacity",   "type"=>"number", "unit"=>"L", "placeholder"=>"e.g. 2"],
+    ["name"=>"speeds",          "label"=>"Speed Settings", "type"=>"number", "placeholder"=>"e.g. 10"],
+    ["name"=>"warranty",        "label"=>"Warranty",       "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "table"       => [
-    ["name"=>"material",       "label"=>"Material",         "type"=>"select", "options"=>["Wood","Metal","Marble","Glass","Laminate"]],
-    ["name"=>"shape",          "label"=>"Shape",            "type"=>"select", "options"=>["Round","Square","Rectangle"]],
-    ["name"=>"dimensions",     "label"=>"Dimensions (WxL)", "type"=>"text",   "placeholder"=>"e.g. 70x70 cm"],
-    ["name"=>"color",          "label"=>"Color",            "type"=>"text",   "placeholder"=>"e.g. Black"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "mixer" => [
+    ["name"=>"mixer_type",      "label"=>"Mixer Type",    "type"=>"select", "options"=>["Stand","Planetary","Spiral","Hand"]],
+    ["name"=>"capacity_liters", "label"=>"Bowl Capacity", "type"=>"number", "unit"=>"L", "placeholder"=>"e.g. 7"],
+    ["name"=>"power_watts",     "label"=>"Power",         "type"=>"number", "unit"=>"W", "placeholder"=>"e.g. 800"],
+    ["name"=>"speeds",          "label"=>"Speed Settings","type"=>"number", "placeholder"=>"e.g. 6"],
+    ["name"=>"warranty",        "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "chair"       => [
-    ["name"=>"material",       "label"=>"Material",         "type"=>"select", "options"=>["Wood","Metal","Plastic","Upholstered","Rattan"]],
-    ["name"=>"with_armrests",  "label"=>"Armrests",         "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"stackable",      "label"=>"Stackable",        "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"color",          "label"=>"Color",            "type"=>"text",   "placeholder"=>"e.g. Black"],
-    ["name"=>"weight_capacity","label"=>"Weight Capacity",  "type"=>"number", "unit"=>"kg", "placeholder"=>"e.g. 120"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "coffee" => [
+    ["name"=>"machine_type", "label"=>"Machine Type",  "type"=>"select", "options"=>["Espresso","Filter","Pod","Bean-to-Cup","Cold Brew"]],
+    ["name"=>"group_heads",  "label"=>"Group Heads",   "type"=>"select", "options"=>["1","2","3","4"]],
+    ["name"=>"boiler_type",  "label"=>"Boiler Type",   "type"=>"select", "options"=>["Single","Dual","Multi"]],
+    ["name"=>"steam_wand",   "label"=>"Steam Wand",    "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"warranty",     "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
   ],
-  "tv"          => [
-    ["name"=>"screen_size",    "label"=>"Screen Size",      "type"=>"number", "unit"=>"inch", "placeholder"=>"e.g. 50"],
-    ["name"=>"resolution",     "label"=>"Resolution",       "type"=>"select", "options"=>["HD","Full HD","4K","8K"]],
-    ["name"=>"panel_type",     "label"=>"Panel Type",       "type"=>"select", "options"=>["LED","OLED","QLED","IPS"]],
-    ["name"=>"smart",          "label"=>"Smart TV",         "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"hdmi_ports",     "label"=>"HDMI Ports",       "type"=>"number", "placeholder"=>"e.g. 3"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
+  // ── Furniture ────────────────────────────────────────────────────────────
+  // CRITICAL: packages.php uses specs.seat_count to match dining sets
+  "dining_set" => [
+    ["name"=>"seat_count",   "label"=>"Seats Included",   "type"=>"number", "placeholder"=>"e.g. 4"],
+    ["name"=>"layout_type",  "label"=>"Layout Type",      "type"=>"select", "options"=>["standard","premium"]],
+    ["name"=>"restaurant_style","label"=>"Restaurant Style","type"=>"select","options"=>["fast_food","standard_dining","premium_dining"]],
+    ["name"=>"material",     "label"=>"Material",         "type"=>"select", "options"=>["Wood","Metal","Plastic","Mixed","Rattan"]],
+    ["name"=>"color",        "label"=>"Color",            "type"=>"text",   "placeholder"=>"e.g. Walnut Brown"],
+    ["name"=>"table_shape",  "label"=>"Table Shape",      "type"=>"select", "options"=>["Round","Square","Rectangle"]],
+    ["name"=>"dimensions",   "label"=>"Table Dimensions", "type"=>"text",   "placeholder"=>"e.g. 120x80 cm"],
+    ["name"=>"warranty",     "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "ac"          => [
-    ["name"=>"ac_type",        "label"=>"AC Type",          "type"=>"select", "options"=>["Split","Cassette","Ducted","Window","Portable"]],
-    ["name"=>"tonnage",        "label"=>"Tonnage",          "type"=>"select", "options"=>["1 ton","1.5 ton","2 ton","2.5 ton","3 ton","4 ton","5 ton"]],
-    ["name"=>"capacity_btu",   "label"=>"Capacity",         "type"=>"number", "unit"=>"BTU", "placeholder"=>"e.g. 18000"],
-    ["name"=>"inverter",       "label"=>"Inverter",         "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"cooling_heating","label"=>"Cooling + Heating","type"=>"select", "options"=>["Cooling Only","Cooling + Heating"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["1 year","2 years","3 years","5 years"]],
+  // CRITICAL: packages.php uses specs.screen_size to match TVs
+  "tv" => [
+    ["name"=>"screen_size",  "label"=>"Screen Size",   "type"=>"number", "unit"=>"inch", "placeholder"=>"e.g. 50"],
+    ["name"=>"resolution",   "label"=>"Resolution",    "type"=>"select", "options"=>["HD","Full HD","4K","8K"]],
+    ["name"=>"panel_type",   "label"=>"Panel Type",    "type"=>"select", "options"=>["LED","OLED","QLED","IPS"]],
+    ["name"=>"smart",        "label"=>"Smart TV",      "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"hdmi_ports",   "label"=>"HDMI Ports",    "type"=>"number", "placeholder"=>"e.g. 3"],
+    ["name"=>"warranty",     "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
   ],
-  "router"      => [
-    ["name"=>"wifi_standard",  "label"=>"WiFi Standard",    "type"=>"select", "options"=>["WiFi 4 (N)","WiFi 5 (AC)","WiFi 6 (AX)","WiFi 6E"]],
-    ["name"=>"ports",          "label"=>"LAN Ports",        "type"=>"number", "placeholder"=>"e.g. 4"],
-    ["name"=>"coverage_sqm",   "label"=>"Coverage Area",    "type"=>"number", "unit"=>"m²", "placeholder"=>"e.g. 150"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["1 year","2 years","3 years"]],
+  "table" => [
+    ["name"=>"material",    "label"=>"Material",          "type"=>"select", "options"=>["Wood","Metal","Marble","Glass","Laminate"]],
+    ["name"=>"shape",       "label"=>"Shape",             "type"=>"select", "options"=>["Round","Square","Rectangle"]],
+    ["name"=>"dimensions",  "label"=>"Dimensions (WxL)",  "type"=>"text",   "placeholder"=>"e.g. 70x70 cm"],
+    ["name"=>"color",       "label"=>"Color",             "type"=>"text",   "placeholder"=>"e.g. Black"],
+    ["name"=>"warranty",    "label"=>"Warranty",          "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "switch"      => [
-    ["name"=>"ports",          "label"=>"No. of Ports",     "type"=>"select", "options"=>["8","16","24","48"]],
-    ["name"=>"speed",          "label"=>"Port Speed",       "type"=>"select", "options"=>["100Mbps","1Gbps","10Gbps"]],
-    ["name"=>"managed",        "label"=>"Managed",          "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["1 year","2 years","3 years"]],
+  "chair" => [
+    ["name"=>"material",        "label"=>"Material",        "type"=>"select", "options"=>["Wood","Metal","Plastic","Upholstered","Rattan"]],
+    ["name"=>"with_armrests",   "label"=>"Armrests",        "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"stackable",       "label"=>"Stackable",       "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"color",           "label"=>"Color",           "type"=>"text",   "placeholder"=>"e.g. Black"],
+    ["name"=>"weight_capacity", "label"=>"Weight Capacity", "type"=>"number", "unit"=>"kg", "placeholder"=>"e.g. 120"],
+    ["name"=>"warranty",        "label"=>"Warranty",        "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "cable"       => [
-    ["name"=>"cable_type",     "label"=>"Cable Type",       "type"=>"select", "options"=>["Cat5e","Cat6","Cat6A","Fiber Optic","HDMI","Power"]],
-    ["name"=>"length_m",       "label"=>"Length",           "type"=>"number", "unit"=>"m",  "placeholder"=>"e.g. 50"],
-    ["name"=>"quantity",       "label"=>"Quantity in Pack", "type"=>"number", "placeholder"=>"e.g. 1"],
+  "sofa" => [
+    ["name"=>"seats",      "label"=>"Seats",      "type"=>"select", "options"=>["1 seater","2 seater","3 seater","L-shape"]],
+    ["name"=>"material",   "label"=>"Material",   "type"=>"select", "options"=>["Fabric","Leather","Velvet","Synthetic"]],
+    ["name"=>"color",      "label"=>"Color",      "type"=>"text",   "placeholder"=>"e.g. Grey"],
+    ["name"=>"warranty",   "label"=>"Warranty",   "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "ups"         => [
-    ["name"=>"capacity_va",    "label"=>"Capacity",         "type"=>"number", "unit"=>"VA", "placeholder"=>"e.g. 1000"],
-    ["name"=>"battery_backup", "label"=>"Battery Backup",   "type"=>"number", "unit"=>"min","placeholder"=>"e.g. 30"],
-    ["name"=>"outlets",        "label"=>"No. of Outlets",   "type"=>"number", "placeholder"=>"e.g. 6"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["1 year","2 years","3 years"]],
+  "bar_stool" => [
+    ["name"=>"material",    "label"=>"Material",     "type"=>"select", "options"=>["Wood","Metal","Upholstered","Mixed"]],
+    ["name"=>"with_back",   "label"=>"With Back",    "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"adjustable",  "label"=>"Adjustable",   "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"color",       "label"=>"Color",        "type"=>"text",   "placeholder"=>"e.g. Black"],
+    ["name"=>"warranty",    "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "panel"       => [
-    ["name"=>"circuits",       "label"=>"No. of Circuits",  "type"=>"number", "placeholder"=>"e.g. 12"],
-    ["name"=>"amperage",       "label"=>"Main Amperage",    "type"=>"number", "unit"=>"A",  "placeholder"=>"e.g. 100"],
-    ["name"=>"phase",          "label"=>"Phase",            "type"=>"select", "options"=>["Single Phase","Three Phase"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["1 year","2 years","3 years"]],
+  "outdoor_furniture" => [
+    ["name"=>"set_type",   "label"=>"Set Type",    "type"=>"select", "options"=>["Table + Chairs","Lounger","Bench","Umbrella Set"]],
+    ["name"=>"material",   "label"=>"Material",    "type"=>"select", "options"=>["Aluminum","Rattan","Teak","Plastic","Steel"]],
+    ["name"=>"waterproof", "label"=>"Waterproof",  "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"color",      "label"=>"Color",       "type"=>"text",   "placeholder"=>"e.g. Beige"],
+    ["name"=>"warranty",   "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "laptop"      => [
-    ["name"=>"processor",      "label"=>"Processor",        "type"=>"text",   "placeholder"=>"e.g. Intel Core i5-12th Gen"],
-    ["name"=>"ram",            "label"=>"RAM",              "type"=>"select", "options"=>["4GB","8GB","16GB","32GB","64GB"]],
-    ["name"=>"storage",        "label"=>"Storage",          "type"=>"select", "options"=>["128GB SSD","256GB SSD","512GB SSD","1TB SSD","1TB HDD"]],
-    ["name"=>"screen_size",    "label"=>"Screen Size",      "type"=>"number", "unit"=>"inch","placeholder"=>"e.g. 15"],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "reception_desk" => [
+    ["name"=>"material",    "label"=>"Material",    "type"=>"select", "options"=>["Wood","MDF","Marble Top","Metal Frame"]],
+    ["name"=>"dimensions",  "label"=>"Dimensions",  "type"=>"text",   "placeholder"=>"e.g. 150x60x100 cm"],
+    ["name"=>"color",       "label"=>"Color",       "type"=>"text",   "placeholder"=>"e.g. White"],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "monitor"     => [
-    ["name"=>"screen_size",    "label"=>"Screen Size",      "type"=>"number", "unit"=>"inch","placeholder"=>"e.g. 24"],
-    ["name"=>"resolution",     "label"=>"Resolution",       "type"=>"select", "options"=>["HD","Full HD","2K","4K"]],
-    ["name"=>"panel_type",     "label"=>"Panel Type",       "type"=>"select", "options"=>["IPS","VA","TN","OLED"]],
-    ["name"=>"refresh_rate",   "label"=>"Refresh Rate",     "type"=>"select", "options"=>["60Hz","75Hz","100Hz","144Hz","165Hz"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["1 year","2 years","3 years"]],
+  "shelving" => [
+    ["name"=>"material",    "label"=>"Material",    "type"=>"select", "options"=>["Wood","Metal","Glass","MDF"]],
+    ["name"=>"shelves",     "label"=>"No. Shelves", "type"=>"number", "placeholder"=>"e.g. 4"],
+    ["name"=>"dimensions",  "label"=>"Dimensions",  "type"=>"text",   "placeholder"=>"e.g. 100x30x180 cm"],
+    ["name"=>"color",       "label"=>"Color",       "type"=>"text",   "placeholder"=>"e.g. Oak"],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "speaker"     => [
-    ["name"=>"speaker_type",   "label"=>"Speaker Type",     "type"=>"select", "options"=>["Ceiling","Wall-mount","Floor","PA System","Portable"]],
-    ["name"=>"power_watts",    "label"=>"Power",            "type"=>"number", "unit"=>"W",  "placeholder"=>"e.g. 60"],
-    ["name"=>"connectivity",   "label"=>"Connectivity",     "type"=>"select", "options"=>["Wired","Bluetooth","WiFi","Wired + Bluetooth"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  "speaker" => [
+    ["name"=>"speaker_type", "label"=>"Speaker Type", "type"=>"select", "options"=>["Ceiling","Wall-mount","Floor","PA System","Portable"]],
+    ["name"=>"power_watts",  "label"=>"Power",        "type"=>"number", "unit"=>"W", "placeholder"=>"e.g. 60"],
+    ["name"=>"connectivity", "label"=>"Connectivity", "type"=>"select", "options"=>["Wired","Bluetooth","WiFi","Wired + Bluetooth"]],
+    ["name"=>"warranty",     "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
-  "camera"      => [
-    ["name"=>"camera_type",    "label"=>"Camera Type",      "type"=>"select", "options"=>["IP","CCTV Dome","CCTV Bullet","PTZ","Fisheye"]],
-    ["name"=>"resolution_mp",  "label"=>"Resolution",       "type"=>"number", "unit"=>"MP", "placeholder"=>"e.g. 4"],
-    ["name"=>"night_vision",   "label"=>"Night Vision",     "type"=>"select", "options"=>["Yes","No"]],
-    ["name"=>"connectivity",   "label"=>"Connectivity",     "type"=>"select", "options"=>["Wired","WiFi","PoE"]],
-    ["name"=>"warranty",       "label"=>"Warranty",         "type"=>"select", "options"=>["1 year","2 years","3 years"]],
+  "light" => [
+    ["name"=>"light_type",  "label"=>"Light Type",  "type"=>"select", "options"=>["Pendant","Chandelier","Track","LED Strip","Wall Sconce","Recessed"]],
+    ["name"=>"power_watts", "label"=>"Power",       "type"=>"number", "unit"=>"W", "placeholder"=>"e.g. 24"],
+    ["name"=>"color_temp",  "label"=>"Color Temp",  "type"=>"select", "options"=>["Warm White (2700K)","Neutral White (4000K)","Cool White (6000K)"]],
+    ["name"=>"dimmable",    "label"=>"Dimmable",    "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  // ── AC ───────────────────────────────────────────────────────────────────
+  // CRITICAL: packages.php build_ac_cart_by_budget filters by specs.hp
+  // HP map used in packages.php: 1.5t→1.5hp | 2t→2.0–2.25hp | 2.5t→2.5hp | 3t→3.0hp
+  "ac" => [
+    ["name"=>"hp",              "label"=>"Horsepower (HP)",   "type"=>"number", "unit"=>"HP", "placeholder"=>"e.g. 1.5"],
+    ["name"=>"ac_type",         "label"=>"AC Type",           "type"=>"select", "options"=>["Split","Cassette","Ducted","Window","Portable"]],
+    ["name"=>"capacity_btu",    "label"=>"Capacity",          "type"=>"number", "unit"=>"BTU","placeholder"=>"e.g. 18000"],
+    ["name"=>"inverter",        "label"=>"Inverter",          "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"cooling_heating", "label"=>"Cooling + Heating", "type"=>"select", "options"=>["Cooling Only","Cooling + Heating"]],
+    ["name"=>"warranty",        "label"=>"Warranty",          "type"=>"select", "options"=>["1 year","2 years","3 years","5 years"]],
+  ],
+  "exhaust_fan" => [
+    ["name"=>"diameter_cm",  "label"=>"Blade Diameter",  "type"=>"number", "unit"=>"cm",  "placeholder"=>"e.g. 30"],
+    ["name"=>"airflow_cmh",  "label"=>"Airflow",         "type"=>"number", "unit"=>"m³/h","placeholder"=>"e.g. 500"],
+    ["name"=>"power_watts",  "label"=>"Power",           "type"=>"number", "unit"=>"W",   "placeholder"=>"e.g. 45"],
+    ["name"=>"warranty",     "label"=>"Warranty",        "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "air_curtain" => [
+    ["name"=>"width_cm",     "label"=>"Width",           "type"=>"number", "unit"=>"cm",  "placeholder"=>"e.g. 100"],
+    ["name"=>"airflow_ms",   "label"=>"Air Speed",       "type"=>"number", "unit"=>"m/s", "placeholder"=>"e.g. 8"],
+    ["name"=>"power_watts",  "label"=>"Power",           "type"=>"number", "unit"=>"W",   "placeholder"=>"e.g. 800"],
+    ["name"=>"warranty",     "label"=>"Warranty",        "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
 ];
 ?>
@@ -237,7 +264,6 @@ $specsSchemas = [
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
-
 <style>
   #specs-section {
     display: none;
@@ -249,34 +275,21 @@ $specsSchemas = [
   }
   #specs-section.visible { display: block; }
   #specs-section .specs-title {
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--sf-teal, #2dd4bf);
-    margin-bottom: 14px;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--sf-teal, #2dd4bf); margin-bottom: 14px;
   }
-  .spec-field-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
+  .spec-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 600px) { .spec-field-row { grid-template-columns: 1fr; } }
   #group-key-preview {
-    display: inline-block;
-    margin-top: 6px;
-    font-size: 0.78rem;
-    color: #94a3b8;
-    font-family: monospace;
-    background: rgba(255,255,255,0.06);
-    border-radius: 6px;
-    padding: 3px 10px;
+    display: inline-block; margin-top: 6px; font-size: 0.78rem; color: #94a3b8;
+    font-family: monospace; background: rgba(255,255,255,0.06); border-radius: 6px; padding: 3px 10px;
   }
   #group-key-preview:empty { display: none; }
   .business-type-checks { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
-  .business-type-checks label {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 0.85rem; color: #cbd5e1; cursor: pointer;
+  .business-type-checks label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer; }
+  .spec-hint {
+    font-size: 0.72rem; color: #f59e0b; margin-top: 4px;
+    padding: 4px 10px; background: rgba(245,158,11,0.08); border-radius: 6px; border-left: 3px solid #f59e0b;
   }
 </style>
 </head>
@@ -294,7 +307,7 @@ $specsSchemas = [
       <ul class="navbar-nav align-items-center gap-3">
         <li class="nav-item"><a class="nav-link sf-navlink" href="vendor_orders.php">Orders</a></li>
         <li class="nav-item"><a class="nav-link sf-navlink" href="vendor_products.php">My Products</a></li>
-        <li class="nav-item"><a class="nav-link sf-navlink" href="vendor_add_product.php">Add Product</a></li>
+        <li class="nav-item"><a class="nav-link sf-navlink active" href="vendor_add_product.php">Add Product</a></li>
       </ul>
     </div>
     <div class="d-flex justify-content-end flex-grow-1 gap-2">
@@ -380,7 +393,7 @@ $specsSchemas = [
   </div>
 </div>
 
-<!-- Business Type (multi-select checkboxes) -->
+<!-- Business Type -->
 <div class="v-field">
   <label class="v-label">Business Type</label>
   <div class="business-type-checks">
@@ -406,6 +419,7 @@ $specsSchemas = [
 <!-- Dynamic Specs -->
 <div id="specs-section">
   <div class="specs-title">Product Specifications</div>
+  <div id="specs-hint" class="spec-hint" style="display:none;margin-bottom:12px;"></div>
   <div id="specs-fields" class="spec-field-row"></div>
   <input type="hidden" name="specs" id="specs-hidden">
 </div>
@@ -433,6 +447,13 @@ $specsSchemas = [
   const productTypesByModule = <?= json_encode($productTypesByModule) ?>;
   const specsSchemas         = <?= json_encode($specsSchemas) ?>;
 
+  // Critical fields that packages.php depends on — show hints to vendors
+  const criticalHints = {
+    "dining_set": "⚠ seat_count, layout_type and restaurant_style are required — the system uses these to match dining sets to restaurant types.",
+    "tv":         "⚠ screen_size is required — the system uses this to recommend the right TV size for each venue.",
+    "ac":         "⚠ hp (Horsepower) is required — the system uses this to match AC units to room size. Use: 1.5 for 1.5 ton, 2 for 2 ton, 2.5 for 2.5 ton, 3 for 3 ton.",
+  };
+
   const moduleSelect      = document.getElementById("module");
   const productTypeSelect = document.getElementById("product_type");
   const productNameInput  = document.getElementById("product_name");
@@ -441,6 +462,7 @@ $specsSchemas = [
   const specsSection      = document.getElementById("specs-section");
   const specsFields       = document.getElementById("specs-fields");
   const specsHidden       = document.getElementById("specs-hidden");
+  const specsHint         = document.getElementById("specs-hint");
 
   function updateProductTypes() {
     const types = productTypesByModule[moduleSelect.value] || [];
@@ -473,13 +495,30 @@ $specsSchemas = [
   }
   productNameInput.addEventListener("input", updateGroupKey);
   productTypeSelect.addEventListener("change", updateGroupKey);
-  groupKeyInput.addEventListener("input", () => { groupKeyInput.dataset.edited = "1"; groupKeyPreview.textContent = groupKeyInput.value; });
+  groupKeyInput.addEventListener("input", () => {
+    groupKeyInput.dataset.edited = "1";
+    groupKeyPreview.textContent = groupKeyInput.value;
+  });
 
   function renderSpecsFields(productType) {
     specsFields.innerHTML = "";
     specsHidden.value = "";
-    if (!productType || !specsSchemas[productType]) { specsSection.classList.remove("visible"); return; }
+
+    if (!productType || !specsSchemas[productType]) {
+      specsSection.classList.remove("visible");
+      specsHint.style.display = "none";
+      return;
+    }
     specsSection.classList.add("visible");
+
+    // Show hint for critical types
+    if (criticalHints[productType]) {
+      specsHint.textContent = criticalHints[productType];
+      specsHint.style.display = "block";
+    } else {
+      specsHint.style.display = "none";
+    }
+
     specsSchemas[productType].forEach(field => {
       const wrap = document.createElement("div");
       wrap.className = "v-field";
@@ -496,7 +535,8 @@ $specsSchemas = [
         blank.value = ""; blank.textContent = "Select…"; blank.disabled = true; blank.selected = true;
         input.appendChild(blank);
         (field.options || []).forEach(opt => {
-          const o = document.createElement("option"); o.value = opt; o.textContent = opt; input.appendChild(o);
+          const o = document.createElement("option"); o.value = opt; o.textContent = opt;
+          input.appendChild(o);
         });
       } else {
         input = document.createElement("input");
