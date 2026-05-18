@@ -63,10 +63,13 @@ if (!in_array($user_type, ["business", "customer"])) {
   $id = pg_fetch_result($result, 0, "id");
 
   echo json_encode([
-    "ok"=>true,
-    "token"=>$token,
-    "user"=>["id"=>$id, "name"=>$name, "email"=>$email]
-  ]);
+    "ok"        => true,
+    "token"     => $token,
+    "name"      => $name,
+    "email"     => $email,
+    "user_type" => $user_type,
+    "user"      => ["id" => $id, "name" => $name, "email" => $email]
+]);
 } catch (Throwable $e) {
   file_put_contents(__DIR__ . "/api_error.log", date("c") . " api_signup: " . $e->getMessage() . "\n", FILE_APPEND);
   http_response_code(500);

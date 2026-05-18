@@ -1303,3 +1303,88 @@ entered success block for order 129
 entered success block for order 129
 entered success block for order 129
 entered success block for order 129
+Array
+(
+    [time] => 2026-05-17 21:24:29
+    [order_id] => 130
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 213
+    [labor_data] => {"roles": {"chef": 2, "host": 0, "busboy": 0, "waiter": 1, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["ac"], "terminal_count": 2, "kitchen_item_count": 3}
+    [txn_order_id] => 527525914
+    [merchant_order_id] => 130_1779045740
+    [amount_cents] => 34628700
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 130
+entered success block for order 130
+entered success block for order 130
+entered success block for order 130
+entered success block for order 130
+entered success block for order 130
+entered success block for order 130
+Array
+(
+    [time] => 2026-05-18 12:00:59
+    [order_id] => 131
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 216
+    [labor_data] => {"roles": {"chef": 1, "host": 0, "busboy": 0, "waiter": 1, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["network", "ac"], "terminal_count": 2, "kitchen_item_count": 4}
+    [txn_order_id] => 527791643
+    [merchant_order_id] => 131_1779098400
+    [amount_cents] => 36788900
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 131
+entered success block for order 131
+entered success block for order 131
+entered success block for order 131
+entered success block for order 131
+entered success block for order 131
+Array
+(
+    [time] => 2026-05-18 12:15:20
+    [order_id] => 132
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 216
+    [labor_data] => {"roles": {"chef": 1, "host": 0, "busboy": 0, "waiter": 1, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 2, "area_sqm": 50, "services": ["network", "ac"], "terminal_count": 2, "kitchen_item_count": 4}
+    [txn_order_id] => 527798539
+    [merchant_order_id] => 132_1779099265
+    [amount_cents] => 36788900
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 132
+entered success block for order 132
+entered success block for order 132
+entered success block for order 132
+entered success block for order 132
+entered success block for order 132

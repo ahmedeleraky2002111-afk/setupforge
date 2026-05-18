@@ -124,16 +124,40 @@ if ($userId && user_has_completed_setup($conn, $userId)) {
     exit;
 }
 
+
+
 /* ================================================================
    RESUME FROM SAVED STEP (if user left mid-wizard)
    ================================================================ */
 
 // If user just hit setup.php with no step param and no wizard session,
 // check DB for a saved step to resume from.
-if ($userId && !isset($_GET['step']) && empty($_SESSION['wizard'])) {
+// Guest resume — no DB needed, just read session
+if (!$userId && !isset($_GET['step']) && !empty($_SESSION['wizard'])) {
+    $w = $_SESSION['wizard'];
+    $guestStep = 0;
+    if (!empty($w['budget']))           $guestStep = 6;
+    elseif ((int)($w['indoor_seats'] ?? 0) > 0) $guestStep = 5;
+    elseif (!empty($w['business_type'])) $guestStep = ($w['business_type'] === 'Restaurant' ? 2 : 3);
+    elseif (!empty($w['business_name'])) $guestStep = 1;
+
+    if ($guestStep > 0) {
+        header("Location: setup.php?step=" . $guestStep);
+        exit;
+    }
+}
+
+if ($userId && !isset($_GET['step'])) {
+  file_put_contents(__DIR__ . "/resume_debug.txt", 
+        "userId: $userId\n" .
+        "bizRow: " . print_r(get_business_row($conn, $userId), true) . "\n",
+        FILE_APPEND
+    );
     $bizRow = get_business_row($conn, $userId);
     if ($bizRow && (int)($bizRow['setup_step'] ?? 0) > 0 && ($bizRow['setup_status'] ?? '') === 'in_progress') {
         $savedStep = (int)$bizRow['setup_step'];
+                unset($_SESSION['wizard']);
+
 
         // Restore wizard session from DB
         $_SESSION['wizard'] = [
@@ -188,14 +212,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   if ($currentStep === 0) {
     $_SESSION["wizard"] = [];
     $_SESSION["wizard"]["business_name"] = trim($_POST["business_name"] ?? "");
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 1);
+    
+    if ($userId) {
+        save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 1);
+        
+        // Convert customer to business if needed
+        pg_query_params($conn,
+            "UPDATE users SET user_type = 'business' WHERE id = $1 AND user_type = 'customer'",
+            [$userId]
+        );
+        $_SESSION["user_type"] = "business";
+    }
+    
     redirect_step(1);
-  }
+}
 
   if ($currentStep === 1) {
     $selectedBusiness = $_POST["business_type"] ?? null;
     $_SESSION["wizard"]["business_type"] = $selectedBusiness;
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 1);
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $selectedBusiness === "Restaurant" ? 2 : 3);
 
     if ($selectedBusiness === "Restaurant") {
       redirect_step(2);
@@ -207,7 +242,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   if ($currentStep === 2) {
     $_SESSION["wizard"]["restaurant_type"] = $_POST["restaurant_type"] ?? "standard_dining";
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 2);
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 3);
     redirect_step(3);
   }
 
@@ -229,7 +264,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ac"];
     }
 
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 3);
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
     redirect_step(5);
   }
 
@@ -240,7 +275,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   if ($currentStep === 5) {
     $budget = (int)preg_replace("/[^\d]/", "", $_POST["budget"] ?? "0");
     $_SESSION["wizard"]["budget"] = $budget;
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 6);
     redirect_step(6);
   }
 
@@ -259,7 +294,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $_SESSION["wizard"]["staff_roles"]           = $staffRoles;
     $_SESSION["wizard"]["technicians"] = ($installationNeeded === "yes") ? $installationServices : [];
 
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 6);
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7);
     redirect_step(7);
   }
 
@@ -289,7 +324,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       "kitchen_helper" => $_SESSION["wizard"]["kitchen_helper_count"],
     ];
 
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7);
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7, 'completed');
 
     if (!isset($_SESSION["user_id"])) {
       $_SESSION["signup_intent"] = "business";
@@ -372,7 +407,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
   <title>SetupForge - Setup</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="assets/style.css?v=9" rel="stylesheet">
+<link href="assets/style.css?v=10" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 

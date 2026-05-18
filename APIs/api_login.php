@@ -66,15 +66,18 @@ try {
     }
 
     echo json_encode([
-        "ok" => true,
-        "token" => $token,
-        "user" => [
-            "id" => (int)$user["id"],
-            "name" => $user["name"],
-            "email" => $user["email"],
-            "user_type" => $user["user_type"]
-        ]
-    ]);
+    "ok"        => true,
+    "token"     => $token,
+    "name"      => $user["name"],
+    "email"     => $user["email"],
+    "user_type" => $user["user_type"],
+    "user"      => [
+        "id"        => (int)$user["id"],
+        "name"      => $user["name"],
+        "email"     => $user["email"],
+        "user_type" => $user["user_type"]
+    ]
+]);
 } catch (Throwable $e) {
     file_put_contents(
         __DIR__ . "/api_error.log",

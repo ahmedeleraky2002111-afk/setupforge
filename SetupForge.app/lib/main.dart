@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'screens/explore_screen.dart';
+import 'screens/services_screen.dart';
 import 'app/app_theme.dart';
 import 'screens/app_shell.dart';
 import 'screens/auth_gate.dart';
@@ -14,8 +15,8 @@ import 'screens/signup_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/success_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/my_business_screen.dart';
 import 'state/wizard_state.dart';
-import 'screens/welcome_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,19 +36,21 @@ class SetupForgeApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         initialRoute: '/splash',
         routes: {
-          '/splash': (_) => SplashScreen(),
-          '/auth-gate': (_) => AuthGate(),
-          '/login': (_) => LoginScreen(),
-          '/signup': (_) => SignupScreen(),
-          '/app-shell': (_) => AppShell(initialIndex: 0),
-          '/home': (_) => HomeScreen(),
-          '/setup': (_) => SetupScreen(),
-          '/packages': (_) => PackagesScreen(),
-          '/place-order': (_) => PlaceOrderScreen(),
-          '/order-summary': (_) => OrderSummaryScreen(),
-          '/success': (_) => SuccessScreen(),
-          '/profile': (_) => ProfileScreen(),
-          '/welcome': (_) => WelcomeScreen(),
+          '/splash': (_) => const SplashScreen(),
+          '/auth-gate': (_) => const AuthGate(),
+          '/login': (_) => const LoginScreen(),
+          '/signup': (_) => const SignupScreen(),
+          '/app-shell': (_) => const AppShell(initialIndex: 0),
+          '/home': (_) => const HomeScreen(),
+          '/my-business': (_) => const MyBusinessScreen(),
+          '/setup': (_) => const SetupScreen(),
+          '/packages': (_) => const PackagesScreen(),
+          '/place-order': (_) => const PlaceOrderScreen(),
+          '/order-summary': (_) => const OrderSummaryScreen(),
+          '/success': (_) => const SuccessScreen(),
+          '/profile': (_) => const ProfileScreen(),
+          '/explore': (_) => const ExploreScreen(),
+          '/services': (_) => const ServicesScreen(),
         },
       ),
     );

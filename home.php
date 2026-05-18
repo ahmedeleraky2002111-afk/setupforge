@@ -11,6 +11,16 @@ require_once "db.php";
 $setupBtnText = "Start Your Setup";
 $setupBtnLink = "setup.php?step=0";
 
+// Guest with active wizard session
+if (!isset($_SESSION["user_id"]) && !empty($_SESSION["wizard"])) {
+    $guestStep = (int)($_SESSION["wizard"]["indoor_seats"] ?? 0) > 0 ? 3 : 
+                 (!empty($_SESSION["wizard"]["business_type"]) ? 1 : 0);
+    if ($guestStep > 0) {
+        $setupBtnText = "Resume Setup";
+        $setupBtnLink = "setup.php";
+    }
+}
+
 if (isset($_SESSION["user_id"]) && $conn) {
     $userId = (int)$_SESSION["user_id"];
 
@@ -20,7 +30,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
         [$userId]
     );
     if ($paidRes && pg_num_rows($paidRes) > 0) {
-        $setupBtnText = "Business Overview";
+        $setupBtnText = "My business";
         $setupBtnLink = "business_overview.php";
     } else {
         // Check for in-progress setup

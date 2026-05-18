@@ -110,9 +110,11 @@ class _SetupScreenState extends State<SetupScreen> {
     } else {
       // Check auth before going to packages — matches website flow
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = prefs.getString('auth_token');
       if (!mounted) return;
       if (token == null || token.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('signup_intent', 'business'); // ADD THIS
         Navigator.pushNamed(context, '/signup');
       } else {
         Navigator.pushNamed(context, '/packages');

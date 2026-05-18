@@ -1,0 +1,27 @@
+userId: 221
+bizRow: Array
+(
+    [user_id] => 221
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 20
+    [budget_egp] => 1000000
+    [location_text] => 
+    [business_name] => efve
+    [seat_count] => 0
+    [setup_status] => in_progress
+    [setup_step] => 2
+    [restaurant_type] => 
+    [indoor_tables] => 
+    [outdoor_tables] => 
+    [area_sqm] => 
+    [modules] => 
+    [installation_services] => 
+    [staffing_data] => {"chef": 0, "host": 0, "busboy": 0, "waiter": 0, "barista": 0, "cashier": 0, "security": 0, "kitchen_helper": 0}
+    [updated_at] => 2026-05-18 18:49:51.468381+03
+)
+
