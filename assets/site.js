@@ -169,3 +169,75 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+(function () {
+  const track = document.getElementById('sfWwTrack');
+  if (!track) return;
+
+  const originals = Array.from(track.querySelectorAll('.sf-ww-card'));
+  const total = originals.length;
+  if (!total) return;
+
+  // Clone before and after for infinite loop
+  originals.forEach(c => track.appendChild(c.cloneNode(true)));
+  originals.forEach(c => track.insertBefore(c.cloneNode(true), track.firstChild));
+
+  // Start at first real card (index = total, since we prepended `total` clones)
+  let current = total;
+  let locked = false;
+
+  function cardWidth() {
+    const c = track.querySelectorAll('.sf-ww-card')[0];
+    const gap = parseFloat(getComputedStyle(track).gap) || 0;
+    return c.offsetWidth + gap;
+  }
+
+  function jump(index, animate) {
+    track.style.transition = animate ? 'transform 0.55s cubic-bezier(0.4,0,0.2,1)' : 'none';
+    track.style.transform = `translateX(-${index * cardWidth()}px)`;
+  }
+
+  track.addEventListener('transitionend', () => {
+    if (current >= total * 2) { current = total;          jump(current, false); }
+    if (current < total)      { current = total * 2 - 1;  jump(current, false); }
+    locked = false;
+  });
+
+  function go(dir) {
+    if (locked) return;
+    locked = true;
+    current += dir;
+    jump(current, true);
+  }
+
+  // Init
+  jump(current, false);
+
+  // Arrows
+  document.getElementById('sfWwNext')?.addEventListener('click', () => go(1));
+  document.getElementById('sfWwPrev')?.addEventListener('click', () => go(-1));
+
+  // Auto-play
+  let timer = setInterval(() => go(1), 4000);
+  const resetTimer = () => { clearInterval(timer); timer = setInterval(() => go(1), 4000); };
+
+  // Drag
+  let startX = 0, dragging = false;
+  track.addEventListener('mousedown', e => { startX = e.clientX; dragging = true; track.classList.add('is-dragging'); clearInterval(timer); });
+  window.addEventListener('mouseup', e => {
+    if (!dragging) return;
+    dragging = false;
+    track.classList.remove('is-dragging');
+    if (Math.abs(e.clientX - startX) > 60) go(e.clientX < startX ? 1 : -1);
+    resetTimer();
+  });
+
+  // Touch
+  track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; clearInterval(timer); }, { passive: true });
+  track.addEventListener('touchend', e => {
+    const diff = e.changedTouches[0].clientX - startX;
+    if (Math.abs(diff) > 60) go(diff < 0 ? 1 : -1);
+    resetTimer();
+  });
+
+  window.addEventListener('resize', () => jump(current, false));
+})();
