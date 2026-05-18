@@ -142,16 +142,17 @@ foreach($allRows as $r){
 </div>
 
 <main class="container-fluid px-0">
+<form id="order-form" action="place_order.php" method="POST">
 <div style="display:grid; grid-template-columns:1fr 280px; gap:1.25rem; padding:1.25rem; align-items:start;">
-
   <?php if(!$hasAnyItems): ?>
     <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:2rem;text-align:center;color:var(--color-text-secondary);">
       Your order is empty. <a href="packages.php">Go back to packages</a>.
     </div>
   <?php else: ?>
 
-  <!-- Left column: items grouped by module -->
-  <div style="display:flex; flex-direction:column; gap:1rem;">
+<!-- Left column: items grouped by module -->
+<form id="order-form" action="place_order.php" method="POST" style="display:flex; flex-direction:column; gap:1rem;">
+
 
     <?php foreach($rowsByModule as $module => $rows): 
       $modTotal = array_sum(array_column($rows, "total"));
@@ -208,10 +209,13 @@ foreach($allRows as $r){
     </div>
     <?php endforeach; ?>
 
-    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1rem;">
-      <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:6px;">Delivery location (optional)</label>
-      <input type="text" name="delivery_location" style="width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="e.g. Cairo, Nasr City, Street name...">
-    </div>
+    <form id="order-form" action="place_order.php" method="POST">
+<input type="text" name="delivery_location" style="display:none">
+</form>
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1rem;">
+  <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:6px;">Delivery location (optional)</label>
+  <input type="text" id="delivery_location_visible" style="width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="e.g. Cairo, Nasr City, Street name...">
+</div>
 
   </div>
 
@@ -298,7 +302,14 @@ foreach($allRows as $r){
 
 </div>
 </main>
-
+<script>
+document.querySelector('button[form="order-form"]').addEventListener('click', function(e) {
+  e.preventDefault();
+  document.querySelector('input[name="delivery_location"]').value = 
+    document.getElementById('delivery_location_visible').value;
+  document.getElementById('order-form').submit();
+});
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

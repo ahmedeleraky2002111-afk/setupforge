@@ -35,7 +35,7 @@ $company_services = array_map('trim', explode(',', $company_services_raw));
 /* HANDLE QUOTE SUBMISSION */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["submit_quote"])) {
     $req_id = (int)$_POST["request_id"];
-    $price = (float)$_POST["price"];
+    $price = 0;
     $message = trim($_POST["message"] ?? "");
     $website_link = trim($_POST["website_link"] ?? "");
 
@@ -241,10 +241,7 @@ function timeAgo($datetime) {
                             <div class="quote-form" id="form-<?= $req['request_id'] ?>">
                                 <form method="POST">
                                     <input type="hidden" name="request_id" value="<?= (int)$req['request_id'] ?>">
-                                    <div class="mb-2">
-                                        <label class="form-label fw-semibold">Price (EGP)</label>
-                                        <input type="number" name="price" class="form-control" min="0" step="1" required>
-                                    </div>
+                                    
                                     <div class="mb-2">
                                         <label class="form-label fw-semibold">Message <span class="text-muted fw-normal">(optional)</span></label>
                                         <textarea name="message" class="form-control" rows="2" placeholder="Brief note about your service..."></textarea>

@@ -69,8 +69,21 @@ if ($sessionUserId <= 0) {
 }
 
 if (($order["payment_status"] ?? "") !== "paid") {
-  header("Location: payment_failed.php?order_id=" . urlencode((string)$orderId));
-  exit;
+  // Retry a few times — callback may still be processing
+  $retries = 0;
+  while ($retries < 5 && ($order["payment_status"] ?? "") !== "paid") {
+    sleep(1);
+    $retryRes = pg_query_params($conn, "SELECT payment_status FROM orders WHERE id = $1 LIMIT 1", [$orderId]);
+    if ($retryRes && pg_num_rows($retryRes) > 0) {
+      $retryRow = pg_fetch_assoc($retryRes);
+      $order["payment_status"] = $retryRow["payment_status"];
+    }
+    $retries++;
+  }
+  if (($order["payment_status"] ?? "") !== "paid") {
+    header("Location: payment_failed.php?order_id=" . urlencode((string)$orderId));
+    exit;
+  }
 }
 // Clear carts now that payment is confirmed
 unset($_SESSION["carts"]);
