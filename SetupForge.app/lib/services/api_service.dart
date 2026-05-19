@@ -90,13 +90,16 @@ class ApiService {
     };
 
     if (phone != null && phone.trim().isNotEmpty) body["phone"] = phone.trim();
-    if (country != null && country.trim().isNotEmpty)
+    if (country != null && country.trim().isNotEmpty) {
       body["country"] = country.trim();
+    }
     if (city != null && city.trim().isNotEmpty) body["city"] = city.trim();
-    if (street != null && street.trim().isNotEmpty)
+    if (street != null && street.trim().isNotEmpty) {
       body["street"] = street.trim();
-    if (businessType != null && businessType.trim().isNotEmpty)
+    }
+    if (businessType != null && businessType.trim().isNotEmpty) {
       body["business_type"] = businessType.trim();
+    }
     if (size != null && size.trim().isNotEmpty) body["size"] = size.trim();
     if (budget != null && budget > 0) body["budget"] = budget.toString();
 
