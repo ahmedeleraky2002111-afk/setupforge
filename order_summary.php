@@ -151,10 +151,9 @@ foreach($allRows as $r){
   <?php else: ?>
 
 <!-- Left column: items grouped by module -->
-<form id="order-form" action="place_order.php" method="POST" style="display:flex; flex-direction:column; gap:1rem;">
+    <div style="display:flex; flex-direction:column; gap:1rem;">
 
-
-    <?php foreach($rowsByModule as $module => $rows): 
+    <?php foreach($rowsByModule as $module => $rows):
       $modTotal = array_sum(array_column($rows, "total"));
       $icon  = $moduleIcons[$module]  ?? "📦";
       $label = $moduleLabels[$module] ?? ucfirst($module);
@@ -174,11 +173,11 @@ foreach($allRows as $r){
       <div style="display:flex;align-items:center;gap:12px;padding:0.75rem 1rem;border-bottom:0.5px solid var(--color-border-tertiary);">
 
         <!-- Product image or fallback emoji -->
-        <div style="width:44px;height:44px;border-radius:8px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+        <div style="width:72px;height:72px;border-radius:10px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
           <?php if($imgUrl): ?>
             <img src="<?= htmlspecialchars($imgUrl) ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
           <?php else: ?>
-            <span style="font-size:20px;">📦</span>
+            <span style="font-size:32px;">📦</span>
           <?php endif; ?>
         </div>
 
@@ -209,9 +208,8 @@ foreach($allRows as $r){
     </div>
     <?php endforeach; ?>
 
-    <form id="order-form" action="place_order.php" method="POST">
-<input type="text" name="delivery_location" style="display:none">
-</form>
+    <input type="hidden" name="delivery_location" id="delivery_location_hidden">
+
 <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1rem;">
   <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:6px;">Delivery location (optional)</label>
   <input type="text" id="delivery_location_visible" style="width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="e.g. Cairo, Nasr City, Street name...">
@@ -222,22 +220,27 @@ foreach($allRows as $r){
   <!-- Right column: sticky sidebar -->
   <div style="position:sticky;top:1rem;display:flex;flex-direction:column;gap:1rem;">
 
-    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;overflow:hidden;">
-      <div style="background:#004cac;padding:0.75rem 1rem;color:#fff;font-size:13px;font-weight:500;">Order summary</div>
+    <div style="background:#004cac;border:2px solid #003a8a;border-radius:12px;overflow:hidden;">
+      <div style="padding:0.75rem 1rem;color:#fff;font-size:13px;font-weight:600;border-bottom:0.5px solid rgba(255,255,255,0.2);">Order summary</div>
       <div style="padding:0.75rem 1rem;">
         <?php foreach($rowsByModule as $module => $rows):
           $modTotal = array_sum(array_column($rows, "total"));
           $label = $moduleLabels[$module] ?? ucfirst($module);
         ?>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;border-bottom:0.5px solid var(--color-border-tertiary);">
-          <span style="color:var(--color-text-secondary);"><?= $label ?></span>
-          <span style="font-weight:500;"><?= egp($modTotal) ?></span>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;border-bottom:0.5px solid rgba(255,255,255,0.15);">
+          <span style="color:rgba(255,255,255,0.75);"><?= $label ?></span>
+          <span style="font-weight:500;color:#fff;"><?= egp($modTotal) ?></span>
         </div>
         <?php endforeach; ?>
       </div>
-      <div style="display:flex;justify-content:space-between;padding:0.75rem 1rem;border-top:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);">
-        <span style="font-size:13px;color:var(--color-text-secondary);">Grand total</span>
-        <span style="font-size:20px;font-weight:700;color:#004cac;"><?= egp($grandTotal) ?></span>
+      <div style="display:flex;justify-content:space-between;padding:0.75rem 1rem;border-top:0.5px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.15);">
+        <span style="font-size:13px;color:rgba(255,255,255,0.8);">Grand total</span>
+        <span style="font-size:20px;font-weight:700;color:#fff;"><?= egp($grandTotal) ?></span>
+      </div>
+      <div style="padding:0.75rem 1rem;border-top:0.5px solid rgba(255,255,255,0.2);">
+        <button type="submit" form="order-form" style="width:100%;background:#fff;color:#004cac;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">
+          ✓ Confirm & place order
+        </button>
       </div>
     </div>
 
@@ -289,9 +292,6 @@ foreach($allRows as $r){
       <?php endif; ?>
     </div>
 
-    <button type="submit" form="order-form" style="width:100%;background:#004cac;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:500;cursor:pointer;">
-      ✓ Confirm & place order
-    </button>
     <a href="packages.php" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary);border-radius:8px;padding:8px;font-size:13px;text-decoration:none;">
       ← Back to packages
     </a>
@@ -301,11 +301,12 @@ foreach($allRows as $r){
   <?php endif; ?>
 
 </div>
+</form>
 </main>
 <script>
 document.querySelector('button[form="order-form"]').addEventListener('click', function(e) {
   e.preventDefault();
-  document.querySelector('input[name="delivery_location"]').value = 
+  document.getElementById('delivery_location_hidden').value = 
     document.getElementById('delivery_location_visible').value;
   document.getElementById('order-form').submit();
 });
