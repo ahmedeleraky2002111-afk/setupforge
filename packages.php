@@ -727,8 +727,10 @@ function pick_best_under_unit_budget($catalog, $type, $unitBudget){
   if (!isset($catalog[$type]) || empty($catalog[$type])) return null;
   $best = null;
   foreach($catalog[$type] as $p){
-    if ((int)$p["price"] <= (int)$unitBudget) $best = $p;
-  }
+if ((int)$p["price"] <= (int)$unitBudget) { $best = $p; 
+break;
+ }
+   }
   if ($best) return $best;
   return $catalog[$type][0];
 }
@@ -1425,6 +1427,91 @@ function build_ac_cart_by_budget($catalog, $areaSqm) {
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
+  if (isset($_POST["load_add_section_modal"])) {
+    header("Content-Type: application/json");
+    $mod = $_POST["module"] ?? "";
+    $allowed = ["pos","kitchen","furniture","ac"];
+    if (!in_array($mod, $allowed, true)) { echo json_encode(["error"=>"invalid"]); exit; }
+
+    $allSectionLabels = [
+      "pos"       => ["terminal"=>"POS Terminals","printer"=>"Receipt Printers","drawer"=>"Cash Drawers","software"=>"POS Software","scanner"=>"Barcode Scanners","kds"=>"Kitchen Display Screens","tablet"=>"Ordering Tablets"],
+      "kitchen"   => ["oven"=>"Ovens","stove"=>"Stoves","fryer"=>"Fryers","grill"=>"Grills","microwave"=>"Microwaves","fridge"=>"Fridges","freezer"=>"Freezers","blender"=>"Blenders","mixer"=>"Mixers","coffee"=>"Coffee Machines","food_warmer"=>"Food Warmers","dishwasher"=>"Dishwashers","slicer"=>"Slicers","exhaust_hood"=>"Exhaust Hoods"],
+      "furniture" => ["dining_set"=>"Dining Sets","sofa"=>"Sofas","tv"=>"TVs","light"=>"Lighting","bar_stool"=>"Bar Stools","outdoor_furniture"=>"Outdoor Furniture","reception_desk"=>"Reception Desk","shelving"=>"Shelving","speaker"=>"Speakers"],
+      "ac"        => ["ac"=>"AC Units","exhaust_fan"=>"Exhaust Fans","air_curtain"=>"Air Curtains"],
+    ];
+
+    $cartKey = $mod . "_cart";
+    $cartItems = $_SESSION["wizard"][$cartKey]["items"] ?? [];
+    $inCartTypes = array_keys($cartItems);
+    $labels = $allSectionLabels[$mod] ?? [];
+
+    $addableTypes = array_diff(array_keys($labels), $inCartTypes);
+
+    $rows = [];
+    foreach ($addableTypes as $type) {
+      $sql = "SELECT p.id, p.product_name, p.product_type, p.price, p.tier, p.brand,
+                u.name AS vendor_name,
+                (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+              FROM products p
+              LEFT JOIN users u ON u.id = p.vendor_user_id
+              WHERE p.module = \$1 AND p.product_type = \$2
+              ORDER BY p.tier ASC, p.price ASC
+              LIMIT 9";
+      $res = @pg_query_params($conn, $sql, [$mod, $type]);
+      if ($res) {
+        while ($r = pg_fetch_assoc($res)) {
+          $rows[] = $r;
+        }
+      }
+    }
+
+    echo json_encode([
+      "module"   => $mod,
+      "in_cart"  => $inCartTypes,
+      "labels"   => $labels,
+      "addable"  => array_values($addableTypes),
+      "products" => $rows,
+    ]);
+    exit;
+  }
+
+  if (isset($_POST["add_section_item"])) {
+    $mod    = $_POST["module"] ?? "";
+    $type   = $_POST["product_type"] ?? "";
+    $prodId = $_POST["product_id"] ?? "";
+    $allowed = ["pos","kitchen","furniture","ac"];
+    if (!in_array($mod, $allowed, true) || !$type || !$prodId) {
+      header("Location: packages.php?module=" . urlencode($mod)); exit;
+    }
+    $cartKey = $mod . "_cart";
+    $sql = "SELECT p.id, p.product_name, p.product_type, p.price, p.tier, p.brand, p.product_group_key, p.vendor_user_id,
+              u.name AS vendor_name,
+              (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+            FROM products p LEFT JOIN users u ON u.id = p.vendor_user_id
+            WHERE p.id = \$1 LIMIT 1";
+    $res = @pg_query_params($conn, $sql, [(int)$prodId]);
+    if ($res && ($row = pg_fetch_assoc($res))) {
+      $_SESSION["wizard"][$cartKey]["items"][$type] = [
+        "type"              => $type,
+        "product_id"        => (string)$row["id"],
+        "name"              => $row["product_name"],
+        "product_name"      => $row["product_name"],
+        "unit"              => (int)$row["price"],
+        "qty"               => 1,
+        "image_url"         => $row["image_url"] ?? null,
+        "brand"             => $row["brand"] ?? null,
+        "vendor_name"       => $row["vendor_name"] ?? null,
+        "vendor_user_id"    => $row["vendor_user_id"] ?? null,
+        "product_group_key" => $row["product_group_key"] ?? null,
+        "tier"              => $row["tier"] ?? null,
+        "module"            => $mod,
+        "category_id"       => null,
+        "alternatives"      => [],
+      ];
+    }
+    header("Location: packages.php?module=" . urlencode($mod)); exit;
+  }
+
   if (isset($_POST["recalc_pos"])) {
     $_SESSION["wizard"]["pos_cart"] = build_pos_cart_by_budget($GLOBALS["POS_CATALOG_ACTIVE"], $GLOBALS["size"], $GLOBALS["posCap"]);
     header("Location: packages.php?module=pos");
@@ -1626,6 +1713,17 @@ header("Location: packages.php?module=ac");
     exit;
   }
 
+  if (isset($_POST["delete_section"])) {
+    $mod = $_POST["module"] ?? "";
+    $typ = $_POST["type"] ?? "";
+    $cartKey = $mod . "_cart";
+    if (isset($_SESSION["wizard"][$cartKey]["items"][$typ])) {
+      unset($_SESSION["wizard"][$cartKey]["items"][$typ]);
+    }
+    header("Location: packages.php?module=" . urlencode($mod));
+    exit;
+  }
+
 }
 
 /* ---------------- Active module ---------------- */
@@ -1706,6 +1804,8 @@ $acOver      = max(0, $acTotal - $acCap);
 
 
 $grandTotal = (int)$posTotal + (int)$kitchenTotal + (int)$furnitureTotal + (int)$acTotal;
+
+$hiddenSections = $_SESSION["wizard"]["hidden_sections"] ?? [];
 
 $hasAnyItems = false;
 if (!empty($_SESSION["wizard"]["pos_cart"]["items"])) $hasAnyItems = true;
@@ -1795,9 +1895,21 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                 "tablet"   => "Ordering Tablets",
               ];
               ?>
+              <div class="sf-section-pills">
+                <?php foreach($posCart["items"] as $type => $it): ?>
+                  <button class="sf-section-pill <?= in_array($type, $hiddenSections['pos'] ?? []) ? '' : 'is-active' ?>"
+                    data-module="pos" data-type="<?= htmlspecialchars($type) ?>">
+                    <?= htmlspecialchars($posSectionLabels[$type] ?? ucfirst($type)) ?>
+                  </button>
+                <?php endforeach; ?>
+                <button class="sf-add-section-btn" data-module="pos" data-bs-toggle="modal" data-bs-target="#addSectionModal">
+                  <i class="bi bi-plus"></i> Add Section
+                </button>
+              </div>
               <div class="sf-pkg-sections">
                 <?php foreach($posCart["items"] as $type => $it): ?>
-                <div class="sf-pkg-section">
+                <?php if(!in_array($type, $hiddenSections['pos'] ?? [])): ?>
+                <div class="sf-pkg-section" data-module="pos" data-type="<?= htmlspecialchars($type) ?>">
 
                   <div class="sf-pkg-section-head">
                     <h4 class="sf-pkg-section-title">
@@ -1939,6 +2051,7 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   </div><!-- /.sf-pkg-slider-wrap -->
 
                 </div><!-- /.sf-pkg-section -->
+                <?php endif; ?>
                 <?php endforeach; ?>
               </div><!-- /.sf-pkg-sections -->
             <?php endif; ?>
@@ -1992,9 +2105,21 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                 "exhaust_hood"=> "Exhaust Hoods",
               ];
               ?>
+              <div class="sf-section-pills">
+                <?php foreach($kitchenCart["items"] as $type => $it): ?>
+                  <button class="sf-section-pill <?= in_array($type, $hiddenSections['kitchen'] ?? []) ? '' : 'is-active' ?>"
+                    data-module="kitchen" data-type="<?= htmlspecialchars($type) ?>">
+                    <?= htmlspecialchars($kitchenSectionLabels[$type] ?? ucfirst($type)) ?>
+                  </button>
+                <?php endforeach; ?>
+                <button class="sf-add-section-btn" data-module="kitchen" data-bs-toggle="modal" data-bs-target="#addSectionModal">
+                  <i class="bi bi-plus"></i> Add Section
+                </button>
+              </div>
               <div class="sf-pkg-sections">
                 <?php foreach($kitchenCart["items"] as $type => $it): ?>
-                <div class="sf-pkg-section">
+                <?php if(!in_array($type, $hiddenSections['kitchen'] ?? [])): ?>
+                <div class="sf-pkg-section" data-module="kitchen" data-type="<?= htmlspecialchars($type) ?>">
 
                   <div class="sf-pkg-section-head">
                     <h4 class="sf-pkg-section-title">
@@ -2136,6 +2261,7 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   </div><!-- /.sf-pkg-slider-wrap -->
 
                 </div><!-- /.sf-pkg-section -->
+                <?php endif; ?>
                 <?php endforeach; ?>
               </div><!-- /.sf-pkg-sections -->
             <?php endif; ?>
@@ -2185,9 +2311,21 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
         "speaker"           => "Speakers / Sound System",
       ];
       ?>
+      <div class="sf-section-pills">
+        <?php foreach($furnitureCart["items"] as $type => $it): ?>
+          <button class="sf-section-pill <?= in_array($type, $hiddenSections['furniture'] ?? []) ? '' : 'is-active' ?>"
+            data-module="furniture" data-type="<?= htmlspecialchars($type) ?>">
+            <?= htmlspecialchars($furnitureSectionLabels[$type] ?? ucfirst($type)) ?>
+          </button>
+        <?php endforeach; ?>
+        <button class="sf-add-section-btn" data-module="furniture" data-bs-toggle="modal" data-bs-target="#addSectionModal">
+          <i class="bi bi-plus"></i> Add Section
+        </button>
+      </div>
       <div class="sf-pkg-sections">
         <?php foreach($furnitureCart["items"] as $type => $it): ?>
-        <div class="sf-pkg-section">
+        <?php if(!in_array($type, $hiddenSections['furniture'] ?? [])): ?>
+        <div class="sf-pkg-section" data-module="furniture" data-type="<?= htmlspecialchars($type) ?>">
 
           <div class="sf-pkg-section-head">
             <h4 class="sf-pkg-section-title">
@@ -2296,13 +2434,14 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
           </div><!-- /.sf-pkg-slider-wrap -->
 
         </div><!-- /.sf-pkg-section -->
+        <?php endif; ?>
         <?php endforeach; ?>
       </div><!-- /.sf-pkg-sections -->
     <?php endif; ?>
   </div>
 
 
-          
+
 <?php elseif ($activeModule === "ac"): ?>
   <div class="sf-module-shell">
 
@@ -2349,9 +2488,21 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
         "air_curtain" => "Air Curtains",
       ];
       ?>
+      <div class="sf-section-pills">
+        <?php foreach($acCart["items"] as $type => $it): ?>
+          <button class="sf-section-pill <?= in_array($type, $hiddenSections['ac'] ?? []) ? '' : 'is-active' ?>"
+            data-module="ac" data-type="<?= htmlspecialchars($type) ?>">
+            <?= htmlspecialchars($acSectionLabels[$type] ?? ucfirst($type)) ?>
+          </button>
+        <?php endforeach; ?>
+        <button class="sf-add-section-btn" data-module="ac" data-bs-toggle="modal" data-bs-target="#addSectionModal">
+          <i class="bi bi-plus"></i> Add Section
+        </button>
+      </div>
       <div class="sf-pkg-sections">
         <?php foreach ($acCart["items"] as $type => $it): ?>
-        <div class="sf-pkg-section">
+        <?php if(!in_array($type, $hiddenSections['ac'] ?? [])): ?>
+        <div class="sf-pkg-section" data-module="ac" data-type="<?= htmlspecialchars($type) ?>">
 
           <div class="sf-pkg-section-head">
             <h4 class="sf-pkg-section-title">
@@ -2463,6 +2614,7 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
           </div><!-- /.sf-pkg-slider-wrap -->
 
         </div><!-- /.sf-pkg-section -->
+        <?php endif; ?>
         <?php endforeach; ?>
       </div><!-- /.sf-pkg-sections -->
     <?php endif; ?>
@@ -2515,6 +2667,20 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
       </div>
     </div>
   </div>
+
+<div class="modal fade" id="addSectionModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content sf-modal-content">
+      <div class="modal-header sf-modal-header">
+        <h5 class="modal-title">Add a Section</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="addSectionModalBody">
+        <div class="text-center py-4 text-muted">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 </main>
 
@@ -2691,6 +2857,99 @@ function toggleSellerPanel(group) {
       setTimeout(function(){ toggleSellerPanel(group); }, 120);
     }
   })();
+
+// ── Section pill toggle ──
+document.addEventListener("click", function(e) {
+  const pill = e.target.closest(".sf-section-pill");
+  if (!pill) return;
+
+  const module = pill.dataset.module;
+  const type   = pill.dataset.type;
+  const isActive = pill.classList.contains("is-active");
+
+  // Toggle pill UI instantly
+  pill.classList.toggle("is-active");
+
+  // Show/hide the section below
+  const section = document.querySelector(".sf-pkg-section[data-module='" + module + "'][data-type='" + type + "']");
+  if (section) section.style.display = isActive ? "none" : "";
+
+  // Save to DB via AJAX
+  const fd = new FormData();
+  fd.append("module", module);
+  fd.append("type", type);
+  fd.append("hidden", isActive ? "1" : "0");
+
+  fetch("save_hidden_sections.php", { method: "POST", body: fd })
+    .catch(function(err) { console.error("save_hidden_sections error", err); });
+});
+
+// ── Add Section Modal ──
+document.addEventListener("show.bs.modal", function(e) {
+  if (e.target.id !== "addSectionModal") return;
+
+  const btn = e.relatedTarget;
+  const module = btn ? btn.dataset.module : "";
+  const body = document.getElementById("addSectionModalBody");
+  body.innerHTML = '<div class="text-center py-4 text-muted">Loading...</div>';
+
+  const fd = new FormData();
+  fd.append("load_add_section_modal", "1");
+  fd.append("module", module);
+
+  fetch("packages.php", { method: "POST", body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.addable || data.addable.length === 0) {
+        body.innerHTML = '<div class="text-center py-4 text-muted">All sections are already in your cart.</div>';
+        return;
+      }
+
+      let html = '';
+      data.addable.forEach(function(type) {
+        const label = data.labels[type] || type;
+        const products = data.products.filter(p => p.product_type === type);
+
+        if (products.length === 0) return;
+
+        html += '<div class="sf-add-section-group mb-4">';
+        html += '<h6 class="sf-add-section-type-label">' + label + '</h6>';
+        html += '<div class="sf-add-section-cards">';
+
+        products.forEach(function(p) {
+          html += '<div class="sf-add-section-card">';
+          if (p.image_url) {
+            html += '<div class="sf-add-section-img"><img src="' + p.image_url + '" alt=""></div>';
+          } else {
+            html += '<div class="sf-add-section-img sf-pkg-card-fallback">' + type.substring(0,2).toUpperCase() + '</div>';
+          }
+          html += '<div class="sf-add-section-info">';
+          html += '<div class="sf-add-section-name">' + p.product_name + '</div>';
+          if (p.brand) html += '<div class="sf-add-section-meta">' + p.brand + '</div>';
+          if (p.vendor_name) html += '<div class="sf-add-section-meta">' + p.vendor_name + '</div>';
+          html += '<div class="sf-add-section-tier-badge tier-' + (p.tier||'').toLowerCase() + '">' + (p.tier||'') + '</div>';
+          html += '<div class="sf-add-section-price">' + parseInt(p.price).toLocaleString("en-US") + ' EGP</div>';
+          html += '</div>';
+          html += '<form method="post" class="m-0">';
+          html += '<input type="hidden" name="add_section_item" value="1">';
+          html += '<input type="hidden" name="module" value="' + data.module + '">';
+          html += '<input type="hidden" name="product_type" value="' + type + '">';
+          html += '<input type="hidden" name="product_id" value="' + p.id + '">';
+          html += '<button type="submit" class="sf-add-section-add-btn">Add to Cart</button>';
+          html += '</form>';
+          html += '</div>';
+        });
+
+        html += '</div></div>';
+      });
+
+      if (!html) html = '<div class="text-center py-4 text-muted">No products available for the remaining sections.</div>';
+      body.innerHTML = html;
+    })
+    .catch(function() {
+      body.innerHTML = '<div class="text-center py-4 text-danger">Failed to load. Try again.</div>';
+    });
+});
 </script>
 
 

@@ -34,6 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $base_price       = (float)$_POST['base_price'];
     $starting_from    = (int)$_POST['starting_from'];
     $services         = $_POST['services'] ?? [];
+    $specialties      = $_POST['specialties'] ?? [];
     $phone            = trim($_POST['phone']);
     $city             = trim($_POST['city']);
 
@@ -56,13 +57,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         UPDATE companies
         SET company_name = $1, description = $2, website = $3, location = $4,
             established_year = $5, company_size = $6, base_price = $7,
-            starting_from = $8, services = $9, image = $10
-        WHERE user_id = $11
+            starting_from = $8, services = $9, image = $10, specialties = $11
+        WHERE user_id = $12
     ", [
         $company_name, $description, $website, $location,
         $established_year, $company_size, $base_price, $starting_from,
         '{' . implode(',', $services) . '}',
-        $imagePath, $company_user_id
+        $imagePath,
+        !empty($specialties) ? '{' . implode(',', $specialties) . '}' : null,
+        $company_user_id
     ]);
 
     // Update users
@@ -235,10 +238,23 @@ input:focus, textarea:focus, select:focus { border-color: rgba(0,76,172,.5); box
 
             <div class="section-title">Services</div>
             <div class="services-grid">
-                <?php foreach (['pos' => 'POS', 'electrical' => 'Electrical', 'network' => 'Network', 'ac' => 'AC', 'kitchen' => 'Kitchen'] as $val => $label): ?>
-                <label>
+<?php foreach (['pos' => 'POS', 'electrical' => 'Electrical', 'network' => 'Network', 'ac' => 'AC', 'kitchen' => 'Kitchen', 'finishing' => 'Finishing', 'advertising' => 'Advertising'] as $val => $label): ?>
+                    <label>
                     <input type="checkbox" name="services[]" value="<?= $val ?>"
                         <?= in_array($val, $currentServices) ? 'checked' : '' ?>>
+                    <?= $label ?>
+                </label>
+                <?php endforeach; ?>
+            </div>
+            <div class="section-title">Specialties <span style="font-size:.75rem;font-weight:600;color:#9ca3af;">(for finishing companies)</span></div>
+            <div class="services-grid">
+                <?php
+                $currentSpecialties = array_map('trim', explode(',', trim($co['specialties'] ?? '', '{}')));
+                foreach (['painting' => 'Painting', 'flooring' => 'Flooring', 'gypsum' => 'Gypsum & Ceilings', 'decor' => 'Decor', 'facades' => 'Facades'] as $val => $label):
+                ?>
+                <label>
+                    <input type="checkbox" name="specialties[]" value="<?= $val ?>"
+                        <?= in_array($val, $currentSpecialties) ? 'checked' : '' ?>>
                     <?= $label ?>
                 </label>
                 <?php endforeach; ?>

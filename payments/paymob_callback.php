@@ -369,6 +369,35 @@ if (is_array($installationServices) && !empty($installationServices) && $busines
     }
   }
 }
+
+// Create finishing request — one per order, business selects types later in service_jobs.php
+if ($businessId !== null) {
+  $areaFromOrder = (int)($instData["area_sqm"] ?? 0);
+  if ($areaFromOrder === 0) {
+    $bizAreaRes = pg_query_params($conn,
+      "SELECT area_sqm FROM businesses WHERE user_id = $1 LIMIT 1",
+      [$businessId]);
+    if ($bizAreaRes && pg_num_rows($bizAreaRes) > 0) {
+      $areaFromOrder = (int)(pg_fetch_assoc($bizAreaRes)["area_sqm"] ?? 0);
+    }
+  }
+
+  $okFinishing = pg_query_params($conn, "
+    INSERT INTO finishing_requests
+    (user_id, order_id, area_sqm, finishing_types, status, company_id, total_price)
+    VALUES ($1, $2, $3, $4, 'pending', NULL, 0)
+    ON CONFLICT (user_id, order_id) DO NOTHING
+  ", [
+    $businessId,
+    $orderId,
+    $areaFromOrder > 0 ? $areaFromOrder : null,
+    null
+  ]);
+
+  if (!$okFinishing) {
+    throw new Exception("Insert finishing request failed: " . pg_last_error($conn));
+  }
+}
     }
     // ✅ Mark business setup as completed
 $bizUserId = isset($order["business_user_id"]) && $order["business_user_id"] !== null

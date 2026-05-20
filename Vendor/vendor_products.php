@@ -168,8 +168,19 @@ if ($query1) {
         <?php foreach ($products as $p): ?>
           <?php
           $img = trim((string)($p["image_url"] ?? ""));
-if ($img !== "" && strpos($img, "assets/") === 0) {
-    $img = "../" . $img;
+
+if ($img !== "") {
+    // DB saved path like: Vendor/uploads/products/...
+    // But this file is already inside Vendor/, so we go back one folder.
+    if (strpos($img, "Vendor/") === 0) {
+        $img = "../" . $img;
+    }
+
+    // DB saved path like: assets/images/...
+    // assets is outside Vendor/, so we also go back one folder.
+    if (strpos($img, "assets/") === 0) {
+        $img = "../" . $img;
+    }
 }
             $name  = (string)($p["product_name"] ?? "Product");
             $cat   = (string)($p["category_name"] ?? "—");

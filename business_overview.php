@@ -134,7 +134,7 @@ if ($order) {
 /* ── installation requests ────────────────────────────────────── */
 $installationRequests = [];
 $irRes = pg_query_params($conn, "
-    SELECT ir.request_id, ir.services, ir.status,
+SELECT ir.request_id, ir.services, ir.status, ir.scheduled_date,
            c.company_name, c.starting_from, c.avg_rating
     FROM installation_requests ir
     LEFT JOIN companies c ON ir.company_id = c.company_id
@@ -150,10 +150,10 @@ foreach ($vendorFulfillments as $vf)
     if (in_array($vf['status'], ['processing', 'delivered'])) { $hasActiveFulfillment = true; break; }
 $step3Status = !$order ? 'none' : ($hasActiveFulfillment ? 'done' : 'progress');
 
-$hasAcceptedInstall = false;
+$hasScheduledInstall = false;
 foreach ($installationRequests as $ir)
-    if ($ir['status'] === 'accepted') { $hasAcceptedInstall = true; break; }
-$step4Status = $hasAcceptedInstall ? 'done' : 'pending';
+    if (!empty($ir['scheduled_date'])) { $hasScheduledInstall = true; break; }
+$step4Status = $hasScheduledInstall ? 'done' : 'pending';
 
 /* ── group products by module ─────────────────────────────────── */
 $byModule = [];
@@ -183,21 +183,22 @@ foreach ($products as $p) {
     }
     .ovw-card {
       background: #fff;
-      border-radius: 16px;
+      border-radius: 5px;
       box-shadow: 0 0 0 1.5px rgba(0,76,172,0.12), 0 4px 18px rgba(0,76,172,0.08);
       border: none;
     }
     .ovw-inner {
-      border-radius: 10px;
-      border: 1.5px solid #f1f5f9;
-      box-shadow: 0 0 0 1.5px rgba(0,76,172,0.12), 0 4px 18px rgba(0,76,172,0.08);
+      border-radius: 5px;
+      border: 1.5px solid #e0eaff;
+      border-left: 3px solid #004cac;
     }
 
     /* ── stat cards ── */
     .ovw-stat {
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 0 0 1.5px rgba(0,76,172,0.12), 0 4px 18px rgba(0,76,172,0.08);
+      border-radius: 5px;
+      border: 1.5px solid #e0eaff;
+      border-left: 4px solid #004cac;
       padding: 20px 22px;
       display: flex;
       flex-direction: column;
@@ -205,7 +206,7 @@ foreach ($products as $p) {
     }
     .ovw-stat-icon {
       width: 40px; height: 40px;
-      border-radius: 10px;
+      border-radius: 5px;
       display: flex; align-items: center; justify-content: center;
       font-size: 1.1rem;
       margin-bottom: 4px;
@@ -216,7 +217,7 @@ foreach ($products as $p) {
     /* ── product cards ── */
     .ovw-product-card {
       background: #f8fafc;
-      border-radius: 10px;
+      border-radius: 5px;
       border: 1.5px solid #f1f5f9;
       padding: 12px 16px;
       display: flex;
@@ -227,7 +228,7 @@ foreach ($products as $p) {
     .ovw-product-card:hover { border-color: #c7d9f7; }
     .ovw-product-img {
       width: 60px; height: 60px;
-      border-radius: 10px;
+      border-radius: 5px;
       object-fit: cover;
       flex-shrink: 0;
       background: #e5e7eb;
@@ -239,7 +240,7 @@ foreach ($products as $p) {
     /* ── module badge ── */
     .ovw-module-badge {
       display: inline-block;
-      border-radius: 20px;
+      border-radius: 5px;
       padding: 3px 12px;
       font-size: .72rem;
       font-weight: 700;
@@ -250,7 +251,7 @@ foreach ($products as $p) {
     /* ── status badges ── */
     .ovw-badge {
       display: inline-block;
-      border-radius: 20px;
+      border-radius: 5px;
       padding: 3px 11px;
       font-size: .73rem;
       font-weight: 700;
@@ -263,22 +264,22 @@ foreach ($products as $p) {
 
     /* ── labor progress bar ── */
     .ovw-progress-track {
-      height: 6px; border-radius: 3px;
+      height: 6px; border-radius: 5px;
       background: #e5e7eb; overflow: hidden;
     }
     .ovw-progress-fill {
-      height: 100%; border-radius: 3px;
+      height: 100%; border-radius: 5px;
       background: #004cac;
       transition: width .3s;
     }
 
     /* ── hero bar ── */
-    .ovw-hero { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-    .ovw-hero-name { font-size: 1.9rem; font-weight: 800; color: #111827; margin-bottom: 8px; }
+    .ovw-hero { background: #004cac; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .ovw-hero-name { font-size: 1.9rem; font-weight: 800; color: #fff; margin-bottom: 8px; }
     .ovw-order-chip {
       display: inline-flex; align-items: center; gap: 5px;
-      background: #f0f5ff; color: #004cac;
-      border: 1.5px solid #c7d9f7; border-radius: 20px;
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1.5px solid rgba(255,255,255,0.3); border-radius: 5px;
       padding: 4px 14px; font-size: .83rem; font-weight: 700;
     }
 
@@ -321,13 +322,13 @@ foreach ($products as $p) {
             $typeColors = ['restaurant'=>'#f97316','cafe'=>'#f59e0b','retail'=>'#22c55e','office'=>'#3b82f6'];
             $tc = $typeColors[$btype] ?? '#6366f1';
           ?>
-          <span style="background:<?= $tc ?>1a;color:<?= $tc ?>;border:1px solid <?= $tc ?>44;
-                border-radius:20px;padding:3px 13px;font-size:.8rem;font-weight:700">
+          <span style="background:#fff;color:<?= $tc ?>;border:1px solid <?= $tc ?>44;
+                border-radius:5px;padding:3px 13px;font-size:.8rem;font-weight:700">
             <?= h(ucfirst($business['business_type'] ?: 'Business')) ?>
           </span>
           <?php $loc = $business['location_text'] ?: ($business['city'] ?: ''); if ($loc): ?>
-            <span style="color:#6b7280;font-size:.9rem">
-              <i class="bi bi-geo-alt-fill me-1" style="color:#004cac"></i><?= h($loc) ?>
+            <span style="color:rgba(255,255,255,0.8);font-size:.9rem">
+              <i class="bi bi-geo-alt-fill me-1" style="color:rgba(255,255,255,0.8)"></i><?= h($loc) ?>
             </span>
           <?php endif; ?>
         </div>
@@ -339,7 +340,7 @@ foreach ($products as $p) {
           <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
             <span class="ovw-order-chip"><i class="bi bi-receipt"></i>Order #<?= $order_id ?></span>
             <?php if (!empty($order['paid_at'])): ?>
-              <span style="color:#6b7280;font-size:.8rem">
+              <span style="color:rgba(255,255,255,0.75);font-size:.8rem">
                 <i class="bi bi-calendar-check me-1"></i>Paid <?= h(fmtDate($order['paid_at'])) ?>
               </span>
             <?php endif; ?>
@@ -348,12 +349,12 @@ foreach ($products as $p) {
         <div class="d-flex gap-2 flex-wrap justify-content-end">
           <a href="edit_setup.php"
              class="btn btn-sm px-3 fw-semibold"
-             style="border:1.5px solid #004cac;color:#004cac;border-radius:8px;background:transparent">
+             style="border:2px solid #fff;color:#fff;background:transparent;border-radius:0">
             <i class="bi bi-pencil me-1"></i>Edit My Setup
           </a>
           <a href="service_jobs.php"
              class="btn btn-sm px-3 fw-semibold"
-             style="background:#004cac;color:#fff;border-radius:8px;border:none">
+             style="background:#fff;color:#004cac;border:none;border-radius:0;font-weight:700">
             <i class="bi bi-people me-1"></i>Manage Staff &amp; Installation
           </a>
         </div>
@@ -384,11 +385,11 @@ foreach ($products as $p) {
       foreach ($trackerSteps as $si => $step):
         $done     = $step['status'] === 'done';
         $inprog   = $step['status'] === 'progress';
-        $cbg      = $done ? '#22c55e' : ($inprog ? '#f59e0b' : '#e5e7eb');
+        $cbg      = $done ? '#004cac' : ($inprog ? '#f59e0b' : '#e5e7eb');
         $cclr     = ($done || $inprog) ? '#fff' : '#9ca3af';
         $cicon    = $done ? 'bi-check-lg' : 'bi-' . $step['icon'];
         $lblclr   = ($done || $inprog) ? '#111827' : '#9ca3af';
-        $subclr   = $done ? '#22c55e' : ($inprog ? '#f59e0b' : '#d1d5db');
+        $subclr   = $done ? '#004cac' : ($inprog ? '#f59e0b' : '#d1d5db');
         $subtxt   = $done ? 'Complete' : ($inprog ? 'In Progress' : 'Pending');
       ?>
       <div class="d-flex flex-column align-items-center text-center" style="flex:0 0 80px;width:80px">
@@ -400,10 +401,10 @@ foreach ($products as $p) {
       </div>
       <?php if ($si < count($trackerSteps) - 1):
         $nextDone = in_array($trackerSteps[$si + 1]['status'], ['done', 'progress']);
-        $lbg      = $nextDone ? '#22c55e' : '#e5e7eb';
+        $lbg      = $nextDone ? '#004cac' : '#e5e7eb';
       ?>
       <div class="flex-fill" style="padding-top:22px;padding-left:6px;padding-right:6px">
-        <div style="height:2px;background:<?= $lbg ?>;border-radius:2px"></div>
+        <div style="height:2px;background:<?= $lbg ?>;border-radius:5px"></div>
       </div>
       <?php endif; ?>
       <?php endforeach; ?>
@@ -466,7 +467,7 @@ foreach ($products as $p) {
     <div class="ovw-section-title mb-0">Ordered Products</div>
     <a href="edit_setup.php"
        class="btn btn-sm fw-semibold px-3"
-       style="background:#eff6ff;color:#004cac;border-radius:8px;border:none">
+       style="background:#eff6ff;color:#004cac;border-radius:0;border:none">
       <i class="bi bi-pencil me-1"></i>Edit Setup
     </a>
   </div>
@@ -569,7 +570,7 @@ $modLabel = $moduleLabels[$modKey] ?? ucfirst($modKey);    ?>
         <div class="ovw-section-title mb-0">Labor Summary</div>
         <a href="service_jobs.php"
            class="btn btn-sm fw-semibold px-3"
-           style="background:#eff6ff;color:#004cac;border-radius:8px;border:none">
+           style="background:#eff6ff;color:#004cac;border-radius:0;border:none">
           <i class="bi bi-person-lines-fill me-1"></i>View Applicants
         </a>
       </div>
@@ -623,7 +624,7 @@ $modLabel = $moduleLabels[$modKey] ?? ucfirst($modKey);    ?>
         <div class="ovw-section-title mb-0">Installation Services</div>
         <a href="service_jobs.php?tab=installation"
            class="btn btn-sm fw-semibold px-3"
-           style="background:#eff6ff;color:#004cac;border-radius:8px;border:none">
+           style="background:#eff6ff;color:#004cac;border-radius:0;border:none">
           <i class="bi bi-building me-1"></i>View Companies
         </a>
       </div>
@@ -635,7 +636,18 @@ $modLabel = $moduleLabels[$modKey] ?? ucfirst($modKey);    ?>
         </div>
       <?php else: ?>
         <div class="d-flex flex-column gap-3">
-          <?php foreach ($installationRequests as $ir):
+          <?php
+          $serviceLabels = [
+            'electrical' => 'Electrical Installation',
+            'ac'         => 'AC & Climate Control',
+            'kitchen'    => 'Kitchen Installation',
+            'pos'        => 'POS Setup',
+            'network'    => 'Network & WiFi',
+            'plumbing'   => 'Plumbing',
+          ];
+          foreach ($installationRequests as $ir):
+$svcRaw = strtolower(trim(str_replace(['{', '}'], '', $ir['services'] ?? '')));
+            $svcDisplay = $serviceLabels[$svcRaw] ?? ucwords(str_replace(['_','-'], ' ', $ir['services'] ?: 'Installation Service'));
             $svcIcon    = serviceIcon($ir['services'] ?? '');
             $hasCompany = !empty($ir['company_name']);
             $isAccepted = strtolower($ir['status'] ?? '') === 'accepted';
@@ -659,19 +671,24 @@ $modLabel = $moduleLabels[$modKey] ?? ucfirst($modKey);    ?>
             <div class="d-flex align-items-start gap-3">
               <!-- Icon -->
               <div class="d-flex align-items-center justify-content-center flex-shrink-0"
-                   style="width:42px;height:42px;border-radius:10px;background:#eff6ff;color:#004cac;font-size:1.1rem">
+                   style="width:42px;height:42px;border-radius:5px;background:#eff6ff;color:#004cac;font-size:1.1rem">
                 <i class="<?= $svcIcon ?>"></i>
               </div>
               <!-- Info -->
               <div class="flex-fill min-w-0">
                 <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                  <div class="fw-bold" style="color:#111827;font-size:.9rem"><?= h($ir['services'] ?: 'Installation Service') ?></div>
+                  <div class="fw-bold" style="color:#111827;font-size:.9rem"><?= h($svcDisplay) ?></div>
                   <span class="ovw-badge <?= $stClass ?>"><?= $stLbl ?></span>
                 </div>
                 <div style="font-size:.78rem;color:#6b7280">
                   <span style="margin-right:12px"><i class="bi bi-building me-1"></i><?= $companyText ?></span>
                   <span style="color:#004cac;font-weight:600"><?= h($priceText) ?></span>
                 </div>
+                <?php if (!empty($ir['scheduled_date'])): ?>
+    <div style="margin-top:6px;font-size:.78rem;font-weight:700;color:#004cac;">
+        <i class="bi bi-calendar-check me-1"></i>Scheduled: <?= date('M j, Y', strtotime($ir['scheduled_date'])) ?>
+    </div>
+<?php endif; ?>
                 <?php if ($isAccepted && !empty($ir['avg_rating'])): ?>
                   <div style="font-size:.75rem;color:#f59e0b;margin-top:3px">
                     <i class="bi bi-star-fill me-1"></i><?= h($ir['avg_rating']) ?>
