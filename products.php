@@ -15,9 +15,10 @@ function formatPrice($price) {
 --------------------------------------------------------- */
 $selectedCategory = isset($_GET["category"]) ? trim((string)$_GET["category"]) : "";
 $selectedBrand    = isset($_GET["brand"]) ? trim((string)$_GET["brand"]) : "";
+$selectedModule   = isset($_GET["module"]) ? trim((string)$_GET["module"]) : "";
 $minPrice         = isset($_GET["min_price"]) ? trim((string)$_GET["min_price"]) : "";
 $maxPrice         = isset($_GET["max_price"]) ? trim((string)$_GET["max_price"]) : "";
-$sort             = isset($_GET["sort"]) ? trim((string)$_GET["sort"]) : "newest";
+$sort             = isset($_GET["sort"]) ? trim((string)$_GET["sort"]) : "";
 
 /* ---------------------------------------------------------
    GET CATEGORIES
@@ -69,6 +70,11 @@ if ($selectedBrand !== "") {
     $params[] = $selectedBrand;
     $paramIndex++;
 }
+if ($selectedModule !== "") {
+    $where[] = "p.module = $" . $paramIndex;
+    $params[] = $selectedModule;
+    $paramIndex++;
+}
 
 if ($minPrice !== "" && is_numeric($minPrice)) {
     $where[] = "p.price >= $" . $paramIndex;
@@ -98,7 +104,6 @@ $sql = "
         p.id,
         p.product_name,
         p.brand,
-        p.condition,
         p.price,
         p.stock_quantity,
         p.avg_rating,
@@ -106,7 +111,6 @@ $sql = "
         p.category_id,
         c.name AS category_name,
         p.business_type,
-        p.size_fit,
         p.priority,
         p.module,
         p.tier,
@@ -156,104 +160,121 @@ $productCount = count($products);
   <div class="container py-5">
 
     <!-- HEADER -->
-    <section class="sf-products-hero mb-4">
-      <div>
-        <div class="sf-products-kicker">SetupForge</div>
-        <h1 class="sf-products-title">Products</h1>
-        
-      </div>
-
-      
-    </section>
+<h1 class="sf-products-title mb-4">Products</h1>
 
     <div class="sf-products-layout">
 
       <!-- FILTERS -->
-      <aside class="sf-products-sidebar">
-        <form method="GET" class="sf-products-filter-card">
+      <form method="GET" class="sf-products-filter-card">
+        <div class="sf-filter-head">
+          <span class="sf-filter-label">Filters</span>
+          <a href="products.php" class="sf-clear-filters">Clear</a>
+        </div>
 
-          <div class="sf-filter-head">
-            <h2>Filters</h2>
-            <a href="products.php" class="sf-clear-filters">Clear</a>
-          </div>
-
-          <div class="sf-filter-group">
-            <label for="category">Category</label>
-            <select name="category" id="category" class="sf-filter-input">
-              <option value="">All Categories</option>
-              <?php foreach ($categories as $cat): ?>
-                <option
-                  value="<?php echo h($cat["id"]); ?>"
-                  <?php echo ($selectedCategory !== "" && (string)$selectedCategory === (string)$cat["id"]) ? "selected" : ""; ?>
-                >
-                  <?php echo h($cat["name"]); ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-
-          <div class="sf-filter-group">
-            <label for="brand">Brand</label>
-            <select name="brand" id="brand" class="sf-filter-input">
-              <option value="">All Brands</option>
-              <?php foreach ($brands as $brand): ?>
-                <option value="<?php echo h($brand); ?>" <?php echo ($selectedBrand === $brand) ? "selected" : ""; ?>>
-                  <?php echo h($brand); ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-6">
-              <div class="sf-filter-group mb-0">
-                <label for="min_price">Min Price</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  name="min_price"
-                  id="min_price"
-                  class="sf-filter-input"
-                  value="<?php echo h($minPrice); ?>"
-                  placeholder="0"
-                >
-              </div>
-            </div>
-
-            <div class="col-6">
-              <div class="sf-filter-group mb-0">
-                <label for="max_price">Max Price</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  name="max_price"
-                  id="max_price"
-                  class="sf-filter-input"
-                  value="<?php echo h($maxPrice); ?>"
-                  placeholder="10000"
-                >
-              </div>
-            </div>
-          </div>
-
-          <div class="sf-filter-group mt-3">
-            <label for="sort">Sort By</label>
-            <select name="sort" id="sort" class="sf-filter-input">
-              <option value="newest" <?php echo $sort === "newest" ? "selected" : ""; ?>>Newest</option>
-              <option value="price_low" <?php echo $sort === "price_low" ? "selected" : ""; ?>>Price: Low to High</option>
-              <option value="price_high" <?php echo $sort === "price_high" ? "selected" : ""; ?>>Price: High to Low</option>
-              <option value="name_asc" <?php echo $sort === "name_asc" ? "selected" : ""; ?>>Name: A to Z</option>
-              <option value="name_desc" <?php echo $sort === "name_desc" ? "selected" : ""; ?>>Name: Z to A</option>
-            </select>
-          </div>
-
-          <button type="submit" class="sf-filter-btn">
-            Apply Filters
+        <div class="sf-filter-group sf-custom-select" data-select="#category">
+          <button type="button" class="sf-custom-select-trigger" data-label="Category">
+            <span class="sf-custom-select-text">Category</span>
+            <i class="bi bi-chevron-down"></i>
           </button>
-        </form>
-      </aside>
+          <div class="sf-custom-select-menu">
+            <?php foreach ($categories as $cat): ?>
+              <div class="sf-custom-select-option" data-value="<?php echo h($cat["id"]); ?>"><?php echo h($cat["name"]); ?></div>
+            <?php endforeach; ?>
+          </div>
+          <select name="category" id="category" class="sf-filter-input" style="display:none;">
+            <option value="">Category</option>
+            <?php foreach ($categories as $cat): ?>
+              <option
+                value="<?php echo h($cat["id"]); ?>"
+                <?php echo ($selectedCategory !== "" && (string)$selectedCategory === (string)$cat["id"]) ? "selected" : ""; ?>
+              >
+                <?php echo h($cat["name"]); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
+        <div class="sf-filter-group sf-custom-select" data-select="#brand">
+          <button type="button" class="sf-custom-select-trigger" data-label="Brand">
+            <span class="sf-custom-select-text">Brand</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div class="sf-custom-select-menu">
+            <?php foreach ($brands as $brand): ?>
+              <div class="sf-custom-select-option" data-value="<?php echo h($brand); ?>"><?php echo h($brand); ?></div>
+            <?php endforeach; ?>
+          </div>
+          <select name="brand" id="brand" class="sf-filter-input" style="display:none;">
+            <option value="">Brand</option>
+            <?php foreach ($brands as $brand): ?>
+              <option value="<?php echo h($brand); ?>" <?php echo ($selectedBrand === $brand) ? "selected" : ""; ?>>
+                <?php echo h($brand); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
+        <div class="sf-filter-group sf-custom-select" data-select="#module">
+          <button type="button" class="sf-custom-select-trigger" data-label="Module">
+            <span class="sf-custom-select-text">Module</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div class="sf-custom-select-menu">
+            <div class="sf-custom-select-option" data-value="kitchen">Kitchen</div>
+            <div class="sf-custom-select-option" data-value="pos">POS</div>
+            <div class="sf-custom-select-option" data-value="furniture">Dining Area</div>
+            <div class="sf-custom-select-option" data-value="general">General</div>
+            <div class="sf-custom-select-option" data-value="infrastructure">Infrastructure</div>
+          </div>
+          <select name="module" id="module" class="sf-filter-input" style="display:none;">
+            <option value="">Module</option>
+            <option value="kitchen" <?php echo $selectedModule === 'kitchen' ? 'selected' : ''; ?>>Kitchen</option>
+            <option value="pos" <?php echo $selectedModule === 'pos' ? 'selected' : ''; ?>>POS</option>
+            <option value="furniture" <?php echo $selectedModule === 'furniture' ? 'selected' : ''; ?>>Dining Area</option>
+            <option value="general" <?php echo $selectedModule === 'general' ? 'selected' : ''; ?>>General</option>
+            <option value="infrastructure" <?php echo $selectedModule === 'infrastructure' ? 'selected' : ''; ?>>Infrastructure</option>
+          </select>
+        </div>
+
+        <div class="sf-filter-group sf-custom-select" data-select="#sort">
+          <button type="button" class="sf-custom-select-trigger" data-label="Sort By">
+            <span class="sf-custom-select-text">Sort By</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div class="sf-custom-select-menu">
+            <div class="sf-custom-select-option" data-value="newest">Newest</div>
+            <div class="sf-custom-select-option" data-value="price_low">Price: Low to High</div>
+            <div class="sf-custom-select-option" data-value="price_high">Price: High to Low</div>
+            <div class="sf-custom-select-option" data-value="name_asc">Name: A to Z</div>
+            <div class="sf-custom-select-option" data-value="name_desc">Name: Z to A</div>
+          </div>
+          <select name="sort" id="sort" class="sf-filter-input" style="display:none;">
+            <option value="">Sort By</option>
+            <option value="newest" <?php echo $sort === "newest" ? "selected" : ""; ?>>Newest</option>
+            <option value="price_low" <?php echo $sort === "price_low" ? "selected" : ""; ?>>Price: Low to High</option>
+            <option value="price_high" <?php echo $sort === "price_high" ? "selected" : ""; ?>>Price: High to Low</option>
+            <option value="name_asc" <?php echo $sort === "name_asc" ? "selected" : ""; ?>>Name: A to Z</option>
+            <option value="name_desc" <?php echo $sort === "name_desc" ? "selected" : ""; ?>>Name: Z to A</option>
+          </select>
+        </div>
+
+        <div class="sf-price-slider-wrap">
+          <div class="sf-price-slider-labels">
+            <span id="sliderMinLabel">EGP <span id="sliderMinVal"><?php echo $minPrice !== '' ? (int)$minPrice : 0; ?></span></span>
+            <span id="sliderMaxLabel">EGP <span id="sliderMaxVal"><?php echo $maxPrice !== '' ? (int)$maxPrice : 200000; ?></span></span>
+          </div>
+          <div class="sf-range-slider" id="sfRangeSlider">
+            <div class="sf-range-track"></div>
+            <div class="sf-range-fill" id="sfRangeFill"></div>
+            <input type="range" id="sliderMin" min="0" max="200000" step="500" value="<?php echo $minPrice !== '' ? (int)$minPrice : 0; ?>">
+            <input type="range" id="sliderMax" min="0" max="200000" step="500" value="<?php echo $maxPrice !== '' ? (int)$maxPrice : 200000; ?>">
+          </div>
+          <input type="hidden" name="min_price" id="min_price" value="<?php echo h($minPrice); ?>">
+          <input type="hidden" name="max_price" id="max_price" value="<?php echo h($maxPrice); ?>">
+        </div>
+
+        <button type="submit" class="sf-filter-btn">Apply Filters</button>
+      </form>
 
       <!-- PRODUCTS -->
       <section class="sf-products-main">
@@ -306,8 +327,8 @@ $productCount = count($products);
 
                   <div class="sf-product-meta-row">
                     <?php if (!empty($product["module"])): ?>
-                      <span><?php echo h($product["module"]); ?></span>
-                    <?php endif; ?>
+  <span><?php echo h($product["module"] === 'furniture' ? 'Dining Area' : ucfirst($product["module"])); ?></span>
+<?php endif; ?>
 
                     <?php if (!empty($product["tier"])): ?>
                       <span><?php echo h($product["tier"]); ?></span>

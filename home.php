@@ -93,85 +93,6 @@ if (isset($_SESSION["user_id"]) && $conn) {
         </div>
       </div>
     </section>
-<!-- TRUSTED BRANDS -->
-<section class="sf-brand-strip">
-  <div class="container-fluid px-0">
-
-    <div class="sf-brand-strip-head reveal-up">
-      <p class="sf-brand-strip-kicker">Trusted Brands</p>
-
-      <h2 class="sf-brand-strip-title">
-        Equipment and technology from industry-leading brands
-      </h2>
-    </div>
-
-    <div class="sf-brand-marquee">
-
-      <div class="sf-brand-track">
-
-        <!-- SET 1 -->
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/samsung.png" alt="Samsung">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/lg.png" alt="LG">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/dell.png" alt="Dell">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/logitech.png" alt="Logitech">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/bosch.png" alt="Bosch">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/lenovo.png" alt="Lenovo">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/hikvision.png" alt="Hikvision">
-        </div>
-
-        <!-- DUPLICATE FOR INFINITE LOOP -->
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/samsung.png" alt="Samsung">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/lg.png" alt="LG">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/dell.png" alt="Dell">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/logitech.png" alt="Logitech">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/bosch.png" alt="Bosch">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/lenovo.png" alt="Lenovo">
-        </div>
-
-        <div class="sf-brand-item">
-          <img src="assets/images/brands/hikvision.png" alt="Hikvision">
-        </div>
-
-      </div>
-    </div>
-  </div>
-</section>
     <!-- OUR SERVICES -->
         <!-- OUR SERVICES -->
     <section class="sf-home-services-section">
@@ -251,10 +172,76 @@ if (isset($_SESSION["user_id"]) && $conn) {
         </div>
       </div>
     </section>
+<!-- TRUSTED BRANDS -->
+<section class="sf-brand-strip">
+  <div class="container-fluid px-0">
 
+    <div class="sf-brand-strip-head reveal-up">
+      <p class="sf-brand-strip-kicker">Trusted Brands</p>
+
+      <h2 class="sf-brand-strip-title">
+        Equipment and technology from industry-leading brands
+      </h2>
+    </div>
+
+    <div class="sf-brand-marquee">
+
+<div class="sf-brand-track">
+
+  <!-- SET 1 -->
+  <div class="sf-brand-item">
+    <img src="assets/images/samsung.png" alt="Samsung">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/lg.png" alt="LG">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/bosch.png" alt="Bosch">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/dell.png" alt="Dell">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/ikea.png" alt="IKEA">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/epson.png" alt="Epson">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/hp.png" alt="HP">
+  </div>
+
+  <!-- DUPLICATE FOR INFINITE LOOP -->
+  <div class="sf-brand-item">
+    <img src="assets/images/samsung.png" alt="Samsung">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/lg.png" alt="LG">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/bosch.png" alt="Bosch">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/dell.png" alt="Dell">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/ikea.png" alt="IKEA">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/epson.png" alt="Epson">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/hp.png" alt="HP">
+  </div>
+
+</div>
+    </div>
+  </div>
+</section>
   </main>
 <!-- PARTNER WITH US -->
 <!-- WORK WITH US SLIDER -->
+<?php if (!isset($_SESSION['user_id']) || !(@pg_query_params($conn, "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' LIMIT 1", [$_SESSION['user_id']]) && pg_num_rows(@pg_query_params($conn, "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' LIMIT 1", [$_SESSION['user_id']])) > 0)): ?>
 <section class="sf-ww-section" style="background:#ffffff;">
 
   <div class="sf-ww-track-wrap">
@@ -340,7 +327,9 @@ if (isset($_SESSION["user_id"]) && $conn) {
   <button class="sf-ww-arrow sf-ww-arrow--prev" id="sfWwPrev" aria-label="Previous">&#8592;</button>
   <button class="sf-ww-arrow sf-ww-arrow--next" id="sfWwNext" aria-label="Next">&#8594;</button>
 
-</section>  <footer class="sf-footer mt-5">
+</section>
+<?php endif; ?>
+  <footer class="sf-footer mt-5">
     <div class="container py-5">
       <div class="row g-4">
 
