@@ -31,6 +31,8 @@ $company_id = (int)$company["company_id"];
 $company_name = $company["company_name"];
 $company_services_raw = trim($company["services"] ?? "", '{}');
 $company_services = array_map('trim', explode(',', $company_services_raw));
+$isAdvertisingOnly = $company_services_raw === 'advertising' || $company_services === ['advertising'];
+$isFinishingCompany = in_array('finishing', $company_services);
 
 /* HANDLE QUOTE SUBMISSION */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["submit_quote"])) {
@@ -110,7 +112,7 @@ function formatServices($raw) {
     if (!$raw) return "N/A";
     $cleaned = trim($raw, '{}');
     $items = explode(',', $cleaned);
-    $labels = ['pos' => 'POS System', 'electrical' => 'Electrical Wiring', 'network' => 'Network & WiFi', 'ac' => 'AC Installation', 'kitchen' => 'Kitchen Setup'];
+$labels = ['pos' => 'POS System', 'electrical' => 'Electrical Wiring', 'network' => 'Network & WiFi', 'ac' => 'AC Installation', 'kitchen' => 'Kitchen Setup', 'finishing' => 'Finishing', 'advertising' => 'Advertising'];
     $out = [];
     foreach ($items as $item) {
         $item = trim($item);
@@ -209,7 +211,154 @@ function timeAgo($datetime) {
         </div>
     </div>
 
+    <?php if ($isFinishingCompany): ?>
+    <!-- FINISHING REQUESTS -->
+    <div class="panel" style="margin-bottom:28px">
+        <div class="panel-header">
+            <h2>Finishing Requests</h2>
+            <span class="sub">Businesses looking for finishing services</span>
+        </div>
+        <?php
+        $finishingReqsRes = pg_query_params($conn, "
+            SELECT fr.request_id, fr.area_sqm, fr.finishing_types, fr.status, fr.created_at,
+                   u.name AS business_name, u.city, u.phone
+            FROM finishing_requests fr
+            JOIN users u ON u.id = fr.user_id
+            WHERE fr.status = 'pending'
+            AND fr.request_id NOT IN (
+                SELECT request_id FROM finishing_quotes WHERE company_id = $1
+            )
+            ORDER BY fr.created_at DESC
+            LIMIT 20
+        ", [$company_id]);
+
+        $finishingTypeLabels = [
+            'painting' => 'Painting',
+            'flooring' => 'Flooring',
+            'gypsum'   => 'Gypsum & Ceilings',
+            'decor'    => 'Decor',
+            'facades'  => 'Facades',
+        ];
+        ?>
+        <?php if ($finishingReqsRes && pg_num_rows($finishingReqsRes) > 0): ?>
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Business</th>
+                        <th>City</th>
+                        <th>Area</th>
+                        <th>Needs</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                    <?php while ($freq = pg_fetch_assoc($finishingReqsRes)):
+                        $ftRaw = trim($freq["finishing_types"] ?? "", '{}');
+                        $ftList = $ftRaw ? array_filter(array_map('trim', explode(',', $ftRaw))) : [];
+                        $ftLabels = array_map(fn($t) => $finishingTypeLabels[$t] ?? ucfirst($t), $ftList);
+                    ?>
+                    <tr>
+                        <td><?= htmlspecialchars($freq["business_name"]) ?></td>
+                        <td><?= htmlspecialchars($freq["city"]) ?></td>
+                        <td><?= $freq["area_sqm"] ? $freq["area_sqm"] . ' sqm' : '—' ?></td>
+                        <td>
+                            <?php if (!empty($ftLabels)): ?>
+                                <?php foreach ($ftLabels as $ftl): ?>
+                                    <span style="display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(0,76,172,.08);color:#004cac;border:1px solid rgba(0,76,172,.15);margin:2px 2px 2px 0;">
+                                        <?= htmlspecialchars($ftl) ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <span style="color:#9ca3af;font-size:.82rem;">Not specified yet</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?= timeAgo($freq["created_at"]) ?></td>
+                        <td>
+                            <button class="small-btn" onclick="toggleFinishingForm(<?= $freq['request_id'] ?>)">
+                                Submit Quote
+                            </button>
+                            <div class="quote-form" id="fform-<?= $freq['request_id'] ?>">
+                                <form method="POST" action="submit_finishing_quote.php">
+                                    <input type="hidden" name="request_id" value="<?= (int)$freq['request_id'] ?>">
+                                    <input type="hidden" name="company_id" value="<?= $company_id ?>">
+                                    <div class="mb-2">
+                                        <label class="form-label fw-semibold">Price (EGP)</label>
+                                        <input type="number" name="price" class="form-control" placeholder="e.g. 25000" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label fw-semibold">Message <span class="text-muted fw-normal">(optional)</span></label>
+                                        <textarea name="message" class="form-control" rows="2" placeholder="Brief note about your service..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Your Website <span class="text-muted fw-normal">(optional)</span></label>
+                                        <input type="url" name="website_link" class="form-control" placeholder="https://yourcompany.com" value="<?= htmlspecialchars($company['website'] ?? '') ?>">
+                                    </div>
+                                    <button type="submit" class="small-btn">Send Quote</button>
+                                    <button type="button" class="small-btn" style="background:#6c757d;margin-left:6px" onclick="toggleFinishingForm(<?= $freq['request_id'] ?>)">Cancel</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="empty-box">No open finishing requests right now.</div>
+        <?php endif; ?>
+    </div>
+
+    <!-- FINISHING MY QUOTES -->
+    <div class="panel" style="margin-bottom:28px">
+        <div class="panel-header">
+            <h2>My Finishing Quotes</h2>
+            <span class="sub">Quotes you have submitted for finishing requests</span>
+        </div>
+        <?php
+        $myFinishingQuotesRes = pg_query_params($conn, "
+            SELECT fq.quote_id, fq.request_id, fq.price, fq.message, fq.status, fq.created_at,
+                   fr.area_sqm, fr.finishing_types,
+                   u.name AS business_name, u.city
+            FROM finishing_quotes fq
+            JOIN finishing_requests fr ON fr.request_id = fq.request_id
+            JOIN users u ON u.id = fr.user_id
+            WHERE fq.company_id = $1
+            ORDER BY fq.created_at DESC
+        ", [$company_id]);
+        ?>
+        <?php if ($myFinishingQuotesRes && pg_num_rows($myFinishingQuotesRes) > 0): ?>
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Business</th>
+                        <th>City</th>
+                        <th>Area</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                    <?php while ($fq = pg_fetch_assoc($myFinishingQuotesRes)): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($fq["business_name"]) ?></td>
+                        <td><?= htmlspecialchars($fq["city"]) ?></td>
+                        <td><?= $fq["area_sqm"] ? $fq["area_sqm"] . ' sqm' : '—' ?></td>
+                        <td><?= number_format((float)$fq["price"], 0) ?> EGP</td>
+                        <td>
+                            <span class="status-badge badge-<?= $fq['status'] ?>">
+                                <?= ucfirst($fq["status"]) ?>
+                            </span>
+                        </td>
+                        <td><?= timeAgo($fq["created_at"]) ?></td>
+                    </tr>
+                    <?php endwhile; ?>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="empty-box">No finishing quotes submitted yet.</div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <!-- NEW REQUESTS -->
+    <?php if (!$isAdvertisingOnly && !($isFinishingCompany && empty(array_diff($company_services, ['finishing'])))): ?>
     <div class="panel" style="margin-bottom:28px">
         <div class="panel-header">
             <h2>Open Requests</h2>
@@ -263,7 +412,9 @@ function timeAgo($datetime) {
             <div class="empty-box">No open requests matching your services right now.</div>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
 
+    <<?php if (!$isAdvertisingOnly && !($isFinishingCompany && empty(array_diff($company_services, ['finishing'])))): ?>
     <!-- MY QUOTES -->
     <div class="panel">
         <div class="panel-header">
@@ -302,6 +453,19 @@ function timeAgo($datetime) {
             <div class="empty-box">You haven't submitted any quotes yet.</div>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
+
+    <?php if ($isAdvertisingOnly): ?>
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Your Profile</h2>
+            <span class="sub">You are listed as an advertising company on SetupForge</span>
+        </div>
+        <div class="empty-box">
+            Businesses can discover and contact you through the Service Jobs page after their setup is complete.
+        </div>
+    </div>
+    <?php endif; ?>
 
 </div>
 
@@ -309,6 +473,12 @@ function timeAgo($datetime) {
 <script>
 function toggleForm(id) {
     const form = document.getElementById('form-' + id);
+    form.classList.toggle('open');
+}
+</script>
+<script>
+function toggleFinishingForm(id) {
+    const form = document.getElementById('fform-' + id);
     form.classList.toggle('open');
 }
 </script>
