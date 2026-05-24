@@ -56,11 +56,11 @@ $business = pg_fetch_assoc($businessRes);
 $order_id = (int)($_GET["order_id"] ?? 0);
 if ($order_id > 0) {
     $orderRes = pg_query_params($conn,
-        "SELECT * FROM orders WHERE id = $1 AND business_user_id = $2 LIMIT 1",
+        "SELECT * FROM orders WHERE id = \$1 AND business_user_id = \$2 AND order_type = 'setup' LIMIT 1",
         [$order_id, $business_id]);
 } else {
     $orderRes = pg_query_params($conn,
-        "SELECT * FROM orders WHERE business_user_id = $1 ORDER BY id DESC LIMIT 1",
+        "SELECT * FROM orders WHERE business_user_id = \$1 AND order_type = 'setup' ORDER BY id DESC LIMIT 1",
         [$business_id]);
 }
 $order = null;

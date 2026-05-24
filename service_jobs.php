@@ -71,14 +71,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
     exit();
 }
 
-$acUnits   = 1;
-$acRate    = 700;
-$acTonnage = "1.5";
-
+$acUnits = 1;
+$acHp    = 1.5;
 $orderRes = pg_query_params($conn, "
     SELECT id, installation_data
     FROM orders
     WHERE business_user_id = $1
+    AND order_type = 'setup'
     ORDER BY id DESC
     LIMIT 1
 ", [$business_id]);

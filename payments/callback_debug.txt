@@ -1744,3 +1744,75 @@ entered success block for order 138
 entered success block for order 138
 entered success block for order 138
 entered success block for order 138
+Array
+(
+    [time] => 2026-05-21 21:52:43
+    [order_id] => 139
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 234
+    [labor_data] => {"roles": {"chef": 0, "host": 0, "busboy": 0, "waiter": 2, "barista": 0, "cashier": 0, "cleaner": 0, "security": 0, "kitchen_helper": 0}, "salary_amount": 0, "compensation_type": "monthly"}
+    [installation_data] => {"ac_units": 5, "area_sqm": 200, "services": ["ac", "kitchen"], "terminal_count": 4, "kitchen_item_count": 4}
+    [txn_order_id] => 530211645
+    [merchant_order_id] => 139_1779393098
+    [amount_cents] => 20475900
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 139
+entered success block for order 139
+entered success block for order 139
+entered success block for order 139
+Array
+(
+    [time] => 2026-05-21 22:06:27
+    [order_id] => 140
+    [success] => 
+    [pending] => 
+    [payment_status_before] => pending
+    [business_user_id] => 234
+    [labor_data] => 
+    [installation_data] => []
+    [txn_order_id] => 530223494
+    [merchant_order_id] => 140_1779393948
+    [amount_cents] => 80000
+    [raw_success_value] => 
+    [raw_pending_value] => 
+    [data_message] => Restricted card
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+Array
+(
+    [time] => 2026-05-21 22:09:02
+    [order_id] => 140
+    [success] => 1
+    [pending] => 
+    [payment_status_before] => failed
+    [business_user_id] => 234
+    [labor_data] => 
+    [installation_data] => []
+    [txn_order_id] => 530224278
+    [merchant_order_id] => 140_1779394005
+    [amount_cents] => 80000
+    [raw_success_value] => 1
+    [raw_pending_value] => 
+    [data_message] => Approved
+    [txn_response_code] => 
+    [acq_response_code] => 
+    [owner] => 2206214
+)
+
+--------------------
+ENTERED !alreadyPaid block for order 140
+entered success block for order 140

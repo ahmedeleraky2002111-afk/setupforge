@@ -780,12 +780,15 @@ function ac_units_from_area($areaSqm){
   return max(1, (int)ceil($areaSqm / 40));
 }
 
-function ac_tonnage_from_area_per_unit($areaSqm, $acUnits){
-  $areaPerUnit = $areaSqm / max(1, $acUnits);
-  if ($areaPerUnit <= 20) return ["tonnage" => "1.5", "rate" => 700];
-  if ($areaPerUnit <= 30) return ["tonnage" => "2",   "rate" => 750];
-  if ($areaPerUnit <= 45) return ["tonnage" => "2.5", "rate" => 850];
-  return                         ["tonnage" => "3",   "rate" => 900];
+function ac_hp_from_area($areaSqm){
+    if ($areaSqm <= 40)  return ["units" => 1, "hp" => 1.5];
+    if ($areaSqm <= 80)  return ["units" => 1, "hp" => 2.5];
+    if ($areaSqm <= 100) return ["units" => 2, "hp" => 2.5];
+    if ($areaSqm <= 150) return ["units" => 3, "hp" => 3.0];
+    if ($areaSqm <= 200) return ["units" => 3, "hp" => 4.0];
+    if ($areaSqm <= 300) return ["units" => 4, "hp" => 4.0];
+    if ($areaSqm <= 400) return ["units" => 4, "hp" => 5.0];
+    return ["units" => 0, "hp" => 0]; // above 400 — central AC
 }
 function dining_set_target_spec($restaurantType, $size){
   $restaurantType = strtolower(trim((string)$restaurantType));
@@ -1374,55 +1377,90 @@ if ($remaining > 0 && $tvQty > 0 && !empty($tvOptions)) {
   return $cart;
 }
 function build_ac_cart_by_budget($catalog, $areaSqm) {
-  $acUnits   = ac_units_from_area($areaSqm);
-  $tonnageData = ac_tonnage_from_area_per_unit($areaSqm, $acUnits);
-  $tonnage   = $tonnageData["tonnage"];
+    $acData    = ac_hp_from_area($areaSqm);
+    $acUnits   = $acData["units"];
+    $requiredHp = $acData["hp"];
 
-  $cart = ["items" => []];
+    $cart = ["items" => [], "central_ac" => false];
 
-  if (empty($catalog["ac"])) return $cart;
+    // Above 400 m² — suggest central AC
+    if ($acUnits === 0) {
+        $cart["central_ac"] = true;
+        return $cart;
+    }
 
-  // Filter by matching tonnage in specs, fallback to any
-  $matching = array_filter($catalog["ac"], function($p) use ($tonnage) {
-    $specs = $p["specs"] ?? [];
-    $hp    = (float)($specs["hp"] ?? 0);
-    // Map tonnage string to HP range
-    $hpMap = ["1.5" => [1.5, 1.5], "2" => [2.0, 2.25], "2.5" => [2.5, 2.5], "3" => [3.0, 3.0]];
-    $range = $hpMap[$tonnage] ?? null;
-    if (!$range) return true; // no filter if tonnage unknown
-    return $hp >= $range[0] && $hp <= $range[1];
-  });
+    if (empty($catalog["ac"])) return $cart;
 
-  // Sort by price ASC
-  $matching = array_values($matching);
-  usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
+    // Filter by matching HP
+    $matching = array_filter($catalog["ac"], function($p) use ($requiredHp) {
+        $specs = $p["specs"] ?? [];
+        if (!is_array($specs)) $specs = [];
+        return abs((float)($specs["hp"] ?? 0) - (float)$requiredHp) < 0.01;
+    });
+    $matching = array_values($matching);
 
-  if (empty($matching)) $matching = array_values($catalog["ac"]); // fallback
+    // Sort by price ASC
+    usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
 
-  $recommended = $matching[0];
+    // Fallback to any product if no HP match
+    if (empty($matching)) {
+        $matching = array_values($catalog["ac"]);
+        usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
+    }
 
-  $cart["items"]["ac"] = [
-    "type"              => "ac",
-    "product_id"        => $recommended["id"],
-    "name"              => $recommended["name"],
-    "unit"              => (int)$recommended["price"],
-    "qty"               => $acUnits,
-    "image_url"         => $recommended["image_url"] ?? null,
-    "brand"             => $recommended["brand"] ?? null,
-    "vendor_name"       => $recommended["vendor_name"] ?? null,
-    "product_name"      => $recommended["name"],
-    "tier"              => $recommended["tier"] ?? null,
-    "module"            => "ac",
-    "category_id"       => null,
-    "product_group_key" => $recommended["product_group_key"] ?? null,
-    "vendor_user_id"    => $recommended["vendor_user_id"] ?? null,
-    "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
-    "specs"             => $recommended["specs"] ?? [],
-    "tonnage"           => $tonnage,
-    "alternatives"      => build_distinct_alternatives($recommended, $matching, 3),
-  ];
+if (empty($matching)) {
+    $higher = array_filter($catalog["ac"], function($p) use ($requiredHp) {
+        $specs = $p["specs"] ?? [];
+        return (float)($specs["hp"] ?? 0) > (float)$requiredHp;
+    });
+    usort($higher, fn($a, $b) => (float)($a["specs"]["hp"] ?? 0) <=> (float)($b["specs"]["hp"] ?? 0));
 
-  return $cart;
+    if (!empty($higher)) {
+        $matching = array_values($higher);
+    } else {
+        $lower = array_filter($catalog["ac"], function($p) use ($requiredHp) {
+            $specs = $p["specs"] ?? [];
+            return (float)($specs["hp"] ?? 0) < (float)$requiredHp;
+        });
+        usort($lower, fn($a, $b) => (float)($b["specs"]["hp"] ?? 0) <=> (float)($a["specs"]["hp"] ?? 0));
+
+        if (!empty($lower)) {
+            $matching = array_values($lower);
+        } else {
+            return $cart;
+        }
+    }
+}
+    $recommended = $matching[0];
+
+    // Alternatives — same HP, different product
+    $alternatives = array_values(array_filter($matching, function($p) use ($recommended) {
+        return (string)$p["id"] !== (string)$recommended["id"];
+    }));
+    $alternatives = array_slice($alternatives, 0, 3);
+
+    $cart["items"]["ac"] = [
+        "type"              => "ac",
+        "product_id"        => $recommended["id"],
+        "name"              => $recommended["name"],
+        "unit"              => (int)$recommended["price"],
+        "qty"               => $acUnits,
+        "image_url"         => $recommended["image_url"] ?? null,
+        "brand"             => $recommended["brand"] ?? null,
+        "vendor_name"       => $recommended["vendor_name"] ?? null,
+        "product_name"      => $recommended["name"],
+        "tier"              => $recommended["tier"] ?? null,
+        "module"            => "ac",
+        "category_id"       => null,
+        "product_group_key" => $recommended["product_group_key"] ?? null,
+        "vendor_user_id"    => $recommended["vendor_user_id"] ?? null,
+        "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
+        "specs"             => $recommended["specs"] ?? [],
+        "hp"                => $requiredHp,
+        "alternatives"      => $alternatives,
+    ];
+
+    return $cart;
 }
 
 /* ---------------- Handle actions (Recalc / Qty / Replace) ---------------- */
@@ -1692,7 +1730,11 @@ if (isset($_POST["update_furniture_qty"])) {
     header("Location: packages.php?module=furniture");
     exit;
   }
-
+if (isset($_POST["force_split_ac"])) {
+    $_SESSION["wizard"]["force_split_ac"] = true;
+    header("Location: packages.php?module=ac");
+    exit;
+  }
   if (isset($_POST["recalc_ac"])) {
     $_SESSION["wizard"]["ac_cart"] = build_ac_cart_by_budget($GLOBALS["INFRA_CATALOG_ACTIVE"], $GLOBALS["areaSqm"]);
     header("Location: packages.php?module=ac");
@@ -1823,6 +1865,8 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier) {
   unset($_SESSION["wizard"]["furniture_cart"]);
   $_SESSION["wizard"]["furniture_cart_tier"] = $furnitureTier;
 }
+$acHpData    = ac_hp_from_area($areaSqm);
+$isCentralAc = $acHpData["units"] === 0;
 
 /* ---------------- Auto build carts if empty (UNIVERSAL) ---------------- */
 if ($posCap > 0 && empty($_SESSION["wizard"]["pos_cart"])) {
@@ -1848,7 +1892,7 @@ if ($furnitureCap > 0 && empty($_SESSION["wizard"]["furniture_cart"])) {
     $furnitureCap
   );
 }
-if ($acCap > 0 && empty($_SESSION["wizard"]["ac_cart"])) {
+if (empty($_SESSION["wizard"]["ac_cart"])) {
   $_SESSION["wizard"]["ac_cart"] = build_ac_cart_by_budget(
     $INFRA_CATALOG_ACTIVE,
     $areaSqm
@@ -1857,10 +1901,9 @@ if ($acCap > 0 && empty($_SESSION["wizard"]["ac_cart"])) {
 
 // Store AC unit count for service_jobs.php pricing
 $acUnits = ac_units_from_area($areaSqm);
-$acTonnageData = ac_tonnage_from_area_per_unit($areaSqm, $acUnits);
-$_SESSION["wizard"]["ac_units"]   = $acUnits;
-$_SESSION["wizard"]["ac_tonnage"] = $acTonnageData["tonnage"];
-$_SESSION["wizard"]["ac_rate"]    = $acTonnageData["rate"];
+$acHpData = ac_hp_from_area($areaSqm);
+$_SESSION["wizard"]["ac_units"] = $acHpData["units"];
+$_SESSION["wizard"]["ac_hp"]    = $acHpData["hp"];
 
 
 $posCart = $_SESSION["wizard"]["pos_cart"] ?? null;
@@ -1881,6 +1924,8 @@ $acCart      = $_SESSION["wizard"]["ac_cart"] ?? null;
 $acTotal     = $acCart ? cart_total($acCart) : 0;
 $acRemaining = max(0, $acCap - $acTotal);
 $acOver      = max(0, $acTotal - $acCap);
+$acHpData    = ac_hp_from_area($areaSqm);
+$isCentralAc = $acHpData["units"] === 0;
 
 
 $grandTotal = (int)$posTotal + (int)$kitchenTotal + (int)$furnitureTotal + (int)$acTotal;
@@ -2027,6 +2072,12 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                           <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                         </div>
 
+                        <div style="padding:0 0 8px 0;">
+                          <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank"
+                             style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
+                            View Details
+                          </a>
+                        </div>
                         <div class="sf-pkg-card-footer">
                           <div class="sf-pkg-qty">
                             <form method="post" class="m-0">
@@ -2171,6 +2222,12 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                           <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                         </div>
 
+                        <div style="padding:0 0 8px 0;">
+                          <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank"
+                             style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
+                            View Details
+                          </a>
+                        </div>
                         <div class="sf-pkg-card-footer">
                           <form method="post" class="m-0 w-100">
                             <input type="hidden" name="add_extra_item" value="1">
@@ -2304,6 +2361,12 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                           <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                         </div>
 
+                        <div style="padding:0 0 8px 0;">
+                          <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank"
+                             style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
+                            View Details
+                          </a>
+                        </div>
                         <div class="sf-pkg-card-footer">
                           <div class="sf-pkg-qty">
                             <form method="post" class="m-0">
@@ -2448,6 +2511,12 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                           <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                         </div>
 
+                        <div style="padding:0 0 8px 0;">
+                          <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank"
+                             style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
+                            View Details
+                          </a>
+                        </div>
                         <div class="sf-pkg-card-footer">
                           <form method="post" class="m-0 w-100">
                             <input type="hidden" name="add_extra_item" value="1">
@@ -2577,6 +2646,12 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                 </div>
 
+                <div style="padding:0 0 8px 0;">
+                  <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank"
+                     style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
+                    View Details
+                  </a>
+                </div>
                 <div class="sf-pkg-card-footer">
                   <div class="sf-pkg-qty">
                     <form method="post" class="m-0">
@@ -2688,6 +2763,12 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                 </div>
 
+                <div style="padding:0 0 8px 0;">
+                  <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank"
+                     style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
+                    View Details
+                  </a>
+                </div>
                 <div class="sf-pkg-card-footer">
                   <form method="post" class="m-0 w-100">
                     <input type="hidden" name="add_extra_item" value="1">
@@ -2739,16 +2820,32 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
       </div>
     </div>
 
-    <?php
-      $acUnitsDisplay   = ac_units_from_area($areaSqm);
-      $acTonnageDisplay = ac_tonnage_from_area_per_unit($areaSqm, $acUnitsDisplay);
-    ?>
-    <div style="background:#f0f6ff;border:1px solid rgba(0,76,172,.12);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#374151;">
+    
+    <?php if ($isCentralAc): ?>
+    <div style="background:#fff8e1;border:1px solid rgba(245,158,11,.3);border-radius:0;padding:16px;margin-bottom:16px;font-size:.88rem;color:#374151;">
+      <i class="bi bi-exclamation-triangle me-1" style="color:#f59e0b;"></i>
+      <strong>Your space (<?= $areaSqm ?> m²) requires a central AC system.</strong><br>
+      We recommend contacting a certified HVAC company for proper assessment.
+      <div style="margin-top:12px;display:flex;gap:10px;">
+        <a href="service_jobs.php?tab=installation" style="padding:8px 16px;background:#004cac;color:#fff;font-size:.82rem;font-weight:700;text-decoration:none;">
+          Contact HVAC Company
+        </a>
+        <form method="post" class="m-0">
+          <input type="hidden" name="force_split_ac" value="1">
+          <button style="padding:8px 16px;background:#fff;color:#004cac;border:1.5px solid #004cac;font-size:.82rem;font-weight:700;cursor:pointer;">
+            Show Split AC Products Anyway
+          </button>
+        </form>
+      </div>
+    </div>
+    <?php else: ?>
+    <div style="background:#f0f6ff;border:1px solid rgba(0,76,172,.12);border-radius:0;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#374151;">
       <i class="bi bi-info-circle me-1" style="color:#004cac;"></i>
       Based on your <strong><?= $areaSqm ?> m²</strong> area — we recommend
-      <strong><?= $acUnitsDisplay ?> unit<?= $acUnitsDisplay > 1 ? 's' : '' ?></strong>
-      of <strong><?= $acTonnageDisplay["tonnage"] ?> ton</strong> each.
+      <strong><?= $acHpData["units"] ?> unit<?= $acHpData["units"] > 1 ? 's' : '' ?></strong>
+      of <strong><?= $acHpData["hp"] ?> HP</strong> each.
     </div>
+    <?php endif; ?>
 
     <div class="sf-module-toolbar">
       <form method="post" class="m-0">
@@ -2817,13 +2914,23 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   <div class="sf-pkg-card-meta">
                     <?php if (!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
                     <?php if (!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
-                    <?php if (!empty($it["tonnage"])): ?>
-                      <span style="color:#004cac;font-weight:700;"><?= htmlspecialchars($it["tonnage"]) ?> Ton</span>
+                    <?php 
+                      $acSpecs = $it["specs"] ?? [];
+                      $displayHp = $acSpecs["hp"] ?? ($it["hp"] ?? null);
+                    ?>
+                    <?php if ($displayHp): ?>
+                      <span style="color:#004cac;font-weight:700;"><?= htmlspecialchars($displayHp) ?> HP</span>
                     <?php endif; ?>
                   </div>
                   <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                 </div>
 
+                <div style="padding:0 0 8px 0;">
+                  <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank"
+                     style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
+                    View Details
+                  </a>
+                </div>
                 <div class="sf-pkg-card-footer">
                   <div class="sf-pkg-qty">
                     <form method="post" class="m-0">
@@ -2935,6 +3042,12 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                 </div>
 
+                <div style="padding:0 0 8px 0;">
+                  <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank"
+                     style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
+                    View Details
+                  </a>
+                </div>
                 <div class="sf-pkg-card-footer">
                   <form method="post" class="m-0 w-100">
                     <input type="hidden" name="add_extra_item" value="1">
@@ -3005,11 +3118,11 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
         </div>
         <?php if($hasAnyItems): ?>
           <a href="order_summary.php" class="sf-pkg-review-btn">
-            Review Full Order <i class="bi bi-arrow-right"></i>
+            Review Full Setup <i class="bi bi-arrow-right"></i>
           </a>
         <?php else: ?>
           <button class="sf-pkg-review-btn" disabled>
-            Review Full Order <i class="bi bi-arrow-right"></i>
+            Review Full Setup <i class="bi bi-arrow-right"></i>
           </button>
         <?php endif; ?>
       </div>
@@ -3302,6 +3415,7 @@ document.addEventListener("show.bs.modal", function(e) {
           html += '<input type="hidden" name="product_id" value="' + p.id + '">';
           html += '<button type="submit" class="sf-modal-add-btn">Add to Section</button>';
           html += '</form>';
+          html += '<a href="pr_details.php?id=' + p.id + '" target="_blank" style="display:block;text-align:center;padding:6px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.75rem;font-weight:700;text-decoration:none;margin-top:6px;">View Details</a>';
           html += '</div>';
         });
         html += '</div></div>';

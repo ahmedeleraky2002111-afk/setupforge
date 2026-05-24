@@ -7891,3 +7891,75 @@ div#sfWwTrack {
   font-weight:bold;
   font-size:1.1rem;
 }
+
+/* Navbar cart icon */
+.sf-navbar-cart {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: #fff;
+  font-size: 1.2rem;
+  text-decoration: none;
+  transition: color .15s;
+}
+.sf-navbar-cart:hover { color: rgba(255,255,255,.75); }
+.sf-navbar-cart-badge {
+  position: absolute;
+  top: 0; right: 0;
+  background: #006EB1;
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  border: 1px solid #006EB1;
+}
+.sf-product-btn-cart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 5px;
+  border: 1.5px solid #004cac;
+  background: #fff;
+  color: #004cac;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.sf-product-btn-cart:hover:not(:disabled) {
+  background: #004cac;
+  color: #fff;
+}
+.sf-product-btn-cart:disabled {
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: default;
+}
+.sf-product-btn-cart--added {
+  background: #dcfce7;
+  border-color: #16a34a;
+  color: #15803d;
+  text-decoration: none;
+}
+.sf-product-btn-cart--added:hover {
+  background: #bbf7d0;
+  color: #15803d;
+}
+.sf-product-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

@@ -2613,3 +2613,568 @@ Array
 )
 
 ---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 0
+    [chef_count] => 0
+    [cashier_count] => 2
+    [staff_roles] => Array
+        (
+            [0] => cashier
+            [1] => busboy
+        )
+
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 2
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 0
+    [chef_count] => 0
+    [cashier_count] => 2
+    [staff_roles] => Array
+        (
+            [0] => cashier
+            [1] => busboy
+        )
+
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 2
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 2
+    [staff_roles] => Array
+        (
+            [0] => waiter
+        )
+
+    [chef_count] => 0
+    [cashier_count] => 0
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+place_order session: Array
+(
+    [business_name] => M.A
+    [business_type] => Restaurant
+    [restaurant_type] => premium_dining
+    [indoor_tables] => 5
+    [outdoor_tables] => 0
+    [indoor_seats] => 20
+    [outdoor_seats] => 0
+    [area_sqm] => 200
+    [modules] => Array
+        (
+            [0] => kitchen
+            [1] => pos
+            [2] => furniture
+            [3] => electronics
+            [4] => ac
+        )
+
+    [budget] => 4000000
+    [installation_needed] => yes
+    [installation_services] => Array
+        (
+            [0] => ac
+            [1] => kitchen
+        )
+
+    [staffing_needed] => yes
+    [staff_roles] => Array
+        (
+            [0] => waiter
+        )
+
+    [technicians] => Array
+        (
+            [0] => ac
+            [1] => kitchen
+        )
+
+    [waiter_count] => 2
+    [chef_count] => 0
+    [cashier_count] => 0
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+    [labor] => Array
+        (
+            [barista] => 0
+            [busboy] => 0
+            [host] => 0
+            [cashier] => 0
+            [waiter] => 2
+            [chef] => 0
+            [cleaner] => 0
+            [security] => 0
+            [kitchen_helper] => 0
+        )
+
+    [pos_cart_tier] => Starter
+    [kitchen_cart_tier] => Balanced
+    [furniture_cart_tier] => Balanced
+    [pos_cart] => Array
+        (
+            [items] => Array
+                (
+                    [terminal] => Array
+                        (
+                            [product_name] => Sunmi T2  Lite POS kitchen display system - 15.6 inch
+                            [brand] => Sumni
+                            [tier] => Starter
+                            [module] => pos
+                            [category_id] => 
+                            [type] => terminal
+                            [product_id] => 60
+                            [name] => Sunmi T2  Lite POS kitchen display system - 15.6 inch
+                            [unit] => 12000
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_20/product_60/img_1779225480_0.webp
+                            [vendor_name] => Partner Tech Middle East (POS)
+                            [product_group_key] => terminal_sunmi_t2_lite_pos_kitchen_display_system_156_inch
+                            [vendor_user_id] => 20
+                            [alternatives] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [id] => 1
+                                            [name] => SUNMI T2 Lite POS Terminal
+                                            [brand] => SUNMI
+                                            [tier] => starter
+                                            [vendor_name] => Gargour Technologies (POS)
+                                            [category_name] => Electronics
+                                            [price] => 12999
+                                            [image_url] => assets/images/SUNMI T2 Lite POS Terminal.png
+                                            [vendor_user_id] => 19
+                                            [product_group_key] => 
+                                            [created_at] => 2026-02-25 23:12:50.381654+02
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [id] => 59
+                                            [name] => Elo Wallaby E796783 Self-Service Countertop POS Stand
+                                            [brand] => Elo
+                                            [tier] => Starter
+                                            [vendor_name] => Partner Tech Middle East (POS)
+                                            [category_name] => Electronics
+                                            [price] => 14000
+                                            [image_url] => Vendor/uploads/products/vendor_20/product_59/img_1779224606_0.webp
+                                            [vendor_user_id] => 20
+                                            [product_group_key] => terminal_elo_wallaby_e796783_selfservice_countertop_pos_stan
+                                            [created_at] => 2026-05-20 00:03:26.70918+03
+                                        )
+
+                                )
+
+                        )
+
+                    [printer] => Array
+                        (
+                            [product_name] => Bixolon SRP-350 Receipt Printer
+                            [brand] => Bixolon
+                            [tier] => Starter
+                            [module] => pos
+                            [category_id] => 
+                            [type] => printer
+                            [product_id] => 5
+                            [name] => Bixolon SRP-350 Receipt Printer
+                            [unit] => 4799
+                            [qty] => 1
+                            [image_url] => assets/images/Bixolon SRP-350 Receipt Printer.png
+                            [vendor_name] => Partner Tech Middle East (POS)
+                            [product_group_key] => 
+                            [vendor_user_id] => 20
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                    [drawer] => Array
+                        (
+                            [product_name] => Cashier Drawer 10 Compartments Weight 6.5K - Money Drawer
+                            [brand] => Generic
+                            [tier] => Starter
+                            [module] => pos
+                            [category_id] => 
+                            [type] => drawer
+                            [product_id] => 54
+                            [name] => Cashier Drawer 10 Compartments Weight 6.5K - Money Drawer
+                            [unit] => 1750
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_20/product_54/img_1779222698_0.jpg
+                            [vendor_name] => Partner Tech Middle East (POS)
+                            [product_group_key] => drawer_cashier_drawer_10_compartments_weight_65k_money_drawe
+                            [vendor_user_id] => 20
+                            [alternatives] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [id] => 53
+                                            [name] => ZKTeco ZKT eco Cash Drawer, Metallic with 8 Coin Slots and 5 Banknotes ZKC0508
+                                            [brand] => ZKTeco
+                                            [tier] => Starter
+                                            [vendor_name] => Partner Tech Middle East (POS)
+                                            [category_name] => Electronics
+                                            [price] => 2099
+                                            [image_url] => Vendor/uploads/products/vendor_20/product_53/img_1779222292_0.jpg
+                                            [vendor_user_id] => 20
+                                            [product_group_key] => drawer_zkteco_zkt_eco_cash_drawer_metallic_with_8_coin_slots
+                                            [created_at] => 2026-05-19 22:42:41.331469+03
+                                        )
+
+                                )
+
+                        )
+
+                    [scanner] => Array
+                        (
+                            [type] => scanner
+                            [product_id] => 63
+                            [name] => U.POS UP-PS700 2D Barcode Scanner, USB, 1D and 2D Codes, CMOS Image Reader, Compatible with Windows, MAC, Android, Linux
+                            [unit] => 1350
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_20/product_63/img_1779227664_0.jpg
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                )
+
+        )
+
+    [kitchen_cart] => Array
+        (
+            [items] => Array
+                (
+                    [oven] => Array
+                        (
+                            [type] => oven
+                            [product_id] => 37
+                            [name] => Electric Pizza Oven Large Size 125cm for Restaurants and Hotels Brand: Generic
+                            [unit] => 28262
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_30/product_37/img_1778354173_0.jpg
+                            [brand] => Generic
+                            [vendor_name] => Awad Serag
+                            [product_name] => Electric Pizza Oven Large Size 125cm for Restaurants and Hotels Brand: Generic
+                            [tier] => Balanced
+                            [module] => kitchen
+                            [category_id] => 
+                            [product_group_key] => oven_electric_pizza_oven_large_size_125cm_for_restaurants_an
+                            [vendor_user_id] => 30
+                            [alternatives] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [id] => 26
+                                            [name] => Commercial Gas Oven 6 Tray
+                                            [brand] => Berjaya
+                                            [tier] => balanced
+                                            [vendor_name] => Awad Serag
+                                            [category_name] => 
+                                            [price] => 53499
+                                            [image_url] => assets/images/Commercial Gas Oven 6 Tray.png
+                                            [vendor_user_id] => 30
+                                            [product_group_key] => kitchen_oven_6tray_berjaya
+                                            [created_at] => 2026-02-27 22:55:08.341064+02
+                                            [stock_quantity] => 0
+                                            [specs] => Array
+                                                (
+                                                )
+
+                                        )
+
+                                )
+
+                        )
+
+                    [fridge] => Array
+                        (
+                            [type] => fridge
+                            [product_id] => 42
+                            [name] => Defrost Hamburg Refrigerator,
+                            [unit] => 15899
+                            [qty] => 2
+                            [image_url] => Vendor/uploads/products/vendor_30/product_42/img_1778356450_0.jpg
+                            [brand] => Generic
+                            [vendor_name] => Awad Serag
+                            [product_name] => Defrost Hamburg Refrigerator,
+                            [tier] => Balanced
+                            [module] => kitchen
+                            [category_id] => 
+                            [product_group_key] => fridge_defrost_hamburg_refrigerator
+                            [vendor_user_id] => 30
+                            [alternatives] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [id] => 38
+                                            [name] => Bomann, Beverage Refrigerator 63L Black KSG7287-Black, LED Lighting, Temperature Control +3°C to +10°C, 4 Chrome Shelves, Double Glazing Door, Adjustable Legs
+                                            [brand] => Bomann
+                                            [tier] => Balanced
+                                            [vendor_name] => Awad Serag
+                                            [category_name] => Large Home Appliances
+                                            [price] => 24900
+                                            [image_url] => Vendor/uploads/products/vendor_30/product_38/img_1778355022_0.jpeg
+                                            [vendor_user_id] => 30
+                                            [product_group_key] => fridge_bomann_beverage_refrigerator_63l_black_ksg7287black_l
+                                            [created_at] => 2026-05-09 22:30:22.705271+03
+                                            [stock_quantity] => 0
+                                            [specs] => Array
+                                                (
+                                                )
+
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [id] => 40
+                                            [name] => Generic Dessert Refrigerator for Cake and Tart
+                                            [brand] => Generic
+                                            [tier] => Balanced
+                                            [vendor_name] => Awad Serag
+                                            [category_name] => Large Home Appliances
+                                            [price] => 39500
+                                            [image_url] => Vendor/uploads/products/vendor_30/product_40/img_1778356198_0.jpg
+                                            [vendor_user_id] => 30
+                                            [product_group_key] => fridge_generic_dessert_refrigerator_for_cake_and_tart
+                                            [created_at] => 2026-05-09 22:49:58.290705+03
+                                            [stock_quantity] => 0
+                                            [specs] => Array
+                                                (
+                                                )
+
+                                        )
+
+                                )
+
+                            [extras] => Array
+                                (
+                                )
+
+                        )
+
+                    [blender] => Array
+                        (
+                            [type] => blender
+                            [product_id] => 45
+                            [name] => ELTERAZONE Blender 4500W Heavy Duty Commercial Grade Blender 6 Blades Mixer Juicer
+                            [unit] => 800
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_30/product_45/img_1778357204_0.jpeg
+                            [brand] => ELTERAZONE
+                            [vendor_name] => Awad Serag
+                            [product_name] => ELTERAZONE Blender 4500W Heavy Duty Commercial Grade Blender 6 Blades Mixer Juicer
+                            [tier] => Balanced
+                            [module] => kitchen
+                            [category_id] => 
+                            [product_group_key] => blender_elterazone_blender_4500w_heavy_duty_commercial_grade
+                            [vendor_user_id] => 30
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                )
+
+        )
+
+    [furniture_cart] => Array
+        (
+            [items] => Array
+                (
+                    [dining_set] => Array
+                        (
+                            [type] => dining_set
+                            [product_id] => 32
+                            [name] => Metropol Dining Set (6-Seater)
+                            [unit] => 24800
+                            [qty] => 5
+                            [image_url] => assets/images/Metropol Dining Set (6-Seater).png
+                            [brand] => HUB Furniture
+                            [vendor_name] => Homzmart Egypt
+                            [product_name] => Metropol Dining Set (6-Seater)
+                            [tier] => balanced
+                            [module] => furniture
+                            [category_id] => 13
+                            [product_group_key] => dining_set_metropol_6_hub
+                            [vendor_user_id] => 24
+                            [stock_quantity] => 5
+                            [specs] => Array
+                                (
+                                    [style] => modern
+                                    [is_set] => 1
+                                    [seat_count] => 6
+                                    [layout_type] => standard
+                                    [source_label] => manual
+                                    [restaurant_style] => standard_dining
+                                )
+
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                )
+
+        )
+
+    [ac_cart] => Array
+        (
+            [items] => Array
+                (
+                    [ac] => Array
+                        (
+                            [type] => ac
+                            [product_id] => 65
+                            [name] => Unionaire Artify Smart Split Air Conditioner ,1.5 horsepower Only Cooling ,White
+                            [unit] => 18999
+                            [qty] => 5
+                            [image_url] => Vendor/uploads/products/vendor_17/product_65/img_1779228606_0.jpg
+                            [brand] => Unionaire
+                            [vendor_name] => B.TECH
+                            [product_name] => Unionaire Artify Smart Split Air Conditioner ,1.5 horsepower Only Cooling ,White
+                            [tier] => Starter
+                            [module] => ac
+                            [category_id] => 
+                            [product_group_key] => ac_unionaire_artify_smart_split_air_conditioner_15_horsepowe
+                            [vendor_user_id] => 17
+                            [stock_quantity] => 16
+                            [specs] => Array
+                                (
+                                    [hp] => 1.5
+                                    [ac_type] => Split
+                                    [inverter] => Yes
+                                    [warranty] => 5 years
+                                    [capacity_btu] => 18000
+                                    [cooling_heating] => Cooling Only
+                                )
+
+                            [tonnage] => 2.5
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                )
+
+        )
+
+    [ac_units] => 5
+    [ac_tonnage] => 2.5
+    [ac_rate] => 850
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 2
+    [staff_roles] => Array
+        (
+            [0] => waiter
+            [1] => security
+        )
+
+    [chef_count] => 0
+    [cashier_count] => 0
+    [security_count] => 2
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 0
+    [chef_count] => 0
+    [cashier_count] => 0
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 1
+    [staff_roles] => Array
+        (
+            [0] => waiter
+            [1] => chef
+            [2] => cashier
+        )
+
+    [chef_count] => 1
+    [cashier_count] => 1
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 1
+    [staff_roles] => Array
+        (
+            [0] => waiter
+            [1] => chef
+            [2] => cashier
+        )
+
+    [chef_count] => 1
+    [cashier_count] => 1
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---

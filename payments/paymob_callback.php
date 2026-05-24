@@ -282,7 +282,8 @@ try {
       ? (int)$order["business_user_id"]
       : null;
 
-    if ($businessId !== null) {
+    $orderType = trim((string)($order["order_type"] ?? "setup"));
+    if ($businessId !== null && $orderType === 'setup') {
       $jobLocation = trim((string)($order["delivery_location"] ?? ""));
 
       if ($jobLocation === "") {

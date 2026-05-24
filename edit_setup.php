@@ -17,6 +17,7 @@ $orderRes = pg_query_params($conn, "
     SELECT id, order_total FROM orders
     WHERE business_user_id = \$1
     AND payment_status = 'paid'
+    AND order_type = 'setup'
     ORDER BY id DESC LIMIT 1
 ", [$business_id]);
 

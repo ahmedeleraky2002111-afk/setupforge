@@ -17,6 +17,7 @@ function user_has_completed_setup($conn, $userId) {
         "SELECT 1 FROM orders
          WHERE business_user_id = $1
            AND payment_status = 'paid'
+           AND order_type = 'setup'
          LIMIT 1",
         [$userId]
     );

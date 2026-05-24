@@ -25,7 +25,8 @@ if ($orderId > 0) {
       payment_method,
       paid_at,
       payment_status,
-      status
+      status,
+      order_type
     FROM orders
     WHERE id = $1
     LIMIT 1
@@ -85,9 +86,15 @@ if (($order["payment_status"] ?? "") !== "paid") {
     exit;
   }
 }
-// Clear carts now that payment is confirmed
-unset($_SESSION["carts"]);
-unset($_SESSION["wizard"]);
+$orderType = trim((string)($order["order_type"] ?? "setup"));
+
+if ($orderType === 'shop') {
+    unset($_SESSION["shop_cart"]);
+    unset($_SESSION["shop_last_order_id"]);
+} else {
+    unset($_SESSION["carts"]);
+    unset($_SESSION["wizard"]);
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -100,8 +107,14 @@ unset($_SESSION["wizard"]);
 </head>
 <body>
 
-<?php include "../includes/navbar.php"; ?>
-
+<nav class="navbar navbar-expand-lg navbar-dark sf-navbar">
+  <div class="container d-flex align-items-center">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="../home.php">
+      <div class="sf-logo"><img src="../assets/images/Logo.png" alt="SetupForge Logo"></div>
+      <span class="fw-bold text-white">SetupForge</span>
+    </a>
+  </div>
+</nav>
 <main class="container py-5">
   <div class="row justify-content-center">
     <div class="col-lg-8">
@@ -158,10 +171,14 @@ unset($_SESSION["wizard"]);
   <a href="../home.php" class="btn btn-dark px-4">Go Home</a>
   <a href="../packages.php" class="btn btn-outline-secondary px-4">Build Another Setup</a>
 
-  <?php if (!empty($order["business_user_id"])): ?>
-    <a href="../service_jobs.php" class="btn btn-primary px-4">Manage Service Jobs</a>
-    <a href="../business_overview.php?order_id=<?= (int)$order["id"] ?>" class="btn btn-outline-dark px-4">View Business Overview</a>
-  <?php endif; ?>
+  <?php if ($orderType === 'shop'): ?>
+    <a href="../products.php" class="btn btn-primary px-4">Continue Shopping</a>
+<?php else: ?>
+    <?php if (!empty($order["business_user_id"])): ?>
+        <a href="../service_jobs.php" class="btn btn-primary px-4">Manage Service Jobs</a>
+        <a href="../business_overview.php?order_id=<?= (int)$order["id"] ?>" class="btn btn-outline-dark px-4">View Business Overview</a>
+    <?php endif; ?>
+<?php endif; ?>
 </div>
       </div>
     </div>

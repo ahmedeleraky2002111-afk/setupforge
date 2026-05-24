@@ -26,7 +26,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
 
     // Check for completed (paid) order
     $paidRes = @pg_query_params($conn,
-        "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' LIMIT 1",
+        "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' AND order_type = 'setup' LIMIT 1",
         [$userId]
     );
     if ($paidRes && pg_num_rows($paidRes) > 0) {
@@ -40,10 +40,13 @@ if (isset($_SESSION["user_id"]) && $conn) {
         );
         if ($bizRes && pg_num_rows($bizRes) > 0) {
             $biz = pg_fetch_assoc($bizRes);
-            if (($biz['setup_status'] ?? '') === 'in_progress' && (int)($biz['setup_step'] ?? 0) > 0) {
-                $setupBtnText = "Resume Setup";
-                $setupBtnLink = "setup.php";
-            }
+            if (($biz['setup_status'] ?? '') === 'completed') {
+    $setupBtnText = "Resume Setup";
+    $setupBtnLink = "packages.php";
+} elseif (($biz['setup_status'] ?? '') === 'in_progress' && (int)($biz['setup_step'] ?? 0) > 0) {
+    $setupBtnText = "Resume Setup";
+    $setupBtnLink = "setup.php";
+}
         }
     }
 }
@@ -241,7 +244,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
   </main>
 <!-- PARTNER WITH US -->
 <!-- WORK WITH US SLIDER -->
-<?php if (!isset($_SESSION['user_id']) || !(@pg_query_params($conn, "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' LIMIT 1", [$_SESSION['user_id']]) && pg_num_rows(@pg_query_params($conn, "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' LIMIT 1", [$_SESSION['user_id']])) > 0)): ?>
+<?php if (!isset($_SESSION['user_id']) || !(@pg_query_params($conn, "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' AND order_type = 'setup' LIMIT 1", [$_SESSION['user_id']]) && pg_num_rows(@pg_query_params($conn, "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' AND order_type = 'setup' LIMIT 1", [$_SESSION['user_id']])) > 0)): ?>
 <section class="sf-ww-section" style="background:#ffffff;">
 
   <div class="sf-ww-track-wrap">
