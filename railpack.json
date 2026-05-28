@@ -1,4 +1,4 @@
-﻿{
+{
   "provider": "php",
   "start": {
     "command": "php -S 0.0.0.0:$PORT"
