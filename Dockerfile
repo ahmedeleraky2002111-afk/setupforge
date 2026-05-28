@@ -1,5 +1,3 @@
-FROM php:8.2-apache
-RUN docker-php-ext-install pgsql pdo_pgsql
-COPY . /var/www/html/
-RUN chown -R www-data:www-data /var/www/html
-EXPOSE 80
+FROM dunglas/frankenphp
+RUN install-php-extensions pgsql pdo_pgsql
+COPY . /app/public
