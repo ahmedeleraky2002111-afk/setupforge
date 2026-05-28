@@ -1,5 +1,10 @@
 {
   "provider": "php",
+  "phases": {
+    "setup": {
+      "aptPkgs": ["php8.3-pgsql"]
+    }
+  },
   "start": {
     "command": "php -S 0.0.0.0:$PORT"
   }
