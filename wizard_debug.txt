@@ -6232,3 +6232,23 @@ place_order session: Array
 )
 
 ---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 0
+    [chef_count] => 0
+    [cashier_count] => 0
+    [security_count] => 0
+    [barista_count] => 1
+    [staff_roles] => Array
+        (
+            [0] => barista
+        )
+
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
