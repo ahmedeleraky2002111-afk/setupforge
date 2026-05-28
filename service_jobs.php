@@ -71,8 +71,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
     exit();
 }
 
+// NEW - replace with:
 $acUnits = 1;
 $acHp    = 1.5;
+$acRate  = 700;
+$orderId  = null;
+$instData = [];
+
 $orderRes = pg_query_params($conn, "
     SELECT id, installation_data
     FROM orders
@@ -82,21 +87,20 @@ $orderRes = pg_query_params($conn, "
     LIMIT 1
 ", [$business_id]);
 
-$orderId  = null;
-$instData = [];
-
 if ($orderRes && pg_num_rows($orderRes) > 0) {
     $orderRow = pg_fetch_assoc($orderRes);
     $orderId  = (int)$orderRow["id"];
     $instData = json_decode($orderRow["installation_data"], true) ?? [];
-    $areaSqm  = (int)($instData["area_sqm"] ?? 50);
-    $acUnits  = max(1, (int)ceil($areaSqm / 40));
 
-    $areaPerUnit = $areaSqm / max(1, $acUnits);
-    if      ($areaPerUnit <= 20) { $acTonnage = "1.5"; $acRate = 700; }
-    elseif  ($areaPerUnit <= 30) { $acTonnage = "2";   $acRate = 750; }
-    elseif  ($areaPerUnit <= 45) { $acTonnage = "2.5"; $acRate = 850; }
-    else                         { $acTonnage = "3";   $acRate = 900; }
+    // Use HP values saved by packages.php
+    $acUnits = max(1, (int)($instData["ac_units"] ?? 1));
+    $acHp    = (float)($instData["ac_hp"]    ?? 1.5);
+
+    // Default rate fallback by HP
+    if      ($acHp <= 1.5) $acRate = 700;
+    elseif  ($acHp <= 2.5) $acRate = 850;
+    elseif  ($acHp <= 3.0) $acRate = 900;
+    else                   $acRate = 950;
 }
 
 $maxDeliveryDate = null;
@@ -114,14 +118,14 @@ $minScheduleDate = $maxDeliveryDate
     ? date('Y-m-d', strtotime($maxDeliveryDate . ' +1 day'))
     : date('Y-m-d');
 
-// Load per-company AC rates
+// NEW:
 $acRatesMap = [];
-if ($acTonnage) {
+if ($acHp) {
     $ratesRes = pg_query_params($conn, "
         SELECT company_id, rate_per_unit
         FROM company_ac_rates
-        WHERE tonnage = $1
-    ", [$acTonnage]);
+        WHERE hp = $1
+    ", [$acHp]);
     if ($ratesRes) {
         while ($rateRow = pg_fetch_assoc($ratesRes)) {
             $acRatesMap[(int)$rateRow["company_id"]] = (int)$rateRow["rate_per_unit"];
@@ -138,7 +142,7 @@ if ($orderId) {
         FROM order_items oi
         JOIN products p ON p.id = oi.product_id
         WHERE oi.order_id = $1
-          AND p.module IN ('kitchen', 'pos')
+          AND p.module IN ('kitchen', 'pos', 'ac')
     ", [$orderId]);
     if ($itemsRes) {
         while ($item = pg_fetch_assoc($itemsRes)) {
@@ -720,13 +724,19 @@ function formatInstallationServices($raw) {
   $cid = (int)$co["company_id"];
   if ($serviceKey === 'ac') {
     $rateToUse = $acRatesMap[$cid] ?? $acRate;
-    $breakdownLines = [[
-      "name" => $acTonnage . ' Ton AC Unit',
-      "qty" => $acUnits,
-      "rate" => $rateToUse,
-      "subtotal" => $rateToUse * $acUnits,
-      "image" => null,
-    ]];
+    $acItems = array_filter($orderItems, fn($i) => $i['module'] === 'ac');
+    $breakdownLines = [];
+    foreach ($acItems as $acItem) {
+        $acImgRes = pg_query_params($conn, "SELECT image_url FROM product_images WHERE product_id = $1 LIMIT 1", [$acItem['product_id']]);
+        $acImg = ($acImgRes && pg_num_rows($acImgRes) > 0) ? pg_fetch_assoc($acImgRes)['image_url'] : null;
+        $breakdownLines[] = [
+            "name"     => $acItem['product_name'],
+            "qty"      => (int)$acItem['quantity'],
+            "rate"     => $rateToUse,
+            "subtotal" => $rateToUse * (int)$acItem['quantity'],
+            "image"    => $acImg,
+        ];
+    }
   } elseif ($serviceKey === 'kitchen') {
     $breakdownLines = $kitchenBreakdown[$cid] ?? [];
   } elseif ($serviceKey === 'pos') {
@@ -740,25 +750,21 @@ function formatInstallationServices($raw) {
                     if ($serviceKey === 'ac') {
   $rateToUse    = $acRatesMap[$cid] ?? $acRate;
   $displayPrice = number_format($rateToUse * $acUnits, 0) . ' EGP';
-  $priceSub     = $acTonnage . ' ton × ' . $acUnits . ' units';
+  $acItemCount = array_sum(array_column(array_filter($orderItems, fn($i) => $i['module'] === 'ac'), 'quantity'));
+  $priceSub = $acItemCount . ' unit' . ($acItemCount !== 1 ? 's' : '');
+  $acItems = array_filter($orderItems, fn($i) => $i['module'] === 'ac');
   $breakdownLines = [];
-  for ($u = 0; $u < $acUnits; $u++) {
-    $breakdownLines[] = [
-      "name"     => $acTonnage . ' Ton AC Unit',
-      "qty"      => 1,
-      "rate"     => $rateToUse,
-      "subtotal" => $rateToUse,
-      "image"    => null,
-    ];
+  foreach ($acItems as $acItem) {
+      $acImgRes = pg_query_params($conn, "SELECT image_url FROM product_images WHERE product_id = $1 LIMIT 1", [$acItem['product_id']]);
+      $acImg = ($acImgRes && pg_num_rows($acImgRes) > 0) ? pg_fetch_assoc($acImgRes)['image_url'] : null;
+      $breakdownLines[] = [
+          "name"     => $acItem['product_name'],
+          "qty"      => (int)$acItem['quantity'],
+          "rate"     => $rateToUse,
+          "subtotal" => $rateToUse * (int)$acItem['quantity'],
+          "image"    => $acImg,
+      ];
   }
-  // Collapse into one line if all units same
-  $breakdownLines = [[
-    "name"     => $acTonnage . ' Ton AC Unit',
-    "qty"      => $acUnits,
-    "rate"     => $rateToUse,
-    "subtotal" => $rateToUse * $acUnits,
-    "image"    => null,
-  ]];
                     } elseif ($serviceKey === 'kitchen') {
                       $breakdownLines = $kitchenBreakdown[$cid] ?? [];
                       $total          = $breakdownLines ? breakdownTotal($breakdownLines) : ((int)$co["starting_from"] * (int)($instData["kitchen_item_count"] ?? 1));

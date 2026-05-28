@@ -43,24 +43,29 @@ function get_business_row($conn, $userId) {
  */
 function save_wizard_to_db($conn, $userId, $w, $step, $status = 'in_progress') {
     if (!$userId || !$conn) return;
-
+     // DEBUG
+    file_put_contents(__DIR__ . "/biz_debug.txt", 
+        "step=$step business_name=" . ($w['business_name'] ?? 'MISSING') . "\n", 
+        FILE_APPEND);
     $businessName    = trim($w['business_name'] ?? '');
     $businessType    = $w['business_type'] ?? null;
     $restaurantType  = $w['restaurant_type'] ?? null;
     $indoorTables    = isset($w['indoor_tables']) ? (int)$w['indoor_tables'] : null;
     $outdoorTables   = isset($w['outdoor_tables']) ? (int)$w['outdoor_tables'] : null;
     $areaSqm         = isset($w['area_sqm']) ? (int)$w['area_sqm'] : null;
+    $floorCount      = isset($w['floor_count']) ? (int)$w['floor_count'] : 1;
     $budget          = isset($w['budget']) ? (int)$w['budget'] : null;
     $seatCount       = ($indoorTables + $outdoorTables) * 4;
 
     $modules         = !empty($w['modules']) ? '{' . implode(',', $w['modules']) . '}' : null;
     $installSvcs     = !empty($w['installation_services']) ? '{' . implode(',', $w['installation_services']) . '}' : null;
 
-    // Pack staffing into JSON
+    // Pack staffing into JSON (floor_count stored here until a dedicated column is added)
     $staffing = [];
     foreach (['waiter','chef','cashier','security','barista','busboy','host','kitchen_helper'] as $role) {
         $staffing[$role] = (int)($w[$role . '_count'] ?? 0);
     }
+    $staffing['floor_count'] = $floorCount;
     $staffingJson = json_encode($staffing);
 
     // Check if row exists
@@ -70,7 +75,7 @@ function save_wizard_to_db($conn, $userId, $w, $step, $status = 'in_progress') {
     if ($exists) {
         @pg_query_params($conn, "
             UPDATE businesses SET
-                business_name         = COALESCE($2, business_name),
+                business_name = CASE WHEN $2 IS NOT NULL AND $2 <> '' THEN $2 ELSE business_name END,
                 business_type         = COALESCE($3, business_type),
                 restaurant_type       = $4,
                 indoor_tables         = $5,
@@ -86,7 +91,7 @@ function save_wizard_to_db($conn, $userId, $w, $step, $status = 'in_progress') {
                 updated_at            = now()
             WHERE user_id = $1
         ", [
-            $userId, $businessName ?: null, $businessType,
+            $userId, $businessName !== '' ? $businessName : null, $businessType,
             $restaurantType, $indoorTables, $outdoorTables, $areaSqm,
             $budget ?: null, $seatCount,
             $modules, $installSvcs, $staffingJson,
@@ -185,7 +190,11 @@ if ($userId && !isset($_GET['step'])) {
             $staffing = json_decode($bizRow['staffing_data'], true);
             if (is_array($staffing)) {
                 foreach ($staffing as $role => $count) {
-                    $_SESSION['wizard'][$role . '_count'] = (int)$count;
+                    if ($role === 'floor_count') {
+                        $_SESSION['wizard']['floor_count'] = (int)$count;
+                    } else {
+                        $_SESSION['wizard'][$role . '_count'] = (int)$count;
+                    }
                 }
             }
         }
@@ -254,22 +263,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $_SESSION["wizard"]["outdoor_tables"] = $outdoorTbls;
     $_SESSION["wizard"]["indoor_seats"]   = $indoorTbls * 4;
     $_SESSION["wizard"]["outdoor_seats"]  = $outdoorTbls * 4;
-    $_SESSION["wizard"]["area_sqm"]       = max(10, (int)($_POST["area_sqm"] ?? 50));
-
-    $rt = $_SESSION["wizard"]["restaurant_type"] ?? "standard_dining";
-    if ($rt === "cloud_kitchen") {
-      $_SESSION["wizard"]["modules"] = ["kitchen","pos"];
-    } elseif ($rt === "premium_dining") {
-      $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ac"];
-    } else {
-      $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ac"];
-    }
-
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
-    redirect_step(5);
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 4);
+    redirect_step(4);
   }
 
   if ($currentStep === 4) {
+    $_SESSION["wizard"]["area_sqm"]    = max(10, (int)($_POST["area_sqm"] ?? 50));
+    $_SESSION["wizard"]["floor_count"] = max(1, (int)($_POST["floor_count"] ?? 1));
+
+    $rt = $_SESSION["wizard"]["restaurant_type"] ?? "standard_dining";
+    if ($rt === "cloud_kitchen") {
+        $_SESSION["wizard"]["modules"] = ["kitchen","pos"];
+    } elseif ($rt === "premium_dining") {
+        $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ac"];
+    } else {
+        $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ac"];
+    }
+
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
     redirect_step(5);
   }
 
@@ -349,6 +360,7 @@ $indoorTables  = (int)($w["indoor_tables"]  ?? ($indoorSeats  > 0 ? (int)ceil($i
 $outdoorTables = (int)($w["outdoor_tables"] ?? ($outdoorSeats > 0 ? (int)ceil($outdoorSeats / 4) : 0));
 $restaurantType = $w["restaurant_type"] ?? "";
 $areaSqm = (int)($w["area_sqm"] ?? 0);
+$floorCount = (int)($w["floor_count"] ?? 1);
 $modules = $w["modules"] ?? [];
 $modules = array_values(array_filter($modules, function($m){
   return in_array($m, ["kitchen","pos","furniture","electronics","ac"], true);
@@ -381,6 +393,7 @@ if ($step > 0 && $businessName === "") redirect_step(0);
 if ($step > 1 && $business === "") redirect_step(1);
 if ($step > 2 && $business === "Restaurant" && $restaurantType === "") redirect_step(2);
 if ($step > 3 && $indoorSeats < 1) redirect_step(3);
+if ($step === 4 && ($indoorTables < 1)) redirect_step(3);
 if ($step > 5 && $budget <= 0) redirect_step(5);
 
 $totalSteps = 9;
@@ -422,8 +435,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     <!-- PROGRESS BAR -->
     <div class="sf-wiz-progress">
       <?php
-        $steps = [0=>"Name",1=>"Type",2=>"Style",3=>"Seats",5=>"Budget",6=>"Services",7=>"Staff"];
-        $display = [0,1,2,3,5,6,7];
+        $steps   = [0=>"Name", 1=>"Type", 2=>"Style", 3=>"Tables", 4=>"Space", 5=>"Budget", 6=>"Services", 7=>"Staff"];
+        $display = [0, 1, 2, 3, 4, 5, 6, 7];
         foreach($display as $i => $s):
           $active = ($step === $s);
           $done   = ($step > $s);
@@ -643,8 +656,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <?php elseif ($step === 3): ?>
 
 <div class="sf-step3-wrap">
-  <h1 class="sf-name-title" style="text-align:left; margin-bottom:8px;">How many seats?</h1>
-  <p class="sf-name-sub" style="text-align:left; margin-bottom:20px;">We'll use this to recommend the right furniture, equipment, and layout for your space.</p>
+  <h1 class="sf-name-title" style="text-align:left; margin-bottom:8px;">How many tables do you have?</h1>
+  <p class="sf-name-sub" style="text-align:left; margin-bottom:28px;">Indoor and outdoor seating helps us size your furniture and equipment.</p>
 
   <form method="post" class="sf-step3-form">
     <input type="hidden" name="step" value="3">
@@ -652,52 +665,32 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     <div class="sf-slider-block">
       <div class="sf-slider-head">
         <span class="sf-slider-label">Indoor Tables</span>
+        <div class="sf-slider-presets">
+          <?php foreach ([5, 10, 15, 20] as $p): ?>
+          <button type="button" class="sf-seat-preset" data-field="indoor_tables" data-val="<?= $p ?>"><?= $p ?></button>
+          <?php endforeach; ?>
+        </div>
         <span class="sf-slider-val" id="indoor-display"><?= $indoorTables > 0 ? h($indoorTables) : 5 ?></span>
       </div>
       <input type="range" class="sf-slider-range" id="indoor_range" min="1" max="50" step="1" value="<?= $indoorTables > 0 ? h($indoorTables) : 5 ?>">
       <input type="number" name="indoor_tables" id="indoor_tables" hidden min="1" value="<?= $indoorTables > 0 ? h($indoorTables) : 5 ?>" required>
-      <div class="sf-seat-presets" style="margin-top:10px;">
-        <?php foreach ([4, 6, 10, 15, 20, 25] as $p): ?>
-        <button type="button" class="sf-seat-preset" data-field="indoor_tables" data-val="<?= $p ?>"><?= $p ?></button>
-        <?php endforeach; ?>
-      </div>
     </div>
 
     <div class="sf-slider-block">
       <div class="sf-slider-head">
         <span class="sf-slider-label">Outdoor Tables</span>
+        <div class="sf-slider-presets">
+          <?php foreach ([0, 5, 10, 15] as $p): ?>
+          <button type="button" class="sf-seat-preset" data-field="outdoor_tables" data-val="<?= $p ?>"><?= $p ?></button>
+          <?php endforeach; ?>
+        </div>
         <span class="sf-slider-val" id="outdoor-display"><?= h($outdoorTables) ?></span>
       </div>
       <input type="range" class="sf-slider-range" id="outdoor_range" min="0" max="50" step="1" value="<?= h($outdoorTables) ?>">
       <input type="number" name="outdoor_tables" id="outdoor_tables" hidden min="0" value="<?= h($outdoorTables) ?>">
-      <div class="sf-seat-presets" style="margin-top:10px;">
-        <?php foreach ([0, 3, 5, 8, 10, 15] as $p): ?>
-        <button type="button" class="sf-seat-preset" data-field="outdoor_tables" data-val="<?= $p ?>"><?= $p ?></button>
-        <?php endforeach; ?>
-      </div>
     </div>
 
-    <div class="sf-slider-block">
-      <div class="sf-slider-head">
-        <span class="sf-slider-label">Restaurant Area (m²)</span>
-        <span class="sf-slider-val" id="area-display"><?= $areaSqm > 0 ? h($areaSqm) : 50 ?></span>
-      </div>
-      <input type="range" class="sf-slider-range" id="area_range" min="10" max="300" step="1" value="<?= $areaSqm > 0 ? h($areaSqm) : 50 ?>">
-      <input type="number" name="area_sqm" id="area_sqm" hidden min="10" step="1" value="<?= $areaSqm > 0 ? h($areaSqm) : 50 ?>">
-      <div class="sf-seat-presets" style="margin-top:10px;">
-        <?php foreach ([30, 50, 80, 120, 200, 300] as $p): ?>
-        <button type="button" class="sf-seat-preset" data-field="area_sqm" data-val="<?= $p ?>"><?= $p ?>m²</button>
-        <?php endforeach; ?>
-      </div>
-    </div>
-
-    <div class="sf-seat-total-bar">
-      <div class="sf-seat-total-number" id="total-seats"><?= (max(1, $indoorTables > 0 ? $indoorTables : 5) + $outdoorTables) * 4 ?></div>
-      <div class="sf-seat-total-text">total seats</div>
-      <div class="sf-seat-total-size" id="size-label"></div>
-    </div>
-
-    <div class="sf-actions">
+    <div class="sf-actions" style="margin-top:32px;">
       <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $business === 'Restaurant' ? '2' : '1' ?>">← Back</a>
       <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
     </div>
@@ -706,49 +699,137 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
 <script>
 (function(){
-  const inputs = { indoor_tables: document.getElementById('indoor_tables'), outdoor_tables: document.getElementById('outdoor_tables'), area_sqm: document.getElementById('area_sqm') };
-  const ranges = { indoor_tables: document.getElementById('indoor_range'), outdoor_tables: document.getElementById('outdoor_range'), area_sqm: document.getElementById('area_range') };
-  const displays = { indoor_tables: document.getElementById('indoor-display'), outdoor_tables: document.getElementById('outdoor-display'), area_sqm: document.getElementById('area-display') };
-  const totalEl = document.getElementById('total-seats');
-  const sizeEl  = document.getElementById('size-label');
+  const inputs   = { indoor_tables: document.getElementById('indoor_tables'), outdoor_tables: document.getElementById('outdoor_tables') };
+  const ranges   = { indoor_tables: document.getElementById('indoor_range'),  outdoor_tables: document.getElementById('outdoor_range') };
+  const displays = { indoor_tables: document.getElementById('indoor-display'), outdoor_tables: document.getElementById('outdoor-display') };
 
-  function getMin(field){ return field === 'indoor_tables' ? 1 : field === 'area_sqm' ? 10 : 0; }
-
-  function updateTotal(){
-    const indoorT  = parseInt(inputs.indoor_tables.value)  || 0;
-    const outdoorT = parseInt(inputs.outdoor_tables.value) || 0;
-    const total    = (indoorT + outdoorT) * 4;
-    totalEl.textContent = total;
-    if      (total <= 20)  sizeEl.textContent = 'Small café-style space';
-    else if (total <= 50)  sizeEl.textContent = 'Mid-size restaurant';
-    else if (total <= 100) sizeEl.textContent = 'Large restaurant';
-    else                   sizeEl.textContent = 'Venue-scale setup';
+  function syncPresets(){
     document.querySelectorAll('.sf-seat-preset').forEach(btn => {
-      btn.classList.toggle('is-active', parseInt(inputs[btn.dataset.field]?.value) === parseInt(btn.dataset.val));
+      const field = btn.dataset.field;
+      if (inputs[field]) btn.classList.toggle('is-active', parseInt(inputs[field].value) === parseInt(btn.dataset.val));
     });
   }
 
   Object.keys(ranges).forEach(field => {
     ranges[field].addEventListener('input', () => {
-      const v = ranges[field].value;
-      inputs[field].value = v;
-      displays[field].textContent = v;
-      updateTotal();
+      inputs[field].value = ranges[field].value;
+      displays[field].textContent = ranges[field].value;
+      syncPresets();
     });
   });
 
   document.querySelectorAll('.sf-seat-preset').forEach(btn => {
     btn.addEventListener('click', () => {
       const field = btn.dataset.field;
-      const val = Math.max(getMin(field), parseInt(btn.dataset.val));
+      if (!inputs[field]) return;
+      const min = field === 'indoor_tables' ? 1 : 0;
+      const val = Math.max(min, parseInt(btn.dataset.val));
       inputs[field].value = val;
       ranges[field].value = val;
       displays[field].textContent = val;
-      updateTotal();
+      syncPresets();
     });
   });
 
-  updateTotal();
+  syncPresets();
+})();
+</script>
+
+<?php elseif ($step === 4): ?>
+
+<div class="sf-step3-wrap">
+  <h1 class="sf-name-title" style="text-align:left; margin-bottom:8px;">What's your restaurant's area?</h1>
+  <p class="sf-name-sub" style="text-align:left; margin-bottom:28px;">Indoor area helps us calculate how many AC units you need.</p>
+
+  <form method="post" class="sf-step3-form">
+    <input type="hidden" name="step" value="4">
+
+    <div class="sf-slider-block">
+      <div class="sf-slider-head">
+        <span class="sf-slider-label">Indoor Area (m²) <small class="sf-slider-note">indoor only</small></span>
+        <span class="sf-slider-val" id="area-display"><?= $areaSqm > 0 ? h($areaSqm) : 50 ?></span>
+      </div>
+      <input type="range" class="sf-slider-range" id="area_range" min="10" max="500" step="5" value="<?= $areaSqm > 0 ? h($areaSqm) : 50 ?>">
+      <input type="number" name="area_sqm" id="area_sqm" hidden min="10" step="1" value="<?= $areaSqm > 0 ? h($areaSqm) : 50 ?>">
+    </div>
+
+    <div class="sf-slider-block sf-multifloor-block" style="border-top:1px solid #eee; padding-top:20px; margin-top:8px;">
+      <label class="sf-multifloor-check-label" style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:15px; font-weight:500; color:#333;">
+        <input type="checkbox" id="multifloor_chk" style="width:16px; height:16px; accent-color:#004cac; cursor:pointer;">
+        <span>My restaurant has multiple floors</span>
+      </label>
+
+      <div id="multifloor_input" style="display:none; margin-top:20px;">
+        <div class="sf-slider-block">
+          <div class="sf-slider-head">
+            <span class="sf-slider-label">Number of Floors</span>
+            <div class="sf-slider-presets">
+              <?php foreach ([2, 3, 4] as $p): ?>
+              <button type="button" class="sf-seat-preset" data-field="floor_count" data-val="<?= $p ?>"><?= $p ?></button>
+              <?php endforeach; ?>
+            </div>
+            <span class="sf-slider-val" id="floor-display">2</span>
+          </div>
+          <input type="range" class="sf-slider-range" id="floor_range" min="2" max="10" step="1" value="2">
+          <input type="number" name="floor_count" id="floor_count" hidden min="2" value="2">
+        </div>
+      </div>
+      <!-- when unchecked, submit floor_count = 1 -->
+      <input type="hidden" name="floor_count" id="floor_count_default" value="1">
+    </div>
+
+    <div class="sf-actions" style="margin-top:32px;">
+      <a class="sf-btn-main sf-btn-back" href="setup.php?step=3">← Back</a>
+      <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const areaRange   = document.getElementById('area_range');
+  const areaInput   = document.getElementById('area_sqm');
+  const areaDisplay = document.getElementById('area-display');
+
+  areaRange.addEventListener('input', () => {
+    areaInput.value = areaRange.value;
+    areaDisplay.textContent = areaRange.value;
+  });
+
+  const floorRange   = document.getElementById('floor_range');
+  const floorInput   = document.getElementById('floor_count');
+  const floorDisplay = document.getElementById('floor-display');
+  const floorDefault = document.getElementById('floor_count_default');
+  const chk          = document.getElementById('multifloor_chk');
+  const floorBlock   = document.getElementById('multifloor_input');
+
+  chk.addEventListener('change', () => {
+    floorBlock.style.display = chk.checked ? 'block' : 'none';
+    floorDefault.disabled = chk.checked;
+    if (floorInput) floorInput.disabled = !chk.checked;
+  });
+
+  if (floorRange && floorInput) {
+    floorRange.addEventListener('input', () => {
+      floorInput.value = floorRange.value;
+      floorDisplay.textContent = floorRange.value;
+      document.querySelectorAll('.sf-seat-preset[data-field="floor_count"]').forEach(btn => {
+        btn.classList.toggle('is-active', parseInt(floorRange.value) === parseInt(btn.dataset.val));
+      });
+    });
+  }
+
+  document.querySelectorAll('.sf-seat-preset[data-field="floor_count"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = parseInt(btn.dataset.val);
+      if (floorInput) floorInput.value = val;
+      if (floorRange) floorRange.value = val;
+      if (floorDisplay) floorDisplay.textContent = val;
+      document.querySelectorAll('.sf-seat-preset[data-field="floor_count"]').forEach(b => {
+        b.classList.toggle('is-active', parseInt(b.dataset.val) === val);
+      });
+    });
+  });
 })();
 </script>
 
@@ -906,11 +987,11 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
   <?php
     $budgetOptions = [
-      ["label" => "Under 500,000 EGP",          "sub" => "Starter setup",       "value" => 250000],
-      ["label" => "500,000 - 1,500,000 EGP",    "sub" => "Mid-range build",     "value" => 1000000],
-      ["label" => "1,500,000 - 3,000,000 EGP",  "sub" => "Full fit-out",        "value" => 2250000],
-      ["label" => "3,000,000+ EGP",             "sub" => "Premium experience",  "value" => 4000000],
-    ];
+  ["label" => "Under 600,000 EGP",          "sub" => "Small / street food",  "value" => 400000],
+  ["label" => "600,000 - 2,000,000 EGP",    "sub" => "Casual dining",        "value" => 1200000],
+  ["label" => "2,000,000 - 3,500,000 EGP",  "sub" => "Full fit-out",         "value" => 2750000],
+  ["label" => "3,500,000+ EGP",             "sub" => "Premium restaurant",   "value" => 4500000],
+];
   ?>
 
   <div class="sf-budget-grid">
@@ -923,7 +1004,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
   </div>
 
   <div class="sf-actions">
-    <a class="sf-btn-main sf-btn-back" href="setup.php?step=3">&#8592; Back</a>
+    <a class="sf-btn-main sf-btn-back" href="setup.php?step=4">&#8592; Back</a>
     <button class="sf-btn-main sf-btn-next" type="submit">Next &#8594;</button>
   </div>
 </form>

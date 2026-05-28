@@ -47,6 +47,29 @@ $userType   = $_SESSION['user_type'] ?? 'guest';
 $isLoggedIn = $userId > 0;
 $showCart   = !in_array($userType, ['vendor', 'labor', 'company'], true);
 
+// ── Fetch reviews ────────────────────────────────────────────────────
+$reviews_result = pg_query_params($conn,
+    "SELECT r.rating, r.comment, r.created_at, u.name
+     FROM reviews r
+     JOIN users u ON u.id = r.user_id
+     WHERE r.product_id = $1
+     ORDER BY r.created_at DESC
+     LIMIT 10",
+    [$product_id]
+);
+$reviews = [];
+while ($row = pg_fetch_assoc($reviews_result)) $reviews[] = $row;
+
+// Current user's existing review
+$myReview = null;
+if ($isLoggedIn) {
+    $myRes = pg_query_params($conn,
+        "SELECT rating, comment FROM reviews WHERE product_id = $1 AND user_id = $2 LIMIT 1",
+        [$product_id, $userId]
+    );
+    if ($myRes && pg_num_rows($myRes) > 0) $myReview = pg_fetch_assoc($myRes);
+}
+
 // ── User location ────────────────────────────────────────────────────
 $userLocation = '';
 if ($isLoggedIn) {
@@ -91,6 +114,44 @@ if ($in_wizard && $module) {
                     $already_added = true; break 2;
                 }
             }
+        }
+    }
+}
+
+// ── Handle Review Submit ─────────────────────────────────────────────
+$review_success = false;
+$review_error   = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit_review') {
+    if (!$isLoggedIn) {
+        $review_error = 'You must be logged in to leave a review.';
+    } else {
+        $rating  = (int)($_POST['rating'] ?? 0);
+        $comment = trim($_POST['comment'] ?? '');
+        if ($rating < 1 || $rating > 5) {
+            $review_error = 'Please select a rating between 1 and 5.';
+        } else {
+            pg_query_params($conn,
+                "INSERT INTO reviews (product_id, user_id, rating, comment)
+                 VALUES ($1, $2, $3, $4)
+                 ON CONFLICT (product_id, user_id)
+                 DO UPDATE SET rating = $3, comment = $4, created_at = now()",
+                [$product_id, $userId, $rating, $comment ?: null]
+            );
+            // Recalculate avg_rating
+            pg_query_params($conn,
+                "UPDATE products
+                 SET avg_rating = (SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews WHERE product_id = $1)
+                 WHERE id = $1",
+                [$product_id]
+            );
+            // Refresh product to get new avg_rating
+            $product_result = pg_query_params($conn,
+                "SELECT p.*, u.name AS vendor_name FROM products p
+                 LEFT JOIN users u ON u.id = p.vendor_user_id WHERE p.id = \$1",
+                [$product_id]
+            );
+            $product = pg_fetch_assoc($product_result);
+            $review_success = true;
         }
     }
 }
@@ -386,7 +447,62 @@ $tier_label  = $tier_labels[strtolower($product['tier'] ?? '')] ?? ucfirst($prod
         </table>
     </div>
     <?php endif; ?>
+<!-- Reviews Section -->
+<div class="sf-specs-card" style="margin-top:24px;">
+    <div class="sf-specs-title">Customer Reviews</div>
 
+    <?php if ($review_success): ?>
+        <div class="alert alert-success py-2 px-3 mb-4" style="font-size:.85rem;">Your review has been saved.</div>
+    <?php endif; ?>
+    <?php if ($review_error): ?>
+        <div class="alert alert-danger py-2 px-3 mb-4" style="font-size:.85rem;"><?= h($review_error) ?></div>
+    <?php endif; ?>
+
+    <?php if ($isLoggedIn && !in_array($userType, ['vendor','labor','company'], true)): ?>
+    <form method="POST" style="margin-bottom:28px;padding-bottom:24px;border-bottom:1.5px solid #f1f5f9;">
+        <input type="hidden" name="action" value="submit_review">
+        <div style="font-size:.88rem;font-weight:700;color:#374151;margin-bottom:8px;">
+            <?= $myReview ? 'Update your review' : 'Leave a review' ?>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;" id="star-row">
+            <?php for($s=1;$s<=5;$s++): ?>
+            <label style="cursor:pointer;font-size:1.6rem;color:#d1d5db;" class="sf-star-label" data-val="<?= $s ?>">
+                <input type="radio" name="rating" value="<?= $s ?>" style="display:none;"
+                    <?= ($myReview && (int)$myReview['rating'] === $s) ? 'checked' : '' ?>>
+                ★
+            </label>
+            <?php endfor; ?>
+        </div>
+        <textarea name="comment" rows="3" placeholder="Write something about this product (optional)"
+            style="width:100%;padding:10px 12px;border:1.5px solid #d1d5db;font-size:.88rem;resize:vertical;margin-bottom:10px;font-family:inherit;"
+        ><?= h($myReview['comment'] ?? '') ?></textarea>
+        <button type="submit" class="sf-prd-btn sf-prd-btn-primary" style="width:auto;padding:10px 24px;">
+            <?= $myReview ? 'Update Review' : 'Submit Review' ?>
+        </button>
+    </form>
+    <?php elseif (!$isLoggedIn): ?>
+    <div style="font-size:.88rem;color:#6b7280;margin-bottom:20px;">
+        <a href="auth/login.php?next=<?= h('pr_details.php?id='.$product_id) ?>" style="color:#004cac;font-weight:700;">Sign in</a> to leave a review.
+    </div>
+    <?php endif; ?>
+
+    <?php if (empty($reviews)): ?>
+        <div style="font-size:.88rem;color:#9ca3af;font-style:italic;">No reviews yet. Be the first!</div>
+    <?php else: ?>
+        <?php foreach($reviews as $rev): ?>
+        <div style="padding:14px 0;border-bottom:1px solid #f1f5f9;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+                <span style="font-weight:700;font-size:.88rem;color:#111827;"><?= h($rev['name']) ?></span>
+                <span style="color:#f59e0b;font-size:.95rem;"><?php for($s=1;$s<=5;$s++) echo $s<=(int)$rev['rating']?'★':'☆'; ?></span>
+                <span style="font-size:.78rem;color:#9ca3af;"><?= date('M j, Y', strtotime($rev['created_at'])) ?></span>
+            </div>
+            <?php if(!empty($rev['comment'])): ?>
+            <div style="font-size:.875rem;color:#374151;"><?= h($rev['comment']) ?></div>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>
 </div>
 
 <!-- Lightbox -->
@@ -504,6 +620,30 @@ $tier_label  = $tier_labels[strtolower($product['tier'] ?? '')] ?? ucfirst($prod
                 .then(data=>{if(data.ok){msg.style.display='block';setTimeout(()=>{msg.style.display='none';},2000);}});
         });
     }
+})();
+</script>
+
+<script>
+(function(){
+    const labels = document.querySelectorAll('.sf-star-label');
+    const checked = document.querySelector('input[name="rating"]:checked');
+    function highlight(upTo){
+        labels.forEach(function(l){
+            l.style.color = parseInt(l.dataset.val) <= upTo ? '#f59e0b' : '#d1d5db';
+        });
+    }
+    if(checked) highlight(parseInt(checked.value));
+    labels.forEach(function(l){
+        l.addEventListener('mouseenter', function(){ highlight(parseInt(l.dataset.val)); });
+        l.addEventListener('mouseleave', function(){
+            const c = document.querySelector('input[name="rating"]:checked');
+            highlight(c ? parseInt(c.value) : 0);
+        });
+        l.addEventListener('click', function(){
+            l.querySelector('input').checked = true;
+            highlight(parseInt(l.dataset.val));
+        });
+    });
 })();
 </script>
 </body>

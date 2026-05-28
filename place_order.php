@@ -77,6 +77,21 @@ foreach ($carts as $module => $cart) {
       "name" => (string)($it["name"] ?? ""),
       "module" => (string)$module,
     ];
+        // ADD EXTRAS
+    foreach (($it["extras"] ?? []) as $extra) {
+      $eQty  = (int)($extra["qty"]          ?? 0);
+      $eUnit = (float)($extra["unit"]        ?? 0);
+      $ePid  = $extra["product_id"]          ?? null;
+      if ($eQty <= 0 || $eUnit <= 0 || !$ePid) continue;
+      $orderTotal += $eQty * $eUnit;
+      $allItems[] = [
+        "product_id" => (int)$ePid,
+        "qty"        => $eQty,
+        "unit_price" => $eUnit,
+        "name"       => (string)($extra["name"] ?? ""),
+        "module"     => (string)$module,
+      ];
+    }
   }
 }
 
@@ -170,11 +185,13 @@ json_encode([
 ]),
 json_encode([
   "services"           => $_SESSION["wizard"]["installation_services"] ?? [],
-  "area_sqm"           => (int)($_SESSION["wizard"]["area_sqm"] ?? 50),   
-  "ac_units"           => (int)($_SESSION["wizard"]["ac_units"] ?? 1),
+  "area_sqm"           => (int)($_SESSION["wizard"]["area_sqm"]  ?? 50),
+  "ac_units"           => (int)($_SESSION["wizard"]["ac_units"]  ?? 1),
+  "ac_hp"              => (float)($_SESSION["wizard"]["ac_hp"]   ?? 1.5),
   "kitchen_item_count" => $kitchenItemCount,
   "terminal_count"     => $terminalCount,
-]),  $orderId
+]),
+ $orderId
 ]);
 
 if (!$saveJobData) {

@@ -574,3 +574,243 @@ Array
 )
 
 ---
+Array
+(
+    [id] => 468297001
+    [pending] => false
+    [amount_cents] => 54154000
+    [success] => true
+    [is_auth] => false
+    [is_capture] => false
+    [is_standalone_payment] => true
+    [is_voided] => false
+    [is_refunded] => false
+    [is_3d_secure] => true
+    [integration_id] => 5609912
+    [profile_id] => 1151497
+    [has_parent_transaction] => false
+    [order] => 533704968
+    [created_at] => 2026-05-26T19:00:50.812850
+    [currency] => EGP
+    [merchant_commission] => 0
+    [accept_fees] => 0
+    [discount_details] => []
+    [amount_cents_bigint] => 54154000
+    [is_void] => false
+    [is_refund] => false
+    [error_occured] => false
+    [refunded_amount_cents] => 0
+    [refunded_amount_cents_bigint] => 0
+    [captured_amount] => 0
+    [captured_amount_bigint] => 0
+    [settlement_amount_cents_bigint] => 0
+    [accept_fees_cents_bigint] => 0
+    [vat_cents_bigint] => 0
+    [updated_at] => 2026-05-26T19:01:12.259158
+    [is_settled] => false
+    [bill_balanced] => false
+    [is_bill] => false
+    [owner] => 2206214
+    [merchant_order_id] => 141_1779811190
+    [data_message] => Approved
+    [source_data_type] => card
+    [source_data_pan] => 2346
+    [source_data_sub_type] => MasterCard
+    [acq_response_code] => 00
+    [txn_response_code] => APPROVED
+    [hmac] => acd9087d9a8930696cddd2579337a659e1dce603ec9a1330181e864c44eb0c4dd3cde6dcc20a4fb933d76e04804b77cbb656c2fa4de54f81668a75c9c1d68dc1
+)
+
+---
+Array
+(
+    [id] => 468303118
+    [pending] => false
+    [amount_cents] => 24035800
+    [success] => true
+    [is_auth] => false
+    [is_capture] => false
+    [is_standalone_payment] => true
+    [is_voided] => false
+    [is_refunded] => false
+    [is_3d_secure] => true
+    [integration_id] => 5609912
+    [profile_id] => 1151497
+    [has_parent_transaction] => false
+    [order] => 533711893
+    [created_at] => 2026-05-26T19:10:58.862724
+    [currency] => EGP
+    [merchant_commission] => 0
+    [accept_fees] => 0
+    [discount_details] => []
+    [amount_cents_bigint] => 24035800
+    [is_void] => false
+    [is_refund] => false
+    [error_occured] => false
+    [refunded_amount_cents] => 0
+    [refunded_amount_cents_bigint] => 0
+    [captured_amount] => 0
+    [captured_amount_bigint] => 0
+    [settlement_amount_cents_bigint] => 0
+    [accept_fees_cents_bigint] => 0
+    [vat_cents_bigint] => 0
+    [updated_at] => 2026-05-26T19:11:20.327141
+    [is_settled] => false
+    [bill_balanced] => false
+    [is_bill] => false
+    [owner] => 2206214
+    [merchant_order_id] => 142_1779811838
+    [data_message] => Approved
+    [source_data_type] => card
+    [source_data_pan] => 2346
+    [source_data_sub_type] => MasterCard
+    [acq_response_code] => 00
+    [txn_response_code] => APPROVED
+    [hmac] => 92811d924045e7e4fd04e8b8280fb3080dbb4e1e6f0bc565b52feb96d5e29b45e3769388890287ef82ecca1cbf76f4498e6df5e8fa59b6960efab1a57397dd7e
+)
+
+---
+Array
+(
+    [id] => 468319870
+    [pending] => false
+    [amount_cents] => 60495400
+    [success] => true
+    [is_auth] => false
+    [is_capture] => false
+    [is_standalone_payment] => true
+    [is_voided] => false
+    [is_refunded] => false
+    [is_3d_secure] => true
+    [integration_id] => 5609912
+    [profile_id] => 1151497
+    [has_parent_transaction] => false
+    [order] => 533729913
+    [created_at] => 2026-05-26T19:42:22.862204
+    [currency] => EGP
+    [merchant_commission] => 0
+    [accept_fees] => 0
+    [discount_details] => []
+    [amount_cents_bigint] => 60495400
+    [is_void] => false
+    [is_refund] => false
+    [error_occured] => false
+    [refunded_amount_cents] => 0
+    [refunded_amount_cents_bigint] => 0
+    [captured_amount] => 0
+    [captured_amount_bigint] => 0
+    [settlement_amount_cents_bigint] => 0
+    [accept_fees_cents_bigint] => 0
+    [vat_cents_bigint] => 0
+    [updated_at] => 2026-05-26T19:42:42.679722
+    [is_settled] => false
+    [bill_balanced] => false
+    [is_bill] => false
+    [owner] => 2206214
+    [merchant_order_id] => 144_1779813724
+    [data_message] => Approved
+    [source_data_type] => card
+    [source_data_pan] => 2346
+    [source_data_sub_type] => MasterCard
+    [acq_response_code] => 00
+    [txn_response_code] => APPROVED
+    [hmac] => b721a4f6851e9c85420cc26d605f2ca353d3e6cfedc233c74d1d2525dd18c6de2375ede77c21781e4aa5cc3bb2b0a15f69b8da0311d46cfd08dd556550308f2b
+)
+
+---
+Array
+(
+    [id] => 468322338
+    [pending] => false
+    [amount_cents] => 16845800
+    [success] => true
+    [is_auth] => false
+    [is_capture] => false
+    [is_standalone_payment] => true
+    [is_voided] => false
+    [is_refunded] => false
+    [is_3d_secure] => true
+    [integration_id] => 5609912
+    [profile_id] => 1151497
+    [has_parent_transaction] => false
+    [order] => 533732312
+    [created_at] => 2026-05-26T19:48:21.707137
+    [currency] => EGP
+    [merchant_commission] => 0
+    [accept_fees] => 0
+    [discount_details] => []
+    [amount_cents_bigint] => 16845800
+    [is_void] => false
+    [is_refund] => false
+    [error_occured] => false
+    [refunded_amount_cents] => 0
+    [refunded_amount_cents_bigint] => 0
+    [captured_amount] => 0
+    [captured_amount_bigint] => 0
+    [settlement_amount_cents_bigint] => 0
+    [accept_fees_cents_bigint] => 0
+    [vat_cents_bigint] => 0
+    [updated_at] => 2026-05-26T19:48:42.085044
+    [is_settled] => false
+    [bill_balanced] => false
+    [is_bill] => false
+    [owner] => 2206214
+    [merchant_order_id] => 145_1779814044
+    [data_message] => Approved
+    [source_data_type] => card
+    [source_data_pan] => 2346
+    [source_data_sub_type] => MasterCard
+    [acq_response_code] => 00
+    [txn_response_code] => APPROVED
+    [hmac] => 72ffc5a33792909594dbb34dbe24aa039ecd3892485c1e15420ce6167cece544bd6b8e3a79e3a564900b6d791d75fa763b147a5d56db9146ee0a444e3eea1308
+)
+
+---
+Array
+(
+    [id] => 468852524
+    [pending] => false
+    [amount_cents] => 151345100
+    [success] => true
+    [is_auth] => false
+    [is_capture] => false
+    [is_standalone_payment] => true
+    [is_voided] => false
+    [is_refunded] => false
+    [is_3d_secure] => true
+    [integration_id] => 5609912
+    [profile_id] => 1151497
+    [has_parent_transaction] => false
+    [order] => 534304404
+    [created_at] => 2026-05-27T21:27:29.211820
+    [currency] => EGP
+    [merchant_commission] => 0
+    [accept_fees] => 0
+    [discount_details] => []
+    [amount_cents_bigint] => 151345100
+    [is_void] => false
+    [is_refund] => false
+    [error_occured] => false
+    [refunded_amount_cents] => 0
+    [refunded_amount_cents_bigint] => 0
+    [captured_amount] => 0
+    [captured_amount_bigint] => 0
+    [settlement_amount_cents_bigint] => 0
+    [accept_fees_cents_bigint] => 0
+    [vat_cents_bigint] => 0
+    [updated_at] => 2026-05-27T21:27:51.109206
+    [is_settled] => false
+    [bill_balanced] => false
+    [is_bill] => false
+    [owner] => 2206214
+    [merchant_order_id] => 146_1779906395
+    [data_message] => Approved
+    [source_data_type] => card
+    [source_data_pan] => 2346
+    [source_data_sub_type] => MasterCard
+    [acq_response_code] => 00
+    [txn_response_code] => APPROVED
+    [hmac] => 1e902fdf19ec0e392cac9efde2d965288c88f82d3f5fd1570ac56f7a3b35b60db320b8ae9c3901710321c238e73ce3c12b636f4616a5c09519f51b00bcee87ba
+)
+
+---

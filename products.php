@@ -261,7 +261,16 @@ $productCount = count($products);
               $inCart     = in_array((string)$pid, $cartKeys, true);
               $outOfStock = (int)$product["stock_quantity"] <= 0;
             ?>
-              <article class="sf-product-card-modern">
+              <article class="sf-product-card-modern" style="position:relative;">
+
+                <div class="sf-card-icons">
+                  <a href="pr_details.php?id=<?= $pid ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                    <i class="bi bi-heart"></i>
+                  </button>
+                </div>
 
                 <div class="sf-product-card-media">
                   <?php if (!empty($product["image_url"])): ?>
@@ -316,10 +325,6 @@ $productCount = count($products);
                   </div>
 
                   <div class="sf-product-actions">
-                    <a href="pr_details.php?id=<?= $pid ?>" class="sf-product-btn-main">
-                      View Details
-                    </a>
-
                     <?php if ($showCart): ?>
                       <?php if ($outOfStock): ?>
                         <button class="sf-product-btn-cart" disabled>Out of Stock</button>
@@ -334,6 +339,9 @@ $productCount = count($products);
                           data-name="<?= h($product["product_name"]) ?>">
                           <i class="bi bi-cart-plus"></i> Add to Cart
                         </button>
+                        <a href="shop_checkout.php?buy_now=1&product_id=<?= $pid ?>" class="sf-product-btn-buynow">
+                          Buy Now
+                        </a>
                       <?php endif; ?>
                     <?php endif; ?>
                   </div>
@@ -499,6 +507,19 @@ $productCount = count($products);
     });
   });
 })();
+</script>
+<script>
+document.querySelectorAll('.sf-fav-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    btn.classList.toggle('is-faved');
+    const icon = btn.querySelector('i');
+    if (btn.classList.contains('is-faved')) {
+      icon.className = 'bi bi-heart-fill';
+    } else {
+      icon.className = 'bi bi-heart';
+    }
+  });
+});
 </script>
 </body>
 </html>

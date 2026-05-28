@@ -18,6 +18,7 @@ if (!isset($_SESSION["carts"]) || !is_array($_SESSION["carts"])) {
 if (!empty($_SESSION["wizard"]["pos_cart"]))       $_SESSION["carts"]["pos"]       = $_SESSION["wizard"]["pos_cart"];
 if (!empty($_SESSION["wizard"]["kitchen_cart"]))   $_SESSION["carts"]["kitchen"]   = $_SESSION["wizard"]["kitchen_cart"];
 if (!empty($_SESSION["wizard"]["furniture_cart"])) $_SESSION["carts"]["furniture"] = $_SESSION["wizard"]["furniture_cart"];
+if (!empty($_SESSION["wizard"]["ac_cart"])) $_SESSION["carts"]["ac"] = $_SESSION["wizard"]["ac_cart"];
 
 $carts = $_SESSION["carts"];
 
@@ -69,6 +70,24 @@ foreach($carts as $module => $cart){
       "unit"        => $unit,
       "total"       => $rowTotal,
     ];
+    // ADD EXTRAS
+    foreach(($it["extras"] ?? []) as $extra){
+      $eQty  = (int)($extra["qty"] ?? 0);
+      $eUnit = (float)($extra["unit"] ?? 0);
+      if ($eQty <= 0 || $eUnit <= 0) continue;
+      $eTotal = $eQty * $eUnit;
+      $grandTotal += $eTotal;
+      $allRows[] = [
+        "module"      => $module,
+        "type"        => $type,
+        "name"        => (string)($extra["name"] ?? ""),
+        "vendor_name" => (string)($extra["vendor_name"] ?? ""),
+        "product_id"  => $extra["product_id"] ?? null,
+        "qty"         => $eQty,
+        "unit"        => $eUnit,
+        "total"       => $eTotal,
+      ];
+    }
   }
 }
 

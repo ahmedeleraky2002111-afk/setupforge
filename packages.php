@@ -100,19 +100,18 @@ foreach($selectedWeights as $m => $wgt){
   $sum += $amount;
 }
 
-function derive_tier($moduleAlloc, $totalBudget) {
-  if ($totalBudget <= 0) return "Balanced";
-  $ratio = $moduleAlloc / $totalBudget;
-  if ($ratio >= 0.35) return "Premium";
-  if ($ratio >= 0.20) return "Balanced";
-  return "Starter";
+function derive_tier($totalBudget) {
+  if ($totalBudget <= 0)      return "Balanced";
+  if ($totalBudget < 600000)  return "Starter";
+  if ($totalBudget < 2000000) return "Balanced";
+  return "Premium";
 }
 
-$posTier         = derive_tier($alloc["pos"]         ?? 0, $budget);
-$kitchenTier     = derive_tier($alloc["kitchen"]     ?? 0, $budget);
-$furnitureTier   = derive_tier($alloc["furniture"]   ?? 0, $budget);
-$electronicsTier = derive_tier($alloc["electronics"] ?? 0, $budget);
-$infraTier       = "Balanced";
+$tier            = derive_tier($budget);
+$posTier         = $tier;
+$kitchenTier     = $tier;
+$furnitureTier   = $tier;
+$electronicsTier = $tier;
 
 $kitchenCap = $alloc["kitchen"] ?? 0;
 $posCap     = $alloc["pos"] ?? 0;
@@ -1308,72 +1307,128 @@ function build_kitchen_cart_by_budget($catalog, $size, $cap){
 function build_furniture_cart_by_budget($catalog, $size, $cap){
   $restaurantType = $GLOBALS["restaurantType"] ?? "standard_dining";
   $tier = $GLOBALS["furnitureTier"] ?? "Balanced";
+  $indoorTables = max(1, (int)($GLOBALS["indoorTables"] ?? ceil((int)($GLOBALS["indoorSeats"] ?? 0) / 4)));
 
   $cart = ["items" => []];
 
-$setQty = max(1, (int)($GLOBALS["indoorTables"] ?? ceil((int)($GLOBALS["indoorSeats"] ?? 0) / 4)));
-  $setOptions = pick_top_dining_set_options($catalog, $restaurantType, $size, $tier, 3);
+  // ── Dining set ratio per restaurant type ──
+  $ratios = [
+    "fast_food"       => [2 => 0.30, 4 => 0.50, 6 => 0.20],
+    "standard_dining" => [2 => 0.25, 4 => 0.50, 6 => 0.20, 10 => 0.05],
+    "premium_dining"  => [2 => 0.20, 4 => 0.45, 8 => 0.25, 12 => 0.10],
+    "cloud_kitchen"   => [],
+  ];
 
-  if (!empty($setOptions)) {
-    $recommended = $setOptions[0];
+  $typeRatios = $ratios[$restaurantType] ?? $ratios["standard_dining"];
 
-    $cart["items"]["dining_set"] = [
-      "type"              => "dining_set",
-      "product_id"        => $recommended["id"],
-      "name"              => $recommended["name"],
-      "unit"              => (int)$recommended["price"],
-      "qty"               => $setQty,
-      "image_url"         => $recommended["image_url"] ?? null,
-      "brand"             => $recommended["brand"] ?? null,
-      "vendor_name"       => $recommended["vendor_name"] ?? null,
-      "product_name"      => $recommended["name"],
-      "tier"              => $recommended["tier"] ?? $tier,
+  if (!empty($typeRatios)) {
+    // Build one cart item per seat size that has a matching product in DB
+    $seatSizeItems = [];
+    foreach ($typeRatios as $seatCount => $ratio) {
+      $qty = max(1, (int)round($indoorTables * $ratio));
+      if ($qty <= 0) continue;
+
+      // Find best product matching this seat_count
+      $matching = array_filter($catalog["dining_set"] ?? [], function($p) use ($seatCount, $tier) {
+        $specs = is_array($p["specs"]) ? $p["specs"] : [];
+        return (int)($specs["seat_count"] ?? 0) === (int)$seatCount
+          && strcasecmp((string)($p["tier"] ?? ""), (string)$tier) === 0
+          && (int)($p["stock_quantity"] ?? 0) > 0;
+      });
+
+      if (empty($matching)) continue; // skip silently — product not in DB yet
+
+      usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
+      $recommended = array_values($matching)[0];
+
+      $alts = array_slice(array_values(array_filter($matching, fn($p) =>
+        (string)$p["id"] !== (string)$recommended["id"]
+      )), 0, 3);
+
+      $typeKey = "dining_set_" . $seatCount;
+      $seatSizeItems[$typeKey] = [
+        "type"              => $typeKey,
+        "product_id"        => $recommended["id"],
+        "name"              => $recommended["name"],
+        "unit"              => (int)$recommended["price"],
+        "qty"               => $qty,
+        "image_url"         => $recommended["image_url"] ?? null,
+        "brand"             => $recommended["brand"] ?? null,
+        "vendor_name"       => $recommended["vendor_name"] ?? null,
+        "product_name"      => $recommended["name"],
+        "tier"              => $recommended["tier"] ?? $tier,
+        "module"            => "furniture",
+        "category_id"       => $recommended["category_id"] ?? null,
+        "product_group_key" => $recommended["product_group_key"] ?? null,
+        "vendor_user_id"    => $recommended["vendor_user_id"] ?? null,
+        "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
+        "specs"             => $recommended["specs"] ?? [],
+        "alternatives"      => $alts,
+      ];
+    }
+
+    // If ratio system produced nothing (all products missing), fall back to old logic
+    if (!empty($seatSizeItems)) {
+      foreach ($seatSizeItems as $key => $item) {
+        $cart["items"][$key] = $item;
+      }
+    } else {
+      // Fallback: pick any dining_set under budget
+      $setQty = $indoorTables;
+      $setOptions = pick_top_dining_set_options($catalog, $restaurantType, $size, $tier, 3);
+      if (!empty($setOptions)) {
+        $recommended = $setOptions[0];
+        $cart["items"]["dining_set"] = [
+          "type"              => "dining_set",
+          "product_id"        => $recommended["id"],
+          "name"              => $recommended["name"],
+          "unit"              => (int)$recommended["price"],
+          "qty"               => $setQty,
+          "image_url"         => $recommended["image_url"] ?? null,
+          "brand"             => $recommended["brand"] ?? null,
+          "vendor_name"       => $recommended["vendor_name"] ?? null,
+          "product_name"      => $recommended["name"],
+          "tier"              => $recommended["tier"] ?? $tier,
+          "module"            => "furniture",
+          "category_id"       => $recommended["category_id"] ?? null,
+          "product_group_key" => $recommended["product_group_key"] ?? null,
+          "vendor_user_id"    => $recommended["vendor_user_id"] ?? null,
+          "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
+          "specs"             => $recommended["specs"] ?? [],
+          "alternatives"      => build_distinct_alternatives($recommended, $setOptions, 3),
+        ];
+      }
+    }
+  }
+
+  // ── TVs (unchanged) ──
+  $remaining = $cap - cart_total($cart);
+  $tvQty = ($restaurantType === "cloud_kitchen") ? 0 : max(1, (int)ceil((int)($GLOBALS["indoorSeats"] ?? 0) / 20));
+  $tvOptions = pick_top_tv_options($catalog, $restaurantType, $size, $tier, 3);
+
+  if ($remaining > 0 && $tvQty > 0 && !empty($tvOptions)) {
+    $recommendedTv = $tvOptions[0];
+    $cart["items"]["tv"] = [
+      "type"              => "tv",
+      "product_id"        => $recommendedTv["id"],
+      "name"              => $recommendedTv["name"],
+      "unit"              => (int)$recommendedTv["price"],
+      "qty"               => $tvQty,
+      "image_url"         => $recommendedTv["image_url"] ?? null,
+      "brand"             => $recommendedTv["brand"] ?? null,
+      "vendor_name"       => $recommendedTv["vendor_name"] ?? null,
+      "product_name"      => $recommendedTv["name"],
+      "tier"              => $recommendedTv["tier"] ?? $tier,
       "module"            => "furniture",
-      "category_id"       => $recommended["category_id"] ?? null,
-      "product_group_key" => $recommended["product_group_key"] ?? null,
-      "vendor_user_id"    => $recommended["vendor_user_id"] ?? null,
-      "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
-      "specs"             => $recommended["specs"] ?? [],
-      "alternatives" => build_distinct_alternatives(
-    $recommended,
-    $setOptions,
-    3
-),
+      "category_id"       => $recommendedTv["category_id"] ?? null,
+      "product_group_key" => $recommendedTv["product_group_key"] ?? null,
+      "vendor_user_id"    => $recommendedTv["vendor_user_id"] ?? null,
+      "stock_quantity"    => $recommendedTv["stock_quantity"] ?? 0,
+      "specs"             => $recommendedTv["specs"] ?? [],
+      "alternatives"      => build_distinct_alternatives($recommendedTv, $tvOptions, 3),
     ];
   }
-    /* ===== PASTE TV CODE HERE ===== */
 
-$remaining = $cap - cart_total($cart);
-$tvQty = ($restaurantType === "cloud_kitchen") ? 0 : max(1, (int)ceil((int)($GLOBALS["indoorSeats"] ?? 0) / 20));
-$tvOptions = pick_top_tv_options($catalog, $restaurantType, $size, $tier, 3);
-
-if ($remaining > 0 && $tvQty > 0 && !empty($tvOptions)) {
-  $recommendedTv = $tvOptions[0];
-
-  $cart["items"]["tv"] = [
-    "type"              => "tv",
-    "product_id"        => $recommendedTv["id"],
-    "name"              => $recommendedTv["name"],
-    "unit"              => (int)$recommendedTv["price"],
-    "qty"               => $tvQty,
-    "image_url"         => $recommendedTv["image_url"] ?? null,
-    "brand"             => $recommendedTv["brand"] ?? null,
-    "vendor_name"       => $recommendedTv["vendor_name"] ?? null,
-    "product_name"      => $recommendedTv["name"],
-    "tier"              => $recommendedTv["tier"] ?? $tier,
-    "module"            => "furniture",
-    "category_id"       => $recommendedTv["category_id"] ?? null,
-    "product_group_key" => $recommendedTv["product_group_key"] ?? null,
-    "vendor_user_id"    => $recommendedTv["vendor_user_id"] ?? null,
-    "stock_quantity"    => $recommendedTv["stock_quantity"] ?? 0,
-    "specs"             => $recommendedTv["specs"] ?? [],
-    "alternatives" => build_distinct_alternatives(
-    $recommendedTv,
-    $tvOptions,
-    3
-),
-  ];
-}
   return $cart;
 }
 function build_ac_cart_by_budget($catalog, $areaSqm) {
@@ -1475,10 +1530,39 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (!in_array($mod, $allowed, true)) { echo json_encode(["error"=>"invalid"]); exit; }
 
     $allSectionLabels = [
-      "pos"       => ["terminal"=>"POS Terminals","printer"=>"Receipt Printers","drawer"=>"Cash Drawers","software"=>"POS Software","scanner"=>"Barcode Scanners","kds"=>"Kitchen Display Screens","tablet"=>"Ordering Tablets"],
-      "kitchen"   => ["oven"=>"Ovens","stove"=>"Stoves","fryer"=>"Fryers","grill"=>"Grills","microwave"=>"Microwaves","fridge"=>"Fridges","freezer"=>"Freezers","blender"=>"Blenders","mixer"=>"Mixers","coffee"=>"Coffee Machines","food_warmer"=>"Food Warmers","dishwasher"=>"Dishwashers","slicer"=>"Slicers","exhaust_hood"=>"Exhaust Hoods"],
-      "furniture" => ["dining_set"=>"Dining Sets","sofa"=>"Sofas","tv"=>"TVs","light"=>"Lighting","bar_stool"=>"Bar Stools","outdoor_furniture"=>"Outdoor Furniture","reception_desk"=>"Reception Desk","shelving"=>"Shelving","speaker"=>"Speakers"],
-      "ac"        => ["ac"=>"AC Units","exhaust_fan"=>"Exhaust Fans","air_curtain"=>"Air Curtains"],
+      "pos"       => [
+        "terminal"=>"POS Terminals","printer"=>"Receipt Printers","drawer"=>"Cash Drawers",
+        "software"=>"POS Software","scanner"=>"Barcode Scanners","kds"=>"Kitchen Display Screens",
+        "tablet"=>"Ordering Tablets","customer_display"=>"Customer Display Screens",
+        "label_printer"=>"Label Printers","scale"=>"Weighing Scales"
+      ],
+      "kitchen"   => [
+        "oven"=>"Ovens","stove"=>"Stoves","fryer"=>"Fryers","grill"=>"Grills",
+        "microwave"=>"Microwaves","fridge"=>"Fridges","freezer"=>"Freezers",
+        "blender"=>"Blenders","mixer"=>"Mixers","coffee"=>"Coffee Machines",
+        "food_warmer"=>"Food Warmers","bain_marie"=>"Bain Marie","dishwasher"=>"Dishwashers",
+        "slicer"=>"Slicers","exhaust_hood"=>"Exhaust Hoods","prep_table"=>"Prep Tables",
+        "sink"=>"Sinks","shelving"=>"Shelving","food_processor"=>"Food Processors",
+        "rice_cooker"=>"Rice Cookers","meat_grinder"=>"Meat Grinders","ice_machine"=>"Ice Machines"
+      ],
+        "furniture" => [
+    "dining_set"=>"Dining Sets",
+    "dining_set_2"=>"Dining Sets (2-Seater)",
+    "dining_set_4"=>"Dining Sets (4-Seater)",
+    "dining_set_6"=>"Dining Sets (6-Seater)",
+    "dining_set_8"=>"Dining Sets (8-Seater)",
+    "dining_set_10"=>"Dining Sets (10-Seater)",
+    "dining_set_12"=>"Dining Sets (12-Seater)",
+    "sofa"=>"Sofas","tv"=>"TVs","light"=>"Lighting",
+        "bar_stool"=>"Bar Stools","outdoor_furniture"=>"Outdoor Furniture",
+        "reception_desk"=>"Reception Desk","shelving"=>"Shelving","speaker"=>"Speakers",
+        "sound_system"=>"Sound System","curtain"=>"Curtains","wall_decor"=>"Wall Decor",
+        "menu_stand"=>"Menu Stands","hostess_stand"=>"Hostess Stand"
+      ],
+      "ac"        => [
+        "ac"=>"AC Units","exhaust_fan"=>"Exhaust Fans",
+        "air_curtain"=>"Air Curtains","ceiling_fan"=>"Ceiling Fans"
+      ],
     ];
 
     $cartKey = $mod . "_cart";
@@ -1839,9 +1923,38 @@ header("Location: packages.php?module=ac");
     $mod = $_POST["module"] ?? "";
     $typ = $_POST["type"] ?? "";
     $cartKey = $mod . "_cart";
+
     if (isset($_SESSION["wizard"][$cartKey]["items"][$typ])) {
-      unset($_SESSION["wizard"][$cartKey]["items"][$typ]);
+        $current = $_SESSION["wizard"][$cartKey]["items"][$typ];
+        $alts = $current["alternatives"] ?? [];
+
+        if (!empty($alts)) {
+            $newRec    = $alts[0];
+            $remaining = array_slice($alts, 1);
+
+            $_SESSION["wizard"][$cartKey]["items"][$typ] = [
+                "type"              => $typ,
+                "product_id"        => $newRec["id"],
+                "name"              => $newRec["name"],
+                "product_name"      => $newRec["name"],
+                "unit"              => (int)$newRec["price"],
+                "qty"               => (int)($current["qty"] ?? 1),
+                "image_url"         => $newRec["image_url"] ?? null,
+                "brand"             => $newRec["brand"] ?? null,
+                "vendor_name"       => $newRec["vendor_name"] ?? null,
+                "vendor_user_id"    => $newRec["vendor_user_id"] ?? null,
+                "product_group_key" => $newRec["product_group_key"] ?? null,
+                "tier"              => $newRec["tier"] ?? null,
+                "module"            => $mod,
+                "category_id"       => null,
+                "alternatives"      => $remaining,
+                "extras"            => $current["extras"] ?? [],
+            ];
+        } else {
+            unset($_SESSION["wizard"][$cartKey]["items"][$typ]);
+        }
     }
+
     header("Location: packages.php?module=" . urlencode($mod));
     exit;
   }
@@ -1942,6 +2055,7 @@ if (!isset($_SESSION["carts"])) $_SESSION["carts"] = [];
 $_SESSION["carts"]["pos"] = $posCart ?? ($_SESSION["carts"]["pos"] ?? null);
 $_SESSION["carts"]["kitchen"] = $kitchenCart ?? ($_SESSION["carts"]["kitchen"] ?? null);
 $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furniture"] ?? null);
+$_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
 
 ?>
 <!doctype html>
@@ -2011,13 +2125,16 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
             <?php else: ?>
               <?php
               $posSectionLabels = [
-                "terminal" => "POS Terminals",
-                "printer"  => "Receipt Printers",
-                "drawer"   => "Cash Drawers",
-                "software" => "POS Software / License",
-                "scanner"  => "Barcode Scanners",
-                "kds"      => "Kitchen Display Screens (KDS)",
-                "tablet"   => "Ordering Tablets",
+                "terminal"         => "POS Terminals",
+                "printer"          => "Receipt Printers",
+                "drawer"           => "Cash Drawers",
+                "software"         => "POS Software / License",
+                "scanner"          => "Barcode Scanners",
+                "kds"              => "Kitchen Display Screens (KDS)",
+                "tablet"           => "Ordering Tablets",
+                "customer_display" => "Customer Display Screens",
+                "label_printer"    => "Label Printers",
+                "scale"            => "Weighing Scales",
               ];
               ?>
               <div class="sf-section-pills">
@@ -2046,14 +2163,24 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                     <div class="sf-pkg-slider">
 
                       <!-- RECOMMENDED CARD -->
-                      <article class="sf-pkg-card sf-pkg-card--rec" id="row_pos_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>">
+                      <article class="sf-pkg-card sf-pkg-card--rec" id="row_pos_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>" style="position:relative;">
                         <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
-                        <form method="post" class="m-0 sf-pkg-remove-form">
-                          <input type="hidden" name="delete_section" value="1">
-                          <input type="hidden" name="module" value="pos">
-                          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                          <button type="submit" class="sf-pkg-card-remove-btn" title="Remove"><i class="bi bi-x"></i></button>
-                        </form>
+                        <div class="sf-card-icons">
+                          <form method="post" class="m-0">
+                            <input type="hidden" name="delete_section" value="1">
+                            <input type="hidden" name="module" value="pos">
+                            <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                            <button type="submit" class="sf-card-icon-btn sf-remove-btn" title="Remove">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                          </form>
+                          <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                            <i class="bi bi-info-circle"></i>
+                          </a>
+                          <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                            <i class="bi bi-heart"></i>
+                          </button>
+                        </div>
 
                         <div class="sf-pkg-card-media">
                           <?php if(!empty($it["image_url"])): ?>
@@ -2072,12 +2199,6 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                           <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                         </div>
 
-                        <div style="padding:0 0 8px 0;">
-                          <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank"
-                             style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
-                            View Details
-                          </a>
-                        </div>
                         <div class="sf-pkg-card-footer">
                           <div class="sf-pkg-qty">
                             <form method="post" class="m-0">
@@ -2150,13 +2271,23 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
 
                       <?php foreach(($it["extras"] ?? []) as $eIdx => $extra): ?>
                       <article class="sf-pkg-card sf-pkg-card--rec" style="position:relative;" data-product-id="<?= htmlspecialchars($extra['product_id']) ?>">
-                        <form method="post" class="m-0 sf-pkg-remove-form">
-                          <input type="hidden" name="remove_extra_item" value="1">
-                          <input type="hidden" name="module" value="pos">
-                          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                          <input type="hidden" name="extra_index" value="<?= $eIdx ?>">
-                          <button type="submit" class="sf-pkg-card-remove-btn" title="Remove"><i class="bi bi-x"></i></button>
-                        </form>
+                        <div class="sf-card-icons">
+                          <form method="post" class="m-0">
+                            <input type="hidden" name="remove_extra_item" value="1">
+                            <input type="hidden" name="module" value="pos">
+                            <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                            <input type="hidden" name="extra_index" value="<?= $eIdx ?>">
+                            <button type="submit" class="sf-card-icon-btn sf-remove-btn" title="Remove">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                          </form>
+                          <a href="pr_details.php?id=<?= htmlspecialchars($extra['product_id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                            <i class="bi bi-info-circle"></i>
+                          </a>
+                          <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                            <i class="bi bi-heart"></i>
+                          </button>
+                        </div>
                         <div class="sf-pkg-card-media">
                           <?php if(!empty($extra["image_url"])): ?>
                             <img src="<?= htmlspecialchars($extra["image_url"]) ?>" alt="">
@@ -2203,7 +2334,15 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                       foreach(($it["alternatives"] ?? []) as $alt):
                         if (in_array((string)$alt["id"], $extraIds, true)) continue;
                       ?>
-                      <article class="sf-pkg-card sf-pkg-card--alt" data-product-id="<?= htmlspecialchars($alt['id']) ?>">
+                      <article class="sf-pkg-card sf-pkg-card--alt" data-product-id="<?= htmlspecialchars($alt['id']) ?>" style="position:relative;">
+                          <div class="sf-card-icons">
+                            <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                              <i class="bi bi-info-circle"></i>
+                            </a>
+                            <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                              <i class="bi bi-heart"></i>
+                            </button>
+                          </div>
 
                         <div class="sf-pkg-card-media">
                           <?php if(!empty($alt["image_url"])): ?>
@@ -2222,12 +2361,6 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                           <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                         </div>
 
-                        <div style="padding:0 0 8px 0;">
-                          <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank"
-                             style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
-                            View Details
-                          </a>
-                        </div>
                         <div class="sf-pkg-card-footer">
                           <form method="post" class="m-0 w-100">
                             <input type="hidden" name="add_extra_item" value="1">
@@ -2292,21 +2425,29 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
             <?php else: ?>
               <?php
               $kitchenSectionLabels = [
-                "oven"        => "Ovens",
-                "stove"       => "Stoves / Cookers",
-                "fryer"       => "Fryers",
-                "grill"       => "Grills / Griddles",
-                "fridge"      => "Display Fridges",
-                "refrigerator"=> "Refrigerators",
-                "freezer"     => "Freezers",
-                "blender"     => "Blenders",
-                "mixer"       => "Mixers",
-                "coffee"      => "Coffee / Espresso Machines",
-                "microwave"   => "Microwaves",
-                "food_warmer" => "Food Warmers / Bain Marie",
-                "dishwasher"  => "Dishwashers",
-                "slicer"      => "Food Prep / Slicers",
-                "exhaust_hood"=> "Exhaust Hoods",
+                "oven"          => "Ovens",
+                "stove"         => "Stoves / Cookers",
+                "fryer"         => "Fryers",
+                "grill"         => "Grills / Griddles",
+                "fridge"        => "Display Fridges",
+                "refrigerator"  => "Refrigerators",
+                "freezer"       => "Freezers",
+                "blender"       => "Blenders",
+                "mixer"         => "Mixers",
+                "coffee"        => "Coffee / Espresso Machines",
+                "microwave"     => "Microwaves",
+                "food_warmer"   => "Food Warmers / Bain Marie",
+                "bain_marie"    => "Bain Marie / Food Warmers",
+                "dishwasher"    => "Dishwashers",
+                "slicer"        => "Food Slicers",
+                "exhaust_hood"  => "Exhaust Hoods",
+                "prep_table"    => "Prep Tables",
+                "sink"          => "Sinks",
+                "shelving"      => "Shelving Units",
+                "food_processor"=> "Food Processors",
+                "rice_cooker"   => "Rice Cookers",
+                "meat_grinder"  => "Meat Grinders",
+                "ice_machine"   => "Ice Machines",
               ];
               ?>
               <div class="sf-section-pills">
@@ -2335,14 +2476,24 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                     <div class="sf-pkg-slider">
 
                       <!-- RECOMMENDED CARD -->
-                      <article class="sf-pkg-card sf-pkg-card--rec" id="row_kitchen_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>">
+                      <article class="sf-pkg-card sf-pkg-card--rec" id="row_kitchen_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>" style="position:relative;">
                         <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
-                        <form method="post" class="m-0 sf-pkg-remove-form">
-                          <input type="hidden" name="delete_section" value="1">
-                          <input type="hidden" name="module" value="kitchen">
-                          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                          <button type="submit" class="sf-pkg-card-remove-btn" title="Remove"><i class="bi bi-x"></i></button>
-                        </form>
+                        <div class="sf-card-icons">
+                          <form method="post" class="m-0">
+                            <input type="hidden" name="delete_section" value="1">
+                            <input type="hidden" name="module" value="kitchen">
+                            <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                            <button type="submit" class="sf-card-icon-btn sf-remove-btn" title="Remove">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                          </form>
+                          <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                            <i class="bi bi-info-circle"></i>
+                          </a>
+                          <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                            <i class="bi bi-heart"></i>
+                          </button>
+                        </div>
 
                         <div class="sf-pkg-card-media">
                           <?php if(!empty($it["image_url"])): ?>
@@ -2361,12 +2512,6 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                           <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                         </div>
 
-                        <div style="padding:0 0 8px 0;">
-                          <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank"
-                             style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
-                            View Details
-                          </a>
-                        </div>
                         <div class="sf-pkg-card-footer">
                           <div class="sf-pkg-qty">
                             <form method="post" class="m-0">
@@ -2439,13 +2584,23 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
 
                       <?php foreach(($it["extras"] ?? []) as $eIdx => $extra): ?>
                       <article class="sf-pkg-card sf-pkg-card--rec" style="position:relative;" data-product-id="<?= htmlspecialchars($extra['product_id']) ?>">
-                        <form method="post" class="m-0 sf-pkg-remove-form">
-                          <input type="hidden" name="remove_extra_item" value="1">
-                          <input type="hidden" name="module" value="kitchen">
-                          <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                          <input type="hidden" name="extra_index" value="<?= $eIdx ?>">
-                          <button type="submit" class="sf-pkg-card-remove-btn" title="Remove"><i class="bi bi-x"></i></button>
-                        </form>
+                        <div class="sf-card-icons">
+                          <form method="post" class="m-0">
+                            <input type="hidden" name="remove_extra_item" value="1">
+                            <input type="hidden" name="module" value="kitchen">
+                            <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                            <input type="hidden" name="extra_index" value="<?= $eIdx ?>">
+                            <button type="submit" class="sf-card-icon-btn sf-remove-btn" title="Remove">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                          </form>
+                          <a href="pr_details.php?id=<?= htmlspecialchars($extra['product_id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                            <i class="bi bi-info-circle"></i>
+                          </a>
+                          <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                            <i class="bi bi-heart"></i>
+                          </button>
+                        </div>
                         <div class="sf-pkg-card-media">
                           <?php if(!empty($extra["image_url"])): ?>
                             <img src="<?= htmlspecialchars($extra["image_url"]) ?>" alt="">
@@ -2492,7 +2647,15 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                       foreach(($it["alternatives"] ?? []) as $alt):
                         if (in_array((string)$alt["id"], $extraIds, true)) continue;
                       ?>
-                      <article class="sf-pkg-card sf-pkg-card--alt" data-product-id="<?= htmlspecialchars($alt['id']) ?>">
+                      <article class="sf-pkg-card sf-pkg-card--alt" data-product-id="<?= htmlspecialchars($alt['id']) ?>" style="position:relative;">
+                          <div class="sf-card-icons">
+                            <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                              <i class="bi bi-info-circle"></i>
+                            </a>
+                            <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                              <i class="bi bi-heart"></i>
+                            </button>
+                          </div>
 
                         <div class="sf-pkg-card-media">
                           <?php if(!empty($alt["image_url"])): ?>
@@ -2511,12 +2674,6 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                           <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                         </div>
 
-                        <div style="padding:0 0 8px 0;">
-                          <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank"
-                             style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
-                            View Details
-                          </a>
-                        </div>
                         <div class="sf-pkg-card-footer">
                           <form method="post" class="m-0 w-100">
                             <input type="hidden" name="add_extra_item" value="1">
@@ -2582,6 +2739,12 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
       <?php
       $furnitureSectionLabels = [
         "dining_set"        => "Dining Sets",
+        "dining_set_2"      => "Dining Sets (2-Seater)",
+        "dining_set_4"      => "Dining Sets (4-Seater)",
+        "dining_set_6"      => "Dining Sets (6-Seater)",
+        "dining_set_8"      => "Dining Sets (8-Seater)",
+        "dining_set_10"     => "Dining Sets (10-Seater)",
+        "dining_set_12"     => "Dining Sets (12-Seater)",
         "sofa"              => "Waiting Area Sofas",
         "chair"             => "Chairs",
         "table"             => "Tables",
@@ -2592,6 +2755,11 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
         "reception_desk"    => "Host / Reception Desk",
         "shelving"          => "Counter Displays / Shelving",
         "speaker"           => "Speakers / Sound System",
+        "sound_system"      => "Sound System",
+        "curtain"           => "Curtains / Blinds",
+        "wall_decor"        => "Wall Decor",
+        "menu_stand"        => "Menu Stands",
+        "hostess_stand"     => "Hostess Stand",
       ];
       ?>
       <div class="sf-section-pills">
@@ -2620,14 +2788,24 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
             <div class="sf-pkg-slider">
 
               <!-- RECOMMENDED CARD -->
-              <article class="sf-pkg-card sf-pkg-card--rec" id="row_furniture_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>">
+              <article class="sf-pkg-card sf-pkg-card--rec" id="row_furniture_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>" style="position:relative;">
                 <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
-                <form method="post" class="m-0 sf-pkg-remove-form">
-                  <input type="hidden" name="delete_section" value="1">
-                  <input type="hidden" name="module" value="furniture">
-                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                  <button type="submit" class="sf-pkg-card-remove-btn" title="Remove"><i class="bi bi-x"></i></button>
-                </form>
+                <div class="sf-card-icons">
+                  <form method="post" class="m-0">
+                    <input type="hidden" name="delete_section" value="1">
+                    <input type="hidden" name="module" value="furniture">
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                    <button type="submit" class="sf-card-icon-btn sf-remove-btn" title="Remove">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </form>
+                  <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                    <i class="bi bi-info-circle"></i>
+                  </a>
+                  <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                    <i class="bi bi-heart"></i>
+                  </button>
+                </div>
 
                 <div class="sf-pkg-card-media">
                   <?php if(!empty($it["image_url"])): ?>
@@ -2646,12 +2824,6 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                 </div>
 
-                <div style="padding:0 0 8px 0;">
-                  <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank"
-                     style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
-                    View Details
-                  </a>
-                </div>
                 <div class="sf-pkg-card-footer">
                   <div class="sf-pkg-qty">
                     <form method="post" class="m-0">
@@ -2691,13 +2863,23 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
 
               <?php foreach(($it["extras"] ?? []) as $eIdx => $extra): ?>
               <article class="sf-pkg-card sf-pkg-card--rec" style="position:relative;" data-product-id="<?= htmlspecialchars($extra['product_id']) ?>">
-                <form method="post" class="m-0 sf-pkg-remove-form">
-                  <input type="hidden" name="remove_extra_item" value="1">
-                  <input type="hidden" name="module" value="furniture">
-                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                  <input type="hidden" name="extra_index" value="<?= $eIdx ?>">
-                  <button type="submit" class="sf-pkg-card-remove-btn" title="Remove"><i class="bi bi-x"></i></button>
-                </form>
+                <div class="sf-card-icons">
+                  <form method="post" class="m-0">
+                    <input type="hidden" name="remove_extra_item" value="1">
+                    <input type="hidden" name="module" value="furniture">
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                    <input type="hidden" name="extra_index" value="<?= $eIdx ?>">
+                    <button type="submit" class="sf-card-icon-btn sf-remove-btn" title="Remove">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </form>
+                  <a href="pr_details.php?id=<?= htmlspecialchars($extra['product_id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                    <i class="bi bi-info-circle"></i>
+                  </a>
+                  <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                    <i class="bi bi-heart"></i>
+                  </button>
+                </div>
                 <div class="sf-pkg-card-media">
                   <?php if(!empty($extra["image_url"])): ?>
                     <img src="<?= htmlspecialchars($extra["image_url"]) ?>" alt="">
@@ -2744,7 +2926,15 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
               foreach(($it["alternatives"] ?? []) as $alt):
                 if (in_array((string)$alt["id"], $extraIds, true)) continue;
               ?>
-              <article class="sf-pkg-card sf-pkg-card--alt" data-product-id="<?= htmlspecialchars($alt['id']) ?>">
+              <article class="sf-pkg-card sf-pkg-card--alt" data-product-id="<?= htmlspecialchars($alt['id']) ?>" style="position:relative;">
+                  <div class="sf-card-icons">
+                    <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                      <i class="bi bi-info-circle"></i>
+                    </a>
+                    <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                      <i class="bi bi-heart"></i>
+                    </button>
+                  </div>
 
                 <div class="sf-pkg-card-media">
                   <?php if(!empty($alt["image_url"])): ?>
@@ -2763,12 +2953,6 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                 </div>
 
-                <div style="padding:0 0 8px 0;">
-                  <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank"
-                     style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
-                    View Details
-                  </a>
-                </div>
                 <div class="sf-pkg-card-footer">
                   <form method="post" class="m-0 w-100">
                     <input type="hidden" name="add_extra_item" value="1">
@@ -2864,6 +3048,7 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
         "ac"          => "AC Units",
         "exhaust_fan" => "Exhaust / Ventilation Fans",
         "air_curtain" => "Air Curtains",
+        "ceiling_fan" => "Ceiling Fans",
       ];
       ?>
       <div class="sf-section-pills">
@@ -2892,14 +3077,24 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
             <div class="sf-pkg-slider">
 
               <!-- RECOMMENDED CARD -->
-              <article class="sf-pkg-card sf-pkg-card--rec" id="row_ac_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>">
+              <article class="sf-pkg-card sf-pkg-card--rec" id="row_ac_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>" style="position:relative;">
                 <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
-                <form method="post" class="m-0 sf-pkg-remove-form">
-                  <input type="hidden" name="delete_section" value="1">
-                  <input type="hidden" name="module" value="ac">
-                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                  <button type="submit" class="sf-pkg-card-remove-btn" title="Remove"><i class="bi bi-x"></i></button>
-                </form>
+                <div class="sf-card-icons">
+                  <form method="post" class="m-0">
+                    <input type="hidden" name="delete_section" value="1">
+                    <input type="hidden" name="module" value="ac">
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                    <button type="submit" class="sf-card-icon-btn sf-remove-btn" title="Remove">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </form>
+                  <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                    <i class="bi bi-info-circle"></i>
+                  </a>
+                  <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                    <i class="bi bi-heart"></i>
+                  </button>
+                </div>
 
                 <div class="sf-pkg-card-media">
                   <?php if (!empty($it["image_url"])): ?>
@@ -2925,12 +3120,6 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                 </div>
 
-                <div style="padding:0 0 8px 0;">
-                  <a href="pr_details.php?id=<?= htmlspecialchars($it['product_id']) ?>" target="_blank"
-                     style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
-                    View Details
-                  </a>
-                </div>
                 <div class="sf-pkg-card-footer">
                   <div class="sf-pkg-qty">
                     <form method="post" class="m-0">
@@ -2970,13 +3159,23 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
 
               <?php foreach(($it["extras"] ?? []) as $eIdx => $extra): ?>
               <article class="sf-pkg-card sf-pkg-card--rec" style="position:relative;" data-product-id="<?= htmlspecialchars($extra['product_id']) ?>">
-                <form method="post" class="m-0 sf-pkg-remove-form">
-                  <input type="hidden" name="remove_extra_item" value="1">
-                  <input type="hidden" name="module" value="ac">
-                  <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                  <input type="hidden" name="extra_index" value="<?= $eIdx ?>">
-                  <button type="submit" class="sf-pkg-card-remove-btn" title="Remove"><i class="bi bi-x"></i></button>
-                </form>
+                <div class="sf-card-icons">
+                  <form method="post" class="m-0">
+                    <input type="hidden" name="remove_extra_item" value="1">
+                    <input type="hidden" name="module" value="ac">
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                    <input type="hidden" name="extra_index" value="<?= $eIdx ?>">
+                    <button type="submit" class="sf-card-icon-btn sf-remove-btn" title="Remove">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </form>
+                  <a href="pr_details.php?id=<?= htmlspecialchars($extra['product_id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                    <i class="bi bi-info-circle"></i>
+                  </a>
+                  <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                    <i class="bi bi-heart"></i>
+                  </button>
+                </div>
                 <div class="sf-pkg-card-media">
                   <?php if(!empty($extra["image_url"])): ?>
                     <img src="<?= htmlspecialchars($extra["image_url"]) ?>" alt="">
@@ -3023,7 +3222,15 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
               foreach(($it["alternatives"] ?? []) as $alt):
                 if (in_array((string)$alt["id"], $extraIds, true)) continue;
               ?>
-              <article class="sf-pkg-card sf-pkg-card--alt" data-product-id="<?= htmlspecialchars($alt['id']) ?>">
+              <article class="sf-pkg-card sf-pkg-card--alt" data-product-id="<?= htmlspecialchars($alt['id']) ?>" style="position:relative;">
+                  <div class="sf-card-icons">
+                    <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank" class="sf-card-icon-btn" title="View Details">
+                      <i class="bi bi-info-circle"></i>
+                    </a>
+                    <button type="button" class="sf-card-icon-btn sf-fav-btn" title="Add to Favourites">
+                      <i class="bi bi-heart"></i>
+                    </button>
+                  </div>
 
                 <div class="sf-pkg-card-media">
                   <?php if (!empty($alt["image_url"])): ?>
@@ -3042,12 +3249,6 @@ $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furnitu
                   <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                 </div>
 
-                <div style="padding:0 0 8px 0;">
-                  <a href="pr_details.php?id=<?= htmlspecialchars($alt['id']) ?>" target="_blank"
-                     style="display:block;text-align:center;padding:7px;background:#f8fafc;border:1.5px solid #e0eaff;color:#004cac;font-size:.78rem;font-weight:700;text-decoration:none;">
-                    View Details
-                  </a>
-                </div>
                 <div class="sf-pkg-card-footer">
                   <form method="post" class="m-0 w-100">
                     <input type="hidden" name="add_extra_item" value="1">
@@ -3457,5 +3658,18 @@ document.addEventListener("show.bs.modal", function(e) {
 </script>
 
 
+<script>
+document.querySelectorAll('.sf-fav-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    btn.classList.toggle('is-faved');
+    const icon = btn.querySelector('i');
+    if (btn.classList.contains('is-faved')) {
+      icon.className = 'bi bi-heart-fill';
+    } else {
+      icon.className = 'bi bi-heart';
+    }
+  });
+});
+</script>
 </body>
 </html>

@@ -20,10 +20,10 @@ $moduleOptions       = ["pos", "kitchen", "furniture", "ac"];
 $businessTypeOptions = ["restaurant", "cafe", "gym", "salon"];
 
 $productTypesByModule = [
-  "pos"       => ["terminal", "printer", "drawer", "software", "kds", "scanner", "tablet"],
-  "kitchen"   => ["oven", "stove", "fryer", "grill", "microwave", "fridge", "freezer", "blender", "mixer", "coffee"],
-  "furniture" => ["dining_set", "tv", "table", "chair", "sofa", "bar_stool", "outdoor_furniture", "reception_desk", "shelving", "speaker", "light"],
-  "ac"        => ["ac", "exhaust_fan", "air_curtain"],
+  "pos"       => ["terminal", "printer", "drawer", "software", "kds", "scanner", "tablet", "customer_display", "label_printer", "scale"],
+  "kitchen"   => ["oven", "stove", "fryer", "grill", "microwave", "fridge", "freezer", "blender", "mixer", "coffee", "dishwasher", "prep_table", "exhaust_hood", "bain_marie", "slicer", "sink", "shelving", "food_processor", "rice_cooker", "meat_grinder", "ice_machine"],
+  "furniture" => ["dining_set", "tv", "table", "chair", "sofa", "bar_stool", "outdoor_furniture", "reception_desk", "shelving", "speaker", "light", "sound_system", "curtain", "wall_decor", "menu_stand", "hostess_stand"],
+  "ac"        => ["ac", "exhaust_fan", "air_curtain", "ceiling_fan"],
 ];
 
 // CRITICAL: spec field names must match what packages.php reads from specs JSON
@@ -244,6 +244,124 @@ $specsSchemas = [
     ["name"=>"power_watts", "label"=>"Power",      "type"=>"number", "unit"=>"W",   "placeholder"=>"e.g. 800"],
     ["name"=>"warranty",    "label"=>"Warranty",   "type"=>"select", "options"=>["6 months","1 year","2 years"]],
   ],
+  // ── AC extras ────────────────────────────────────────────────────────────
+  "ceiling_fan" => [
+    ["name"=>"blade_count",  "label"=>"Blade Count",  "type"=>"select", "options"=>["3","4","5"]],
+    ["name"=>"diameter_cm",  "label"=>"Diameter",     "type"=>"number", "unit"=>"cm", "placeholder"=>"e.g. 120"],
+    ["name"=>"power_watts",  "label"=>"Power",        "type"=>"number", "unit"=>"W",  "placeholder"=>"e.g. 60"],
+    ["name"=>"with_light",   "label"=>"With Light",   "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"warranty",     "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  // ── Kitchen extras ───────────────────────────────────────────────────────
+  "dishwasher" => [
+    ["name"=>"dishwasher_type", "label"=>"Type",         "type"=>"select", "options"=>["Undercounter","Hood","Conveyor","Glasswasher"]],
+    ["name"=>"capacity",        "label"=>"Capacity",     "type"=>"text",   "placeholder"=>"e.g. 40 racks/hr"],
+    ["name"=>"power_kw",        "label"=>"Power",        "type"=>"number", "unit"=>"kW", "placeholder"=>"e.g. 3.2"],
+    ["name"=>"warranty",        "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
+  ],
+  "prep_table" => [
+    ["name"=>"material",    "label"=>"Material",     "type"=>"select", "options"=>["Stainless Steel","Polyethylene","Marble"]],
+    ["name"=>"dimensions",  "label"=>"Dimensions",   "type"=>"text",   "placeholder"=>"e.g. 120x60x85 cm"],
+    ["name"=>"with_shelf",  "label"=>"With Shelf",   "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"warranty",    "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "exhaust_hood" => [
+    ["name"=>"hood_type",   "label"=>"Hood Type",    "type"=>"select", "options"=>["Wall-mount","Island","Canopy","Condensate"]],
+    ["name"=>"width_cm",    "label"=>"Width",        "type"=>"number", "unit"=>"cm", "placeholder"=>"e.g. 120"],
+    ["name"=>"airflow_cmh", "label"=>"Airflow",      "type"=>"number", "unit"=>"m³/h", "placeholder"=>"e.g. 1000"],
+    ["name"=>"warranty",    "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "bain_marie" => [
+    ["name"=>"bain_type",   "label"=>"Type",         "type"=>"select", "options"=>["Wet","Dry","Countertop","Drop-in"]],
+    ["name"=>"sections",    "label"=>"Sections",     "type"=>"number", "placeholder"=>"e.g. 4"],
+    ["name"=>"power_watts", "label"=>"Power",        "type"=>"number", "unit"=>"W", "placeholder"=>"e.g. 1500"],
+    ["name"=>"warranty",    "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "slicer" => [
+    ["name"=>"slicer_type", "label"=>"Slicer Type",  "type"=>"select", "options"=>["Meat","Bread","Vegetable","Multi-purpose"]],
+    ["name"=>"blade_cm",    "label"=>"Blade Size",   "type"=>"number", "unit"=>"cm", "placeholder"=>"e.g. 30"],
+    ["name"=>"power_watts", "label"=>"Power",        "type"=>"number", "unit"=>"W",  "placeholder"=>"e.g. 200"],
+    ["name"=>"warranty",    "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "sink" => [
+    ["name"=>"sink_type",   "label"=>"Sink Type",    "type"=>"select", "options"=>["Single","Double","Triple","Hand wash"]],
+    ["name"=>"material",    "label"=>"Material",     "type"=>"select", "options"=>["Stainless Steel","Ceramic"]],
+    ["name"=>"dimensions",  "label"=>"Dimensions",   "type"=>"text",   "placeholder"=>"e.g. 80x50 cm"],
+    ["name"=>"warranty",    "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "food_processor" => [
+    ["name"=>"capacity_liters", "label"=>"Bowl Capacity", "type"=>"number", "unit"=>"L", "placeholder"=>"e.g. 3"],
+    ["name"=>"power_watts",     "label"=>"Power",         "type"=>"number", "unit"=>"W", "placeholder"=>"e.g. 750"],
+    ["name"=>"speeds",          "label"=>"Speed Settings","type"=>"number", "placeholder"=>"e.g. 5"],
+    ["name"=>"warranty",        "label"=>"Warranty",      "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "rice_cooker" => [
+    ["name"=>"capacity_liters", "label"=>"Capacity",  "type"=>"number", "unit"=>"L",  "placeholder"=>"e.g. 10"],
+    ["name"=>"power_watts",     "label"=>"Power",     "type"=>"number", "unit"=>"W",  "placeholder"=>"e.g. 1200"],
+    ["name"=>"warranty",        "label"=>"Warranty",  "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "meat_grinder" => [
+    ["name"=>"power_watts",     "label"=>"Power",     "type"=>"number", "unit"=>"W",     "placeholder"=>"e.g. 1500"],
+    ["name"=>"capacity_kgh",    "label"=>"Capacity",  "type"=>"number", "unit"=>"kg/hr", "placeholder"=>"e.g. 50"],
+    ["name"=>"warranty",        "label"=>"Warranty",  "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "ice_machine" => [
+    ["name"=>"production_kgd",  "label"=>"Ice Production", "type"=>"number", "unit"=>"kg/day", "placeholder"=>"e.g. 50"],
+    ["name"=>"storage_kg",      "label"=>"Storage",        "type"=>"number", "unit"=>"kg",     "placeholder"=>"e.g. 20"],
+    ["name"=>"ice_type",        "label"=>"Ice Type",       "type"=>"select", "options"=>["Cube","Crushed","Flake","Nugget"]],
+    ["name"=>"warranty",        "label"=>"Warranty",       "type"=>"select", "options"=>["6 months","1 year","2 years","3 years"]],
+  ],
+  // ── Furniture extras ─────────────────────────────────────────────────────
+  "sound_system" => [
+    ["name"=>"system_type",  "label"=>"System Type",  "type"=>"select", "options"=>["2.0","2.1","5.1","PA System","Ceiling Speakers"]],
+    ["name"=>"power_watts",  "label"=>"Total Power",  "type"=>"number", "unit"=>"W", "placeholder"=>"e.g. 200"],
+    ["name"=>"connectivity", "label"=>"Connectivity", "type"=>"select", "options"=>["Wired","Bluetooth","WiFi","Wired + Bluetooth"]],
+    ["name"=>"warranty",     "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "curtain" => [
+    ["name"=>"material",    "label"=>"Material",    "type"=>"select", "options"=>["Fabric","Blackout","Sheer","Velvet"]],
+    ["name"=>"width_cm",    "label"=>"Width",       "type"=>"number", "unit"=>"cm", "placeholder"=>"e.g. 200"],
+    ["name"=>"height_cm",   "label"=>"Height",      "type"=>"number", "unit"=>"cm", "placeholder"=>"e.g. 250"],
+    ["name"=>"color",       "label"=>"Color",       "type"=>"text",   "placeholder"=>"e.g. Beige"],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year"]],
+  ],
+  "wall_decor" => [
+    ["name"=>"decor_type",  "label"=>"Type",        "type"=>"select", "options"=>["Wall Art","Mirror","Clock","Panel","Neon Sign","Plant Wall"]],
+    ["name"=>"dimensions",  "label"=>"Dimensions",  "type"=>"text",   "placeholder"=>"e.g. 80x60 cm"],
+    ["name"=>"material",    "label"=>"Material",    "type"=>"select", "options"=>["Wood","Metal","Canvas","Acrylic","Mixed"]],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year"]],
+  ],
+  "menu_stand" => [
+    ["name"=>"stand_type",  "label"=>"Type",        "type"=>"select", "options"=>["Table Stand","Floor Stand","Wall Mount","Tent Card"]],
+    ["name"=>"material",    "label"=>"Material",    "type"=>"select", "options"=>["Acrylic","Metal","Wood","Leather"]],
+    ["name"=>"color",       "label"=>"Color",       "type"=>"text",   "placeholder"=>"e.g. Black"],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year"]],
+  ],
+  "hostess_stand" => [
+    ["name"=>"material",    "label"=>"Material",    "type"=>"select", "options"=>["Wood","MDF","Metal","Mixed"]],
+    ["name"=>"with_light",  "label"=>"With Light",  "type"=>"select", "options"=>["Yes","No"]],
+    ["name"=>"dimensions",  "label"=>"Dimensions",  "type"=>"text",   "placeholder"=>"e.g. 50x40x120 cm"],
+    ["name"=>"color",       "label"=>"Color",       "type"=>"text",   "placeholder"=>"e.g. Walnut"],
+    ["name"=>"warranty",    "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  // ── POS extras ───────────────────────────────────────────────────────────
+  "customer_display" => [
+    ["name"=>"screen_size",  "label"=>"Screen Size",  "type"=>"number", "unit"=>"inch", "placeholder"=>"e.g. 10"],
+    ["name"=>"display_type", "label"=>"Display Type", "type"=>"select", "options"=>["LCD","LED","VFD"]],
+    ["name"=>"connectivity", "label"=>"Connectivity", "type"=>"select", "options"=>["USB","Serial","HDMI"]],
+    ["name"=>"warranty",     "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "label_printer" => [
+    ["name"=>"print_width",  "label"=>"Print Width",  "type"=>"text",   "placeholder"=>"e.g. 80mm"],
+    ["name"=>"connectivity", "label"=>"Connectivity", "type"=>"select", "options"=>["USB","Bluetooth","WiFi","Ethernet"]],
+    ["name"=>"warranty",     "label"=>"Warranty",     "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
+  "scale" => [
+    ["name"=>"max_weight_kg", "label"=>"Max Weight",  "type"=>"number", "unit"=>"kg", "placeholder"=>"e.g. 30"],
+    ["name"=>"display_type",  "label"=>"Display",     "type"=>"select", "options"=>["LCD","LED"]],
+    ["name"=>"connectivity",  "label"=>"Connectivity","type"=>"select", "options"=>["Standalone","USB","Bluetooth"]],
+    ["name"=>"warranty",      "label"=>"Warranty",    "type"=>"select", "options"=>["6 months","1 year","2 years"]],
+  ],
 ];
 
 // ---------- Fetch categories ----------
@@ -353,6 +471,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       "outdoor_furniture"=>[3000,10000],"reception_desk"=>[5000,15000],
       "shelving"=>[ 2000,  6000],"speaker"=>[2000, 8000],"light"=>[500, 2000],
       "ac"      =>[ 30000, 80000],"exhaust_fan"=>[2000,6000],"air_curtain"=>[3000,8000],
+      "ceiling_fan"=>[2000,6000],
+      "dishwasher"=>[20000,60000],"prep_table"=>[5000,15000],"exhaust_hood"=>[8000,25000],
+      "bain_marie"=>[5000,15000],"slicer"=>[5000,15000],"sink"=>[3000,8000],
+      "food_processor"=>[5000,15000],"rice_cooker"=>[3000,8000],
+      "meat_grinder"=>[5000,15000],"ice_machine"=>[15000,40000],
+      "sound_system"=>[8000,25000],"curtain"=>[1000,4000],"wall_decor"=>[500,3000],
+      "menu_stand"=>[500,2000],"hostess_stand"=>[3000,10000],
+      "customer_display"=>[8000,15000],"label_printer"=>[3000,6000],"scale"=>[2000,5000],
     ];
     [$sm, $bm] = $t[$pt] ?? [3000, 8000];
     if ($p < $sm)  return "Starter";

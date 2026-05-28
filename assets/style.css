@@ -207,7 +207,7 @@ nav.sf-navbar,
 .sf-profile-btn{
   width: 46px;
   height: 46px;
-  border-radius: 50%;
+  border-radius: 50% !important;
   background: #ffffff;
   border: none;
   display: flex;
@@ -6436,11 +6436,14 @@ font-weight: 550 !important;
 .sf-pkg-card--alt {
   border-color: rgba(0,0,0,.08);
   opacity: .92;
+  transform: scale(0.92);
+  transform-origin: top center;
 }
 
 .sf-pkg-card--alt:hover {
   opacity: 1;
   border-color: rgba(0,76,172,.20);
+  transform: scale(1);
 }
 
 .sf-pkg-rec-badge {
@@ -7924,12 +7927,11 @@ div#sfWwTrack {
   border: 1px solid #006EB1;
 }
 .sf-product-btn-cart {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 9px 12px;
-  border-radius: 5px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 9px;
+  border-radius: 0;
   border: 1.5px solid #004cac;
   background: #fff;
   color: #004cac;
@@ -7962,4 +7964,144 @@ div#sfWwTrack {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.sf-slider-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sf-slider-presets {
+  display: flex;
+  gap: 6px;
+  flex: 1; /* takes middle space between label and value */
+  justify-content: center;
+}
+
+.sf-slider-note {
+  font-size: 11px;
+  color: #888;
+  font-weight: 400;
+  margin-left: 6px;
+}
+
+.sf-multifloor-block {
+  border-top: 1px solid #eee;
+  padding-top: 16px;
+}
+
+.sf-multifloor-check-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.sf-multifloor-chk {
+  width: 16px;
+  height: 16px;
+  accent-color: #004cac;
+  cursor: pointer;
+}
+
+/* Steps 3 & 4 slider overrides */
+.sf-slider-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.sf-slider-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  text-transform: none;
+}
+.sf-slider-presets {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+}
+.sf-slider-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: #004cac;
+  min-width: 36px;
+  text-align: right;
+}
+.sf-slider-note {
+  font-size: 11px;
+  color: #888;
+  font-weight: 400;
+  margin-left: 6px;
+  text-transform: none;
+}
+.sf-product-btn-buynow {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 9px;
+  background: #004cac;
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 0;
+  margin-top: 6px;
+  border: none;
+  cursor: pointer;
+}
+.sf-product-btn-buynow:hover {
+  background: #003a8a;
+  color: #fff;
+}
+
+.sf-card-icons {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 2;
+}
+
+.sf-card-icon-btn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none !important;
+  border-radius: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #004cac;
+  font-size: .9rem;
+  text-decoration: none;
+  padding: 0;
+  transition: color .15s;
+}
+
+.sf-card-icon-btn:hover {
+  background: transparent;
+  color: #004cac;
+}
+
+.sf-card-icon-btn.sf-fav-btn.is-faved {
+  color: #e53e3e;
+}
+
+.sf-card-icon-btn.sf-remove-btn {
+  color: #aaa;
+}
+
+.sf-card-icon-btn.sf-remove-btn:hover {
+  color: #e53e3e;
 }

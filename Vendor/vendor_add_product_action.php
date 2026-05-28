@@ -66,6 +66,28 @@ function calculate_tier(string $product_type, float $price): string {
     "ac"          => [30000,  80000],
     "exhaust_fan" => [ 2000,   6000],
     "air_curtain" => [ 3000,   8000],
+    "ceiling_fan" => [ 2000,   6000],
+    // Kitchen extras
+    "dishwasher"     => [20000, 60000],
+    "prep_table"     => [ 5000, 15000],
+    "exhaust_hood"   => [ 8000, 25000],
+    "bain_marie"     => [ 5000, 15000],
+    "slicer"         => [ 5000, 15000],
+    "sink"           => [ 3000,  8000],
+    "food_processor" => [ 5000, 15000],
+    "rice_cooker"    => [ 3000,  8000],
+    "meat_grinder"   => [ 5000, 15000],
+    "ice_machine"    => [15000, 40000],
+    // Furniture extras
+    "sound_system"   => [ 8000, 25000],
+    "curtain"        => [ 1000,  4000],
+    "wall_decor"     => [  500,  3000],
+    "menu_stand"     => [  500,  2000],
+    "hostess_stand"  => [ 3000, 10000],
+    // POS extras
+    "customer_display" => [8000, 15000],
+    "label_printer"    => [3000,  6000],
+    "scale"            => [2000,  5000],
   ];
   [$starter_max, $balanced_max] = $thresholds[$product_type] ?? [3000, 8000];
   if ($price < $starter_max)   return "Starter";
