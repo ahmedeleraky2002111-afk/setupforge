@@ -1,5 +1,7 @@
-FROM dunglas/frankenphp
-RUN install-php-extensions pgsql pdo_pgsql
-ENV FRANKENPHP_NO_HTTPS=1
-ENV SERVER_NAME=":80"
-COPY . /app/public
+FROM php:8.2-apache
+RUN apt-get update && apt-get install -y libpq-dev && docker-php-ext-install pgsql pdo_pgsql
+RUN a2enmod rewrite
+COPY . /var/www/html/
+RUN chown -R www-data:www-data /var/www/html
+EXPOSE 80
+ENV APACHE_DOCUMENT_ROOT /var/www/html
