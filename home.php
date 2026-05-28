@@ -71,7 +71,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
     <!-- HERO -->
     <section class="sf-home-hero" id="sfHomeHero">
       <video class="sf-home-hero-video" autoplay muted loop playsinline>
-        <source src="assets/videos/home1.mp4" type="video/mp4">
+        <source src="assets/Videos/home1.mp4" type="video/mp4">
         Your browser does not support the video tag.
       </video>
 
