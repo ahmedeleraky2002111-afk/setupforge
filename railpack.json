@@ -1,0 +1,11 @@
+{
+  "provider": "php",
+  "phases": {
+    "setup": {
+      "aptPkgs": ["php8.3-pgsql", "php8.3-mbstring", "php8.3-curl"]
+    }
+  },
+  "start": {
+    "command": "php -S 0.0.0.0:$PORT -t /app"
+  }
+}

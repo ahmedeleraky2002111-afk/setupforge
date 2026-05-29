@@ -275,6 +275,7 @@ if (isset($conn) && $conn) {
     p.product_name,
     p.product_type,
     p.price,
+    p.avg_rating,    
     p.priority,
     p.tier,
     p.brand,
@@ -320,6 +321,8 @@ if (isset($conn) && $conn) {
         "vendor_user_id"    => $row["vendor_user_id"] ?? null,
         "product_group_key" => $row["product_group_key"] ?? null,
         "created_at"        => $row["created_at"] ?? null,
+          "avg_rating"    => isset($row["avg_rating"]) ? (float)$row["avg_rating"] : 0,  // ADD
+
       ];
     }
 
@@ -340,6 +343,7 @@ if (isset($conn) && $conn) {
     p.product_name,
     p.product_type,
     p.price,
+      p.avg_rating,
     p.priority,
     p.tier,
     p.brand,
@@ -385,8 +389,9 @@ if (isset($conn) && $conn) {
   "created_at"        => $row["created_at"] ?? null,
 
   // 🔥 ADD THESE TWO
-        "stock_quantity" => isset($row["stock_quantity"]) ? (int)$row["stock_quantity"] : 0, 
+        "stock_quantity" => isset($row["stock_quantity"]) ? (int)$row["stock_quantity"] : 0,
          "specs" => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
+        "avg_rating" => isset($row["avg_rating"]) ? (float)$row["avg_rating"] : 0,
 ];
       $count++;
     }
@@ -407,6 +412,7 @@ SELECT
   p.product_name,
   p.product_type,
   p.price,
+  p.avg_rating, 
   p.priority,
   p.tier,
   p.brand,
@@ -457,6 +463,7 @@ $tmp[$type][] = [
   "created_at"        => $row["created_at"] ?? null,
   "stock_quantity"    => isset($row["stock_quantity"]) ? (int)$row["stock_quantity"] : 0,
   "specs"             => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
+  "avg_rating"        => isset($row["avg_rating"]) ? (float)$row["avg_rating"] : 0,
 ];
       $count++;
     }
@@ -472,7 +479,7 @@ $tmp[$type][] = [
 if (isset($conn) && $conn) {
   $sqlAcCatalog = "
     SELECT
-      p.id, p.product_name, p.product_type, p.price, p.priority, p.tier,
+      p.id, p.product_name, p.product_type, p.price, p.avg_rating, p.priority, p.tier,
       p.brand, p.stock_quantity, p.specs, p.vendor_user_id, p.product_group_key,
       p.created_at, u.name AS vendor_name, c.name AS category_name,
       (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
@@ -501,6 +508,7 @@ if (isset($conn) && $conn) {
         "stock_quantity"    => (int)($row["stock_quantity"] ?? 0),
         "specs"             => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
         "created_at"        => $row["created_at"] ?? null,
+        "avg_rating"        => isset($row["avg_rating"]) ? (float)$row["avg_rating"] : 0,
       ];
       $countAc++;
     }
@@ -724,13 +732,16 @@ function find_by_id($catalog, $type, $id){
 
 function pick_best_under_unit_budget($catalog, $type, $unitBudget){
   if (!isset($catalog[$type]) || empty($catalog[$type])) return null;
-  $best = null;
-  foreach($catalog[$type] as $p){
-if ((int)$p["price"] <= (int)$unitBudget) { $best = $p; 
-break;
- }
-   }
-  if ($best) return $best;
+  $pool = array_filter($catalog[$type], fn($p) => (int)$p["price"] <= (int)$unitBudget);
+  if (!empty($pool)) {
+    usort($pool, function($a, $b){
+      $ra = (float)($a["avg_rating"] ?? 0);
+      $rb = (float)($b["avg_rating"] ?? 0);
+      if ($rb !== $ra) return $rb <=> $ra;
+      return (int)$b["price"] <=> (int)$a["price"];
+    });
+    return array_values($pool)[0];
+  }
   return $catalog[$type][0];
 }
 
@@ -1978,6 +1989,9 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier) {
   unset($_SESSION["wizard"]["furniture_cart"]);
   $_SESSION["wizard"]["furniture_cart_tier"] = $furnitureTier;
 }
+// Temp: clear stale carts built before avg_rating — remove after testing
+// One-time migration: clear carts built before avg_rating was added
+
 $acHpData    = ac_hp_from_area($areaSqm);
 $isCentralAc = $acHpData["units"] === 0;
 

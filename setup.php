@@ -225,7 +225,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     
     if ($userId) {
         save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 1);
-        
+
+        // Force save business name directly
+        pg_query_params($conn,
+            "UPDATE businesses SET business_name = \$1 WHERE user_id = \$2",
+            [trim($_POST["business_name"] ?? ""), $userId]
+        );
+
         // Convert customer to business if needed
         pg_query_params($conn,
             "UPDATE users SET user_type = 'business' WHERE id = $1 AND user_type = 'customer'",
@@ -501,10 +507,10 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
       $carouselId = "sfBizCarousel";
 
       $videoMap = [
-        "Restaurant" => "assets/videos/RestaurantP.mp4",
-        "Café"       => "assets/videos/CafeP.mp4",
-        "Salon"      => "assets/videos/OfficeP.mp4",
-        "Gym"        => "assets/videos/GymP.mp4",
+        "Restaurant" => "assets/Videos/RestaurantP.mp4",
+        "Café"       => "assets/Videos/CafeP.mp4",
+        "Salon"      => "assets/Videos/OfficeP.mp4",
+        "Gym"        => "assets/Videos/GymP.mp4",
       ];
     ?>
 
@@ -519,7 +525,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
             <?php
               $key = strtolower(preg_replace('/\W+/', '', $t));
               $id = "biz_" . $key;
-              $video = $videoMap[$t] ?? "assets/videos/placeholder.mp4";
+              $video = $videoMap[$t] ?? "assets/Videos/placeholder.mp4";
               $icon = match($t){
                 "Restaurant" => "bi-fork-knife",
                 "Café"       => "bi-cup-hot",
