@@ -6104,13 +6104,10 @@ font-weight: 550 !important;
 .sf-ins-company-desc { font-size: .78rem; color: #6b7280; line-height: 1.5; max-height: 60px; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent 100%); mask-image: linear-gradient(180deg, #000 40%, transparent 100%); }
 .sf-ins-service-block { margin-bottom: 32px; width: 100%; }
 .sf-ins-recommended { position: absolute; top: -1px; left: 16px; background: #004cac; color: #fff; font-size: .65rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 0 0 8px 8px; }
-.sf-ins-company-top { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; padding-top: 6px; }
-.sf-ins-company-logo { flex-shrink: 0; margin-top: 2px; }
-.sf-ins-company-info { flex: 1; min-width: 0; }
+
 .sf-ins-company-name { font-size: .95rem; font-weight: 800; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
 .sf-ins-company-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sf-ins-company-top { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
-.sf-ins-company-name { font-size: 1rem; font-weight: 800; color: #111827; }
+
 .sf-ins-company-desc { font-size: .78rem; color: #6b7280; line-height: 1.5; }
 .sf-ins-company-name { font-size: 1rem; font-weight: 800; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sf-ins-company-top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -8130,61 +8127,3 @@ div#sfWwTrack {
 .sf-cstar-submit         { margin-top: 8px; padding: 7px 18px; background: #004cac; color: #fff; border: none; border-radius: 0; font-size: .8rem; font-weight: 700; cursor: pointer; font-family: inherit; }
 .sf-cstar-submit:hover   { background: #003b86; }
 .sf-cstar-msg            { font-size: .75rem; margin-left: 10px; font-weight: 700; }
-
-.sf-svc-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 22px;
-  border: 2px solid rgba(0,0,0,.10);
-  border-radius: 0;
-  background: #fff;
-  cursor: pointer;
-  transition: border-color .15s, box-shadow .15s, background .15s;
-  user-select: none;
-}
-.sf-svc-card:hover {
-  border-color: rgba(0,76,172,.30);
-  box-shadow: 0 8px 24px rgba(0,76,172,.08);
-}
-.sf-svc-card.is-selected {
-  border-color: #004cac;
-  background: rgba(0,76,172,.04);
-  box-shadow: 0 0 0 4px rgba(0,76,172,.10);
-}
-.sf-svc-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.sf-svc-icon {
-  width: 46px; height: 46px;
-  border-radius: 10px;
-  background: rgba(0,76,172,.08);
-  color: #004cac;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem;
-}
-.sf-svc-check {
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  border: 2px solid #d1d5db;
-  display: flex; align-items: center; justify-content: center;
-  color: transparent;
-  transition: all .15s;
-}
-.sf-svc-card.is-selected .sf-svc-check {
-  background: #004cac;
-  border-color: #004cac;
-  color: #fff;
-}
-.sf-svc-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
-}
-.sf-svc-desc {
-  font-size: .83rem;
-  color: #6b7280;
-  line-height: 1.5;
-}
