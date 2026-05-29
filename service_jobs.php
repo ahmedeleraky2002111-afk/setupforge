@@ -441,7 +441,6 @@ function formatInstallationServices($raw) {
       <div class="sf-hc-topbar-inner">
         <div>
           
-          <p class="sf-hc-biz-sub">Staff up</p>
           <h1 class="sf-hc-biz-name"><?= htmlspecialchars($businessName) ?></h1>
         </div>
         <div class="sf-hc-stats">
