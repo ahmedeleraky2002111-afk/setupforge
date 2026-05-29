@@ -1,5 +1,6 @@
 <?php
 session_start();
+
 require_once "db.php";
 
 if (!isset($_SESSION["user_id"])) {
@@ -368,6 +369,42 @@ if ($bizRes && pg_num_rows($bizRes) > 0) {
     $businessName = $brow["business_name"] ?? "Your Business";
 }
 
+$myCompanyReviews = [];
+$crRes = pg_query_params($conn,
+    "SELECT company_id, rating, comment FROM company_reviews WHERE user_id = $1",
+    [$business_id]);
+if ($crRes) {
+    while ($row = pg_fetch_assoc($crRes)) {
+        $myCompanyReviews[(int)$row["company_id"]] = $row;
+    }
+}
+
+function renderCompanyStars($companyId, $myCompanyReviews) {
+    $existing   = $myCompanyReviews[$companyId] ?? null;
+    $curRating  = (int)($existing["rating"] ?? 0);
+    $curComment = htmlspecialchars($existing["comment"] ?? "");
+    ob_start(); ?>
+    <div class="sf-company-review-wrap">
+        <div style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">
+            <?= $existing ? 'Your Rating' : 'Rate This Company' ?>
+        </div>
+        <div class="sf-cstar-row" data-company="<?= $companyId ?>" data-current="<?= $curRating ?>">
+            <?php for ($i = 1; $i <= 5; $i++): ?>
+            <button type="button" class="sf-cstar <?= $i <= $curRating ? 'is-on' : '' ?>" data-val="<?= $i ?>" onclick="sfCstarClick(this)">
+                <i class="bi bi-star<?= $i <= $curRating ? '-fill' : '' ?>"></i>
+            </button>
+            <?php endfor; ?>
+            <span class="sf-cstar-label" <?= $curRating ? '' : 'style="display:none"' ?>><?= $curRating ?: '' ?>/5</span>
+        </div>
+        <textarea class="sf-cstar-comment" placeholder="Add a comment (optional)" rows="2"><?= $curComment ?></textarea>
+        <button type="button" class="sf-cstar-submit" onclick="sfCstarSubmit(this, <?= $companyId ?>)">
+            <i class="bi bi-check2 me-1"></i><?= $existing ? 'Update Rating' : 'Submit Rating' ?>
+        </button>
+        <span class="sf-cstar-msg"></span>
+    </div>
+    <?php return ob_get_clean();
+}
+
 function formatInstallationServices($raw) {
     if (!$raw) return "Installation Service";
     $cleaned = trim($raw, '{}');
@@ -390,13 +427,7 @@ function formatInstallationServices($raw) {
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/style.css" rel="stylesheet">
-  <style>
-.sf-ins-company-top { display: flex !important; flex-direction: row !important; align-items: center !important; gap: 12px !important; padding-top: 6px; }
-.sf-ins-company-logo { flex-shrink: 0; }
-.sf-ins-company-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
-.sf-ins-company-name { font-size: .95rem; font-weight: 800; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
-.sf-ins-company-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-</style>
+  
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
@@ -409,7 +440,7 @@ function formatInstallationServices($raw) {
     <div class="container">
       <div class="sf-hc-topbar-inner">
         <div>
-          <div class="sf-hc-kicker">Post-Payment · Hiring Console</div>
+          
           <p class="sf-hc-biz-sub">Staff up</p>
           <h1 class="sf-hc-biz-name"><?= htmlspecialchars($businessName) ?></h1>
         </div>
@@ -856,6 +887,9 @@ function formatInstallationServices($raw) {
                 </button>
                 <?php endif; ?>
 
+                <?php if ($quoteAccepted && !empty($req["scheduled_date"])): ?>
+                    <?= renderCompanyStars((int)$co["company_id"], $myCompanyReviews) ?>
+                <?php endif; ?>
                 <div class="sf-ins-actions">
   <?php if ($co["website"] || $co["website_link"]): ?>
   <a href="<?= htmlspecialchars($co["website"] ?? $co["website_link"]) ?>"
@@ -1055,6 +1089,9 @@ function formatInstallationServices($raw) {
                   style="margin-top:10px;width:100%;padding:8px;border-radius:0;background:#f1f5f9;color:#004cac;font-weight:700;font-size:.82rem;border:1px solid rgba(0,76,172,.15);cursor:pointer;">
                   <i class="bi bi-info-circle me-1"></i> View Details
                 </button>
+                <?php if ($quoteAccepted && !empty($finishingReq["scheduled_date"])): ?>
+                    <?= renderCompanyStars((int)$co["company_id"], $myCompanyReviews) ?>
+                <?php endif; ?>
                 <div class="sf-ins-actions">
                   <?php if (!empty($co["website"])): ?>
                     <a href="<?= htmlspecialchars($co["website"]) ?>" target="_blank" class="sf-ins-btn-website">
@@ -1626,5 +1663,45 @@ function closeBreakdownModal() {
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function sfCstarClick(btn) {
+    const row = btn.closest('.sf-cstar-row');
+    const val = parseInt(btn.dataset.val);
+    row.dataset.current = val;
+    row.querySelectorAll('.sf-cstar').forEach((s, i) => {
+        s.classList.toggle('is-on', i < val);
+        s.querySelector('i').className = 'bi bi-star' + (i < val ? '-fill' : '');
+    });
+    const label = row.querySelector('.sf-cstar-label');
+    label.textContent = val + '/5';
+    label.style.display = '';
+}
+function sfCstarSubmit(btn, companyId) {
+    const wrap    = btn.closest('.sf-company-review-wrap');
+    const row     = wrap.querySelector('.sf-cstar-row');
+    const rating  = parseInt(row.dataset.current || 0);
+    const comment = wrap.querySelector('.sf-cstar-comment').value.trim();
+    const msg     = wrap.querySelector('.sf-cstar-msg');
+    if (!rating) { msg.textContent = 'Pick a star first.'; msg.style.color = '#dc2626'; return; }
+    msg.textContent = 'Saving…'; msg.style.color = '#6b7280';
+    btn.disabled = true;
+    const fd = new FormData();
+    fd.append('company_id', companyId);
+    fd.append('rating',     rating);
+    fd.append('comment',    comment);
+    fetch('submit_company_review.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(res => {
+            if (res.ok) {
+                msg.textContent = 'Saved!'; msg.style.color = '#15803d';
+                btn.textContent = 'Update Rating';
+            } else {
+                msg.textContent = res.error || 'Failed.'; msg.style.color = '#dc2626';
+            }
+            btn.disabled = false;
+        })
+        .catch(() => { msg.textContent = 'Network error.'; msg.style.color = '#dc2626'; btn.disabled = false; });
+}
+</script>
 </body>
 </html>

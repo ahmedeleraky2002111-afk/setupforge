@@ -6104,13 +6104,10 @@ font-weight: 550 !important;
 .sf-ins-company-desc { font-size: .78rem; color: #6b7280; line-height: 1.5; max-height: 60px; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent 100%); mask-image: linear-gradient(180deg, #000 40%, transparent 100%); }
 .sf-ins-service-block { margin-bottom: 32px; width: 100%; }
 .sf-ins-recommended { position: absolute; top: -1px; left: 16px; background: #004cac; color: #fff; font-size: .65rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 0 0 8px 8px; }
-.sf-ins-company-top { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; padding-top: 6px; }
-.sf-ins-company-logo { flex-shrink: 0; margin-top: 2px; }
-.sf-ins-company-info { flex: 1; min-width: 0; }
+
 .sf-ins-company-name { font-size: .95rem; font-weight: 800; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
 .sf-ins-company-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sf-ins-company-top { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
-.sf-ins-company-name { font-size: 1rem; font-weight: 800; color: #111827; }
+
 .sf-ins-company-desc { font-size: .78rem; color: #6b7280; line-height: 1.5; }
 .sf-ins-company-name { font-size: 1rem; font-weight: 800; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sf-ins-company-top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -8105,3 +8102,28 @@ div#sfWwTrack {
 .sf-card-icon-btn.sf-remove-btn:hover {
   color: #e53e3e;
 }
+
+/* =========================
+   CONSOLIDATED: sf-ins-company-top layout
+   (replaces duplicates above + inline style block in service_jobs.php)
+========================= */
+.sf-ins-company-top      { display: flex; flex-direction: row; align-items: center; gap: 12px; padding-top: 6px; }
+.sf-ins-company-logo     { flex-shrink: 0; }
+.sf-ins-company-info     { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.sf-ins-company-name     { font-size: .95rem; font-weight: 800; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.sf-ins-company-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* =========================
+   COMPANY STAR RATING  (service_jobs.php)
+========================= */
+.sf-company-review-wrap  { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,.07); }
+.sf-cstar-row            { display: flex; align-items: center; gap: 4px; }
+.sf-cstar                { background: none; border: none; padding: 0; cursor: pointer; font-size: 1.15rem; color: #d1d5db; line-height: 1; transition: color .12s; }
+.sf-cstar.is-on          { color: #f59e0b; }
+.sf-cstar:hover          { color: #f59e0b; }
+.sf-cstar-label          { font-size: .78rem; font-weight: 700; color: #f59e0b; margin-left: 4px; }
+.sf-cstar-comment        { width: 100%; margin-top: 8px; padding: 8px 10px; border: 1.5px solid #e0eaff; border-radius: 0; font-size: .8rem; font-weight: 600; color: #111827; resize: vertical; outline: none; font-family: inherit; }
+.sf-cstar-comment:focus  { border-color: #004cac; }
+.sf-cstar-submit         { margin-top: 8px; padding: 7px 18px; background: #004cac; color: #fff; border: none; border-radius: 0; font-size: .8rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+.sf-cstar-submit:hover   { background: #003b86; }
+.sf-cstar-msg            { font-size: .75rem; margin-left: 10px; font-weight: 700; }

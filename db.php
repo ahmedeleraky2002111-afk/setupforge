@@ -1,9 +1,9 @@
 <?php
-$host     = "postgres.railway.internal";
-$port     = "5432";
-$dbname   = "railway";
-$user     = "postgres";
-$password = "ljzNktmVDRkGjeQwnnmNzhQdPeTraHFp";
+$host = getenv('PGHOST') ?: 'nozomi.proxy.rlwy.net';
+$port = getenv('PGPORT') ?: '24590';
+$dbname   = getenv('PGDATABASE') ?: 'railway';
+$user     = getenv('PGUSER')     ?: 'postgres';
+$password = getenv('PGPASSWORD') ?: 'ljzNktmVDRkGjeQwnnmNzhQdPeTraHFp';
 
 $conn_string = "host=$host port=$port dbname=$dbname user=$user password=$password";
 $conn = pg_connect($conn_string);
