@@ -20,6 +20,25 @@ function egp($n){
   return number_format((int)round($n)) . " EGP";
 }
 
+// ---------- HANDLE DELETE ----------
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["delete_product_id"])) {
+  $deleteId = (int)$_POST["delete_product_id"];
+
+  // Check which column exists and use it
+  $check = pg_query_params(
+    $conn,
+    "SELECT id FROM products WHERE id = $1 LIMIT 1",
+    [$deleteId]
+  );
+
+  if ($check && pg_num_rows($check) > 0) {
+    pg_query_params($conn, "DELETE FROM products WHERE id = $1", [$deleteId]);
+  }
+
+  header("Location: vendor_products.php");
+  exit;
+}
+
 // ---------- FETCH PRODUCTS (vendor-only + first image + category name) ----------
 $products = [];
 $productsSource = "none";
@@ -162,7 +181,7 @@ if ($query1) {
     </div>
 
     <?php if (empty($products)): ?>
-      <div class="v-empty">No products found yet. Click “Add Product” to create your first product.</div>
+      <div class="v-empty">No products found yet. Click "Add Product" to create your first product.</div>
     <?php else: ?>
       <div class="v-list">
         <?php foreach ($products as $p): ?>
@@ -204,6 +223,11 @@ if ($img !== "" && strpos($img, "assets/") === 0) {
             <div class="v-row-right">
               <a class="v-btn v-btn-outline" href="vendor_edit_product.php?id=<?= urlencode((string)$pid) ?>">Edit</a>
               <a class="v-btn v-btn-blue" href="vendor_product_details.php?id=<?= urlencode((string)$pid) ?>">Details</a>
+              <form method="POST" action="vendor_products.php" style="display:inline;"
+                    onsubmit="return confirm('Delete &quot;<?= h(addslashes($name)) ?>&quot;? This cannot be undone.');">
+                <input type="hidden" name="delete_product_id" value="<?= $pid ?>">
+                <button type="submit" class="v-btn v-btn-danger">Delete</button>
+              </form>
             </div>
           </div>
         <?php endforeach; ?>

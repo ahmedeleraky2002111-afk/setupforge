@@ -1,97 +1,81 @@
-/* 
-=========================================================
-   SetupForge Vendor UI — Modern Premium Dashboard
-   Brand colors only:
-   Blue: #004cac
-   Teal: #009994
-   Background: white
-========================================================= */
 
-/* =========================================================
-   CONTROL PANEL
-========================================================= */
+
 :root{
   --sf-primary:#004cac;
-  --sf-secondary:#009994;
+  --sf-secondary:#004cac;
 
-  /* aliases for compatibility */
+  
   --blue: var(--sf-primary);
-  --teal: var(--sf-secondary);
+  --teal: var(--sf-primary);
 
-  /* Base */
+  
   --bg: #f6f9fc;
   --surface: #ffffff;
   --surface-2: #fdfefe;
   --text: #0f172a;
   --muted: #64748b;
 
-  /* Borders + shadows */
+  
   --border: rgba(15, 23, 42, .10);
   --border2: rgba(15, 23, 42, .06);
   --shadow: 0 20px 40px rgba(15, 23, 42, .08);
   --shadow2: 0 10px 24px rgba(15, 23, 42, .07);
   --shadow3: 0 28px 60px rgba(0, 76, 172, .10);
 
-  /* Radius */
+  
   --r: 20px;
   --r2: 14px;
   --r3: 24px;
 
-  /* Focus */
+  
   --focus-blue: 0 0 0 4px rgba(0, 76, 172, .15);
-  --focus-teal: 0 0 0 4px rgba(0, 153, 148, .16);
+  --focus-teal: 0 0 0 4px rgba(0, 76, 172, .16);
 
-  /* Layout */
+  
   --page-max: 1400px;
   --page-pad: 20px;
   --section-pad: 20px;
 
-  /* Topbar */
+  
   --topbar-pad-y: 14px;
   --topbar-offset-top: 0px;
 
-  /* Spacing */
+  
   --gap-1: 10px;
   --gap-2: 14px;
   --gap-3: 18px;
   --gap-4: 24px;
 
-  /* Table */
+  
   --table-min: 760px;
   --thead-sticky-top: 56px;
 
-  /* Add Product */
+  
   --add-card-width: 820px;
   --add-card-radius: 24px;
   --add-card-compact-scale: .96;
 
-  /* Typography */
+  
   --h1-size: 20px;
   --h2-size: 20px;
   --title-size: 16px;
   --text-size: 14px;
   --small-size: 13px;
 
-  /* Forms */
+  
   --field-h: 48px;
   --field-bg: #ffffff;
   --field-border: rgba(15, 23, 42, .10);
-  --field-border-hover: rgba(0, 153, 148, .35);
+  --field-border-hover: rgba(0, 76, 172, .35);
 }
 
-/* =========================================================
-   Reset / base
-========================================================= */
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
 
 body{
   margin:0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(0,153,148,.05), transparent 24%),
-    radial-gradient(circle at top right, rgba(0,76,172,.06), transparent 28%),
-    linear-gradient(180deg, #f8fbff 0%, #f4f8fc 100%);
+  background:#ffffff;
   color: var(--text);
   font-size: var(--text-size);
   -webkit-font-smoothing: antialiased;
@@ -108,13 +92,9 @@ a{
   text-decoration:none;
 }
 
-/* =========================================================
-   NAVBAR
-========================================================= */
 nav.sf-navbar,
 .navbar.sf-navbar{
-  background:
-    linear-gradient(135deg, rgba(0,76,172,.96), rgba(0,153,148,.88)) !important;
+  background:#ffffff;
   padding: 14px 0;
   min-height: 92px;
   display:flex;
@@ -158,9 +138,6 @@ nav.sf-navbar,
   background: rgba(255,255,255,.04);
 }
 
-/* =========================================================
-   NAVBAR LINKS + DROPDOWNS
-========================================================= */
 .sf-navbar .sf-navlink{
   color:rgba(255,255,255,.94) !important;
   font-weight:700;
@@ -196,13 +173,10 @@ nav.sf-navbar,
 }
 
 .sf-navbar .dropdown-menu.sf-dropdown .dropdown-item:hover{
-  background:rgba(0,153,148,.08);
+  background:rgba(0,76,172,.08);
   color:var(--sf-secondary);
 }
 
-/* =========================================================
-   LOGO
-========================================================= */
 .sf-logo{
   width:72px;
   height:72px;
@@ -223,9 +197,6 @@ nav.sf-navbar,
   object-fit:contain;
 }
 
-/* =========================================================
-   Layout wrapper
-========================================================= */
 .v-wrap{
   max-width: var(--page-max);
   width:100%;
@@ -233,9 +204,6 @@ nav.sf-navbar,
   padding: 28px var(--page-pad) 40px;
 }
 
-/* =========================================================
-   Sticky Header / Topbar
-========================================================= */
 .v-topbar{
   position: sticky;
   top: var(--topbar-offset-top);
@@ -273,7 +241,7 @@ nav.sf-navbar,
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--blue), var(--teal));
+  background:#ffffff;
   box-shadow: 0 8px 14px rgba(0,76,172,.18);
 }
 
@@ -290,9 +258,6 @@ nav.sf-navbar,
   color: var(--muted);
 }
 
-/* =========================================================
-   NAV LINKS / TABS
-========================================================= */
 .v-nav,
 .v-links{
   display:flex;
@@ -325,7 +290,7 @@ nav.sf-navbar,
 .v-tab:hover{
   transform: translateY(-1px);
   box-shadow: var(--shadow2);
-  border-color: rgba(0,153,148,.20);
+  border-color: rgba(0,76,172,.20);
 }
 
 .v-tab:active{
@@ -334,9 +299,9 @@ nav.sf-navbar,
 
 .v-tab.is-active{
   color: var(--blue);
-  border-color: rgba(0,153,148,.28);
-  background: linear-gradient(180deg, rgba(0,153,148,.08), rgba(0,76,172,.04));
-  box-shadow: 0 12px 22px rgba(0,153,148,.10);
+  border-color: rgba(0,76,172,.28);
+  background:#ffffff;
+  box-shadow: 0 12px 22px rgba(0,76,172,.10);
 }
 
 .v-tab-logout{
@@ -348,9 +313,6 @@ nav.sf-navbar,
   box-shadow: 0 12px 22px rgba(0,76,172,.10);
 }
 
-/* =========================================================
-   Buttons
-========================================================= */
 .v-btn{
   display:inline-flex;
   align-items:center;
@@ -378,15 +340,15 @@ nav.sf-navbar,
 .v-btn:focus{ outline:none; box-shadow: var(--focus-teal); }
 
 .v-btn-primary{
-  background: linear-gradient(135deg, var(--teal), #18b3ad);
+  background:#ffffff;
   color:#ffffff;
   border-color: transparent;
-  box-shadow: 0 12px 24px rgba(0,153,148,.16);
+  box-shadow: 0 12px 24px rgba(0,76,172,.16);
 }
 
 .v-btn-primary:hover{
   color:#ffffff;
-  box-shadow: 0 18px 32px rgba(0,153,148,.20);
+  box-shadow: 0 18px 32px rgba(0,76,172,.20);
 }
 
 .v-btn-primary:focus{
@@ -394,7 +356,7 @@ nav.sf-navbar,
 }
 
 .v-btn-blue{
-  background: linear-gradient(135deg, var(--blue), #1f67c4);
+  background:#ffffff;
   color:#ffffff;
   border-color: transparent;
   box-shadow: 0 12px 24px rgba(0,76,172,.16);
@@ -423,8 +385,25 @@ nav.sf-navbar,
   box-shadow: var(--focus-blue);
 }
 
+.v-btn-danger{
+  background: #fff;
+  border-color: rgba(220, 38, 38, .22);
+  color: #dc2626;
+}
+
+.v-btn-danger:hover{
+  color: #fff;
+  background:#ffffff;
+  border-color: transparent;
+  box-shadow: 0 12px 24px rgba(220, 38, 38, .14);
+}
+
+.v-btn-danger:focus{
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, .14);
+}
+
 .v-btn-teal{
-  background: linear-gradient(135deg, var(--teal), #18b3ad);
+  background:#ffffff;
   color:#fff;
   border-color: transparent;
 }
@@ -441,9 +420,6 @@ nav.sf-navbar,
   font-size: 13px;
 }
 
-/* =========================================================
-   Dashboard header
-========================================================= */
 .v-head{
   display:flex;
   align-items:flex-end;
@@ -474,14 +450,11 @@ nav.sf-navbar,
   gap: var(--gap-1);
 }
 
-/* =========================================================
-   Sections / Cards
-========================================================= */
 .v-section{
   margin-top: var(--gap-3);
   padding: var(--section-pad);
   border-radius: var(--r);
-  background: linear-gradient(180deg, #ffffff, #fcfeff);
+  background:#ffffff;
   border: 1px solid rgba(255,255,255,.8);
   box-shadow: var(--shadow);
 }
@@ -504,9 +477,6 @@ nav.sf-navbar,
   margin: var(--gap-3) 0;
 }
 
-/* =========================================================
-   Dashboard stats cards
-========================================================= */
 .v-grid-3{
   margin-top: var(--gap-3);
   display:grid;
@@ -525,10 +495,7 @@ nav.sf-navbar,
   position: relative;
   padding: 22px;
   border-radius: var(--r);
-  background:
-    radial-gradient(circle at top right, rgba(0,153,148,.05), transparent 30%),
-    radial-gradient(circle at bottom left, rgba(0,76,172,.05), transparent 30%),
-    #ffffff;
+  background:#ffffff;
   border: 1px solid rgba(255,255,255,.75);
   box-shadow: var(--shadow2);
   overflow: hidden;
@@ -539,7 +506,7 @@ nav.sf-navbar,
   position:absolute;
   inset:0;
   pointer-events:none;
-  background: linear-gradient(135deg, rgba(0,153,148,.02), rgba(0,76,172,.03));
+  background:#ffffff;
 }
 
 .v-label{
@@ -578,14 +545,11 @@ nav.sf-navbar,
   font-size: 12px;
   font-weight: 900;
   color: var(--blue);
-  background: linear-gradient(180deg, rgba(0,153,148,.09), rgba(0,76,172,.05));
-  border: 1px solid rgba(0,153,148,.18);
+  background:#ffffff;
+  border: 1px solid rgba(0,76,172,.18);
   white-space: nowrap;
 }
 
-/* =========================================================
-   Card head
-========================================================= */
 .v-card-head{
   display:flex;
   align-items:flex-start;
@@ -607,9 +571,6 @@ nav.sf-navbar,
   color: var(--muted);
 }
 
-/* =========================================================
-   Alerts
-========================================================= */
 .v-alert{
   margin-top: var(--gap-2);
   padding: 13px 14px;
@@ -620,8 +581,8 @@ nav.sf-navbar,
 }
 
 .v-alert-success{
-  background: rgba(0, 153, 148, .08);
-  border-color: rgba(0, 153, 148, .20);
+  background: rgba(0, 76, 172, .08);
+  border-color: rgba(0, 76, 172, .20);
 }
 
 .v-alert-danger{
@@ -636,9 +597,6 @@ nav.sf-navbar,
   font-weight: 800;
 }
 
-/* =========================================================
-   Forms
-========================================================= */
 .v-form{ margin-top: var(--gap-2); }
 .v-field{ margin-top: var(--gap-2); }
 
@@ -689,9 +647,6 @@ nav.sf-navbar,
   grid-column: span 2;
 }
 
-/* =========================================================
-   Tables
-========================================================= */
 .v-table-wrap{
   width:100%;
   overflow:auto;
@@ -712,7 +667,7 @@ nav.sf-navbar,
 .v-table thead th{
   position: sticky;
   top: var(--thead-sticky-top);
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  background:#ffffff;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .02em;
@@ -735,16 +690,13 @@ nav.sf-navbar,
 }
 
 .v-table tbody tr:hover{
-  background: linear-gradient(90deg, rgba(0,153,148,.045), rgba(0,76,172,.03));
+  background:#ffffff;
 }
 
 .v-table tbody tr:last-child td{
   border-bottom: none;
 }
 
-/* =========================================================
-   Badges
-========================================================= */
 .v-badge{
   display:inline-flex;
   align-items:center;
@@ -760,8 +712,8 @@ nav.sf-navbar,
 }
 
 .v-badge-pending{
-  background: rgba(0, 153, 148, .08);
-  border-color: rgba(0, 153, 148, .18);
+  background: rgba(0, 76, 172, .08);
+  border-color: rgba(0, 76, 172, .18);
 }
 
 .v-badge-processing{
@@ -770,8 +722,8 @@ nav.sf-navbar,
 }
 
 .v-badge-delivered{
-  background: rgba(0, 153, 148, .12);
-  border-color: rgba(0, 153, 148, .24);
+  background: rgba(0, 76, 172, .12);
+  border-color: rgba(0, 76, 172, .24);
 }
 
 .v-badge-rejected{
@@ -792,21 +744,18 @@ nav.sf-navbar,
 }
 
 .b-delivered{
-  background: rgba(0,153,148,.10);
-  border-color: rgba(0,153,148,.24);
-  color: #087a75;
+  background: rgba(0,76,172,.10);
+  border-color: rgba(0,76,172,.24);
+  color: #004cac;
 }
 
-/* =========================================================
-   Chart container
-========================================================= */
 .v-chart{
   width: 100%;
   height: 290px;
   margin-top: var(--gap-2);
   padding: 12px;
   border-radius: 18px;
-  background: linear-gradient(180deg, #fbfdff, #f7fbfe);
+  background:#ffffff;
   border: 1px solid rgba(15,23,42,.06);
 }
 
@@ -817,9 +766,6 @@ nav.sf-navbar,
   font-weight: 750;
 }
 
-/* =========================================================
-   Add Product
-========================================================= */
 .v-add-wrap{
   display:flex;
   justify-content:center;
@@ -831,7 +777,7 @@ nav.sf-navbar,
   width: var(--add-card-width);
   max-width: 100%;
   background: #fff;
-  border: 1px solid rgba(0,153,148,.16);
+  border: 1px solid rgba(0,76,172,.16);
   border-radius: var(--add-card-radius);
   box-shadow: var(--shadow3);
   overflow: hidden;
@@ -848,23 +794,18 @@ nav.sf-navbar,
   position:absolute;
   inset:0;
   pointer-events:none;
-  background: linear-gradient(
-    135deg,
-    rgba(0,153,148,.05),
-    rgba(0,76,172,.04),
-    rgba(0,153,148,.04)
-  );
+  background:#ffffff;
 }
 
 .v-add-card:hover{
-  border-color: rgba(0,153,148,.28);
+  border-color: rgba(0,76,172,.28);
   box-shadow: 0 26px 54px rgba(15, 23, 42, .12);
 }
 
 .v-add-card.is-open{
   transform: scale(1);
   cursor: default;
-  border-color: rgba(0,153,148,.34);
+  border-color: rgba(0,76,172,.34);
   box-shadow: 0 30px 70px rgba(15, 23, 42, .14);
 }
 
@@ -876,7 +817,7 @@ nav.sf-navbar,
   gap: var(--gap-2);
   padding: 22px 22px 16px 22px;
   border-bottom: 1px solid rgba(255,255,255,.60);
-  background: linear-gradient(135deg, rgba(0,153,148,.16), rgba(0,76,172,.12));
+  background:#ffffff;
 }
 
 .v-add-head::after{
@@ -887,7 +828,7 @@ nav.sf-navbar,
   width: 180px;
   height: 180px;
   border-radius: 999px;
-  background: radial-gradient(circle at center, rgba(0,153,148,.18), rgba(0,153,148,0));
+  background:#ffffff;
   filter: blur(2px);
   pointer-events:none;
 }
@@ -925,16 +866,16 @@ nav.sf-navbar,
 }
 
 .v-file{
-  border: 1px dashed rgba(0,153,148,.34);
-  background: rgba(0,153,148,.05);
+  border: 1px dashed rgba(0,76,172,.34);
+  background: rgba(0,76,172,.05);
   border-radius: 18px;
   padding: 15px;
   transition: box-shadow .15s ease, border-color .15s ease, transform .10s ease;
 }
 
 .v-file:hover{
-  border-color: rgba(0,153,148,.54);
-  box-shadow: 0 16px 26px rgba(0,153,148,.08);
+  border-color: rgba(0,76,172,.54);
+  box-shadow: 0 16px 26px rgba(0,76,172,.08);
 }
 
 .v-file input[type="file"]{
@@ -957,9 +898,6 @@ nav.sf-navbar,
   margin-right: 12px;
 }
 
-/* =========================================================
-   Product list rows
-========================================================= */
 .v-list{
   margin-top: var(--gap-2);
   display: flex;
@@ -983,7 +921,7 @@ nav.sf-navbar,
 .v-row:hover{
   transform: translateY(-1px);
   box-shadow: var(--shadow);
-  border-color: rgba(0,153,148,.14);
+  border-color: rgba(0,76,172,.14);
 }
 
 .v-row-left{
@@ -1064,9 +1002,6 @@ nav.sf-navbar,
   flex: 0 0 auto;
 }
 
-/* =========================================================
-   Responsive
-========================================================= */
 @media (max-width: 960px){
   :root{
     --page-max: 100%;
@@ -1142,9 +1077,6 @@ nav.sf-navbar,
   }
 }
 
-/* =========================================================
-   Table rendering fix
-========================================================= */
 .v-table{
   width:100%;
   border-collapse: separate;
@@ -1174,4 +1106,376 @@ nav.sf-navbar,
 
 .v-table thead th{
   background: #ffffff;
+}
+
+.sf-subscription-strip{
+  position: relative;
+  z-index: 1;
+  margin-top: 22px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:18px;
+  border-radius:22px;
+  background:#ffffff;
+  border:1px solid rgba(0,76,172,.10);
+  box-shadow:0 16px 34px rgba(15,23,42,.06);
+}
+
+.sf-subscription-strip.is-active{
+  border-color:rgba(0,76,172,.22);
+  background:#ffffff;
+}
+
+.sf-subscription-eyebrow{
+  font-size:12px;
+  font-weight:900;
+  color:var(--sf-primary);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  margin-bottom:6px;
+}
+
+.sf-subscription-title{
+  font-size:20px;
+  font-weight:950;
+  color:#0f172a;
+  letter-spacing:-.02em;
+}
+
+.sf-subscription-text{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+}
+
+.sf-subscription-alert{
+  margin-top:18px;
+}
+
+.v-btn-premium{
+  background:#ffffff;
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 14px 26px rgba(0,76,172,.18);
+}
+
+.v-btn-premium:hover{
+  color:#fff;
+  box-shadow:0 18px 34px rgba(0,76,172,.22);
+}
+
+.v-btn-premium-active{
+  background:#ffffff;
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 14px 26px rgba(0,76,172,.18);
+}
+
+.v-btn-premium-active:hover{
+  color:#fff;
+  box-shadow:0 18px 34px rgba(0,76,172,.22);
+}
+
+.sf-subscription-page{
+  max-width:980px;
+  margin:28px auto 0;
+  display:grid;
+  gap:18px;
+}
+
+.sf-subscription-hero{
+  border-radius:28px;
+  padding:28px;
+  background:#ffffff;
+  border:1px solid rgba(15,23,42,.08);
+  box-shadow:0 22px 50px rgba(15,23,42,.08);
+}
+
+.sf-subscription-hero h1{
+  margin:0;
+  font-size:36px;
+  font-weight:950;
+  letter-spacing:-.04em;
+  color:#0f172a;
+}
+
+.sf-subscription-hero p{
+  margin:10px 0 0;
+  color:var(--muted);
+  font-size:15px;
+  font-weight:700;
+  max-width:700px;
+}
+
+.sf-plan-card{
+  padding:24px;
+  border-radius:24px;
+  background:#fff;
+  border:1px solid rgba(0,76,172,.16);
+  box-shadow:0 18px 40px rgba(15,23,42,.07);
+}
+
+.sf-plan-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+.sf-plan-name{
+  font-size:22px;
+  font-weight:950;
+  color:#0f172a;
+}
+
+.sf-plan-price{
+  margin-top:6px;
+  color:var(--sf-primary);
+  font-size:28px;
+  font-weight:950;
+  letter-spacing:-.04em;
+}
+
+.sf-plan-muted{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+}
+
+.sf-plan-features{
+  margin:18px 0 0;
+  padding:0;
+  list-style:none;
+  display:grid;
+  gap:10px;
+}
+
+.sf-plan-features li{
+  padding:12px 14px;
+  border-radius:16px;
+  background:#ffffff;
+  border:1px solid rgba(15,23,42,.06);
+  color:#0f172a;
+  font-weight:800;
+}
+
+.sf-subscription-form{
+  margin-top:20px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+@media (max-width: 640px){
+  .sf-subscription-strip{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .sf-subscription-strip .v-btn,
+  .sf-subscription-form .v-btn{
+    width:100%;
+  }
+
+  .sf-subscription-hero h1{
+    font-size:28px;
+  }
+}
+
+
+/* =========================================================
+   SETUPFORGE VENDOR BLUE/WHITE FINAL OVERRIDE
+   No turquoise. No gradients. No glows.
+   Paste-safe: keep this at the VERY END of vendor_ui.css.
+   ========================================================= */
+:root{
+  --sf-primary:#004cac !important;
+  --sf-secondary:#004cac !important;
+  --blue:#004cac !important;
+  --teal:#004cac !important;
+  --focus-blue:0 0 0 4px rgba(0,76,172,.15) !important;
+  --focus-teal:0 0 0 4px rgba(0,76,172,.15) !important;
+  --field-border-hover:rgba(0,76,172,.35) !important;
+}
+
+body{
+  background:#f6f9fc !important;
+}
+
+nav.sf-navbar,
+.navbar.sf-navbar{
+  background:#004cac !important;
+  box-shadow:0 12px 26px rgba(0,76,172,.18) !important;
+}
+
+.sf-navbar .sf-navlink:hover,
+.sf-navbar .sf-navlink:focus,
+.sf-navbar .sf-navlink.active{
+  background:#ffffff !important;
+  color:#004cac !important;
+}
+
+.sf-navbar .dropdown-menu.sf-dropdown .dropdown-item:hover{
+  background:#ffffff !important;
+  color:#004cac !important;
+}
+
+/* main dashboard cards / hero / sections */
+.v-topbar,
+.v-section,
+.v-card,
+.v-table-wrap,
+.v-chart,
+.v-add-card,
+.v-add-head,
+.v-add-body,
+.v-row,
+.sf-subscription-strip,
+.sf-subscription-strip.is-active,
+.sf-subscription-hero,
+.sf-plan-card,
+.sf-plan-features li{
+  background:#ffffff !important;
+}
+
+/* remove hidden glow layers */
+.v-card::before,
+.v-add-card::before,
+.v-add-head::after,
+.sf-subscription-strip::before,
+.sf-subscription-strip::after,
+.sf-subscription-hero::before,
+.sf-subscription-hero::after{
+  display:none !important;
+  background:none !important;
+  content:none !important;
+}
+
+/* top-right dashboard glow / any vendor hero-style boxes */
+[class*="hero"],
+[class*="Hero"],
+[class*="summary"],
+[class*="Summary"],
+[class*="dashboard"],
+[class*="Dashboard"],
+[class*="stat"],
+[class*="Stat"]{
+  background-color:#ffffff !important;
+  background-image:none !important;
+}
+
+/* blue buttons only */
+.v-btn-primary,
+.v-btn-blue,
+.v-btn-teal,
+.v-btn-premium,
+.v-btn-premium-active,
+.sf-navbar .btn-primary,
+.sf-navbar .btn-light:hover,
+.sf-navbar .btn-outline-light:hover,
+button[type="submit"],
+input[type="submit"]{
+  background:#004cac !important;
+  background-image:none !important;
+  color:#ffffff !important;
+  border-color:#004cac !important;
+  box-shadow:0 10px 20px rgba(0,76,172,.16) !important;
+}
+
+.v-btn-primary:hover,
+.v-btn-blue:hover,
+.v-btn-teal:hover,
+.v-btn-premium:hover,
+.v-btn-premium-active:hover{
+  background:#ffffff !important;
+  background-image:none !important;
+  color:#004cac !important;
+  border-color:#004cac !important;
+}
+
+.v-btn-outline,
+.v-tab,
+.v-tab.is-active,
+.v-pill,
+.v-badge,
+.v-chip,
+.sf-subscription-eyebrow,
+.sf-plan-price{
+  background:#ffffff !important;
+  background-image:none !important;
+  color:#004cac !important;
+  border-color:rgba(0,76,172,.22) !important;
+}
+
+.v-tab:hover,
+.v-row:hover,
+.v-add-card:hover,
+.v-table tbody tr:hover{
+  background:#ffffff !important;
+  background-image:none !important;
+  border-color:rgba(0,76,172,.22) !important;
+}
+
+.v-dot{
+  background:#004cac !important;
+  box-shadow:0 8px 14px rgba(0,76,172,.18) !important;
+}
+
+.v-file,
+.v-alert-success,
+.v-badge-pending,
+.v-badge-processing,
+.v-badge-delivered,
+.b-processing,
+.b-delivered{
+  background:#ffffff !important;
+  background-image:none !important;
+  border-color:rgba(0,76,172,.22) !important;
+  color:#004cac !important;
+}
+
+.v-file:hover{
+  border-color:rgba(0,76,172,.45) !important;
+  box-shadow:0 12px 24px rgba(0,76,172,.08) !important;
+}
+
+.v-file input[type="file"]::file-selector-button{
+  background:#004cac !important;
+  color:#ffffff !important;
+}
+.v-btn-danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+.v-btn-danger:hover {
+  background: #b91c1c;
+}
+
+/* =========================================================
+   PRODUCTS PAGE REQUEST
+   1) Delete button hover: white background with red text.
+   2) Hide Details button only.
+   ========================================================= */
+.v-btn-danger:hover{
+  background:#ffffff !important;
+  color:#dc2626 !important;
+  border:1px solid #dc2626 !important;
+  box-shadow:0 12px 24px rgba(220,38,38,.14) !important;
+}
+
+/* Hide product Details button/link without affecting Edit/Delete */
+a[href*="details"],
+a[href*="product_details"],
+a[href*="vendor_product_details"],
+.v-btn-details,
+.details-btn,
+.product-details-btn{
+  display:none !important;
 }

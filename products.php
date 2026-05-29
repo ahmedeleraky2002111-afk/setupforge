@@ -19,6 +19,7 @@ $minPrice         = isset($_GET["min_price"]) ? trim((string)$_GET["min_price"])
 $maxPrice         = isset($_GET["max_price"]) ? trim((string)$_GET["max_price"]) : "";
 $sort             = isset($_GET["sort"]) ? trim((string)$_GET["sort"]) : "newest";
 
+
 /* ---------------------------------------------------------
    GET CATEGORIES
 --------------------------------------------------------- */
