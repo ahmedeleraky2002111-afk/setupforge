@@ -9,7 +9,7 @@ require_once "db.php";
 |--------------------------------------------------------------------------
 */
 $setupBtnText = "Start Your Setup";
-$setupBtnLink = "setup.php?step=0";
+$setupBtnLink = "service_select.php";
 
 // Guest with active wizard session
 if (!isset($_SESSION["user_id"]) && !empty($_SESSION["wizard"])) {
@@ -109,7 +109,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
 
         <div class="sf-home-services-grid">
 
-          <div class="sf-home-service-card reveal-up">
+          <a href="service_select.php?preselect=equipment" style="text-decoration:none"><div class="sf-home-service-card reveal-up">
 
   <img src="assets/images/service-packages.png" alt="Smart Setup Packages" class="sf-home-service-bg">
 
@@ -128,9 +128,9 @@ if (isset($_SESSION["user_id"]) && $conn) {
   </p>
 </div>
 
-</div>
+</div></a>
 
-          <div class="sf-home-service-card reveal-up">
+          <a href="service_select.php?preselect=installation" style="text-decoration:none"><div class="sf-home-service-card reveal-up">
 
   <img src="assets/images/home-installation.png" alt="Installation and Setup" class="sf-home-service-bg">
 
@@ -149,9 +149,9 @@ if (isset($_SESSION["user_id"]) && $conn) {
   </p>
 </div>
 
-</div>
+</div></a>
 
-          <div class="sf-home-service-card reveal-up">
+          <a href="service_select.php?preselect=staff" style="text-decoration:none"><div class="sf-home-service-card reveal-up">
 
   <img src="assets/images/home-staffing.png" alt="Staffing" class="sf-home-service-bg">
 
@@ -170,7 +170,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
   </p>
 </div>
 
-</div>
+</div></a>
 
         </div>
       </div>
