@@ -18,6 +18,7 @@ function user_has_completed_setup($conn, $userId) {
          WHERE business_user_id = $1
            AND payment_status = 'paid'
            AND order_type = 'setup'
+           AND order_total > 0
          LIMIT 1",
         [$userId]
     );
@@ -65,8 +66,9 @@ function save_wizard_to_db($conn, $userId, $w, $step, $status = 'in_progress') {
     foreach (['waiter','chef','cashier','security','barista','busboy','host','kitchen_helper'] as $role) {
         $staffing[$role] = (int)($w[$role . '_count'] ?? 0);
     }
-    $staffing['floor_count'] = $floorCount;
-    $staffingJson = json_encode($staffing);
+$staffing['floor_count'] = $floorCount;
+$staffing['services'] = $w['services'] ?? [];
+$staffingJson = json_encode($staffing);
 
     // Check if row exists
     $check = @pg_query_params($conn, "SELECT user_id FROM businesses WHERE user_id = $1", [$userId]);
@@ -177,6 +179,13 @@ if ($userId && !isset($_GET['step'])) {
             'outdoor_seats'        => (int)($bizRow['outdoor_tables'] ?? 0) * 4,
             'budget'               => (int)($bizRow['budget_egp'] ?? 0),
         ];
+        // Restore services from staffing_data
+if (!empty($bizRow['staffing_data'])) {
+    $staffingData = json_decode($bizRow['staffing_data'], true);
+    if (!empty($staffingData['services'])) {
+        $_SESSION['wizard']['services'] = $staffingData['services'];
+    }
+}
 
         // Restore modules array
         $rawModules = $bizRow['modules'] ?? '';
@@ -207,6 +216,19 @@ if ($userId && !isset($_GET['step'])) {
 /* ================================================================
    ORIGINAL SETUP LOGIC (unchanged below, with save_wizard_to_db added)
    ================================================================ */
+   // Read selected services
+$services       = $_SESSION['wizard']['services'] ?? [];
+$hasEquipment   = in_array('equipment',   $services);
+$hasStaff       = in_array('staff',       $services);
+$hasInstall     = in_array('installation',$services);
+$hasFinishing   = in_array('finishing',   $services);
+$hasAdvertising = in_array('advertising', $services);
+
+// If no services selected at all, go back to service select
+if (empty($services) && !isset($_GET['step']) && empty($_SESSION['wizard'])) {
+    header("Location: service_select.php");
+    exit;
+}
 
 $step = isset($_GET["step"]) ? (int)$_GET["step"] : 0;
 function redirect_step($n){
@@ -220,8 +242,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   $currentStep = (int)($_POST["step"] ?? 1);
 
   if ($currentStep === 0) {
+    $savedServices = $_SESSION['wizard']['services'] ?? [];
     $_SESSION["wizard"] = [];
     $_SESSION["wizard"]["business_name"] = trim($_POST["business_name"] ?? "");
+    $_SESSION["wizard"]["services"] = $savedServices;
     
     if ($userId) {
         save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 1);
@@ -246,21 +270,54 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   if ($currentStep === 1) {
     $selectedBusiness = $_POST["business_type"] ?? null;
     $_SESSION["wizard"]["business_type"] = $selectedBusiness;
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $selectedBusiness === "Restaurant" ? 2 : 3);
+$nextStep = $selectedBusiness === "Restaurant" ? 2 : ($hasEquipment ? 3 : ($hasInstall ? 4 : 7));
+if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
 
     if ($selectedBusiness === "Restaurant") {
-      redirect_step(2);
-    } else {
-      unset($_SESSION["wizard"]["restaurant_type"]);
-      redirect_step(3);
+    redirect_step(2);
+} else {
+    unset($_SESSION["wizard"]["restaurant_type"]);
+    // If no equipment, no install, no staff → finishing/advertising only
+    if (!$hasEquipment && !$hasInstall && !$hasStaff) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 1, 'completed');
+        if (!$userId) { $_SESSION["signup_intent"] = "business"; header("Location: auth/signup.php?next=" . urlencode("service_jobs.php")); exit; }
+        header("Location: service_jobs.php"); exit;
     }
+    // If no equipment but has staff or install → skip tables
+    if (!$hasEquipment) {
+        if ($hasInstall) redirect_step(4);
+        else redirect_step(7);
+    }
+    redirect_step(3);
+}
   }
 
   if ($currentStep === 2) {
     $_SESSION["wizard"]["restaurant_type"] = $_POST["restaurant_type"] ?? "standard_dining";
+    
+    // If only finishing/advertising selected (no equipment, installation, staff)
+    if (!$hasEquipment && !$hasInstall && !$hasStaff) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 2, 'completed');
+        if (!$userId) {
+            $_SESSION["signup_intent"] = "business";
+            header("Location: auth/signup.php?next=" . urlencode("service_jobs.php"));
+            exit;
+        }
+        header("Location: service_jobs.php");
+        exit;
+    }
+    
+    if (!$hasEquipment && $hasInstall) {
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 4);
+    redirect_step(4);
+} elseif (!$hasEquipment && $hasStaff) {
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7);
+    redirect_step(7);
+} else {
     if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 3);
     redirect_step(3);
-  }
+}
+}
 
   if ($currentStep === 3) {
     $indoorTbls  = max(1, (int)($_POST["indoor_tables"]  ?? 1));
@@ -269,9 +326,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $_SESSION["wizard"]["outdoor_tables"] = $outdoorTbls;
     $_SESSION["wizard"]["indoor_seats"]   = $indoorTbls * 4;
     $_SESSION["wizard"]["outdoor_seats"]  = $outdoorTbls * 4;
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 4);
-    redirect_step(4);
-  }
+    // Area step only needed if installation selected
+    if ($hasInstall) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 4);
+        redirect_step(4);
+    } else {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
+        redirect_step(5);
+    }
+}
 
   if ($currentStep === 4) {
     $_SESSION["wizard"]["area_sqm"]    = max(10, (int)($_POST["area_sqm"] ?? 50));
@@ -286,35 +349,60 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ac"];
     }
 
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
-    redirect_step(5);
-  }
+    // If no equipment, skip budget step
+    if (!$hasEquipment) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 6);
+        redirect_step(6);
+    } else {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
+        redirect_step(5);
+    }
+}
 
   if ($currentStep === 5) {
     $budget = (int)preg_replace("/[^\d]/", "", $_POST["budget"] ?? "0");
     $_SESSION["wizard"]["budget"] = $budget;
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 6);
-    redirect_step(6);
-  }
+    if ($hasInstall) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 6);
+        redirect_step(6);
+    } elseif ($hasStaff) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7);
+        redirect_step(7);
+    } else {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7, 'completed');
+        if (!$userId) {
+            $_SESSION["signup_intent"] = "business";
+            header("Location: auth/signup.php?next=" . urlencode("packages.php"));
+            exit;
+        }
+        header("Location: packages.php");
+        exit;
+    }
+}
 
   if ($currentStep === 6) {
-    $installationNeeded   = $_POST["installation_needed"] ?? "no";
     $installationServices = $_POST["installation_services"] ?? [];
-    $staffingNeeded = $_POST["staffing_needed"] ?? "no";
-    $staffRoles     = $_POST["staff_roles"] ?? [];
-
     if (!is_array($installationServices)) $installationServices = [];
-    if (!is_array($staffRoles)) $staffRoles = [];
 
-    $_SESSION["wizard"]["installation_needed"]   = $installationNeeded;
+    $_SESSION["wizard"]["installation_needed"]   = "yes";
     $_SESSION["wizard"]["installation_services"] = $installationServices;
-    $_SESSION["wizard"]["staffing_needed"]       = $staffingNeeded;
-    $_SESSION["wizard"]["staff_roles"]           = $staffRoles;
-    $_SESSION["wizard"]["technicians"] = ($installationNeeded === "yes") ? $installationServices : [];
+    $_SESSION["wizard"]["technicians"]           = $installationServices;
 
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7);
-    redirect_step(7);
-  }
+    if ($hasStaff) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7);
+        redirect_step(7);
+    } else {
+        // No staff — end of wizard
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 6, 'completed');
+        if (!$userId) {
+            $_SESSION["signup_intent"] = "business";
+            header("Location: auth/signup.php?next=" . urlencode("service_jobs.php"));
+            exit;
+        }
+        header("Location: service_jobs.php");
+        exit;
+    }
+}
 
   if ($currentStep === 7) {
     file_put_contents(__DIR__ . "/wizard_debug.txt", print_r($_POST, true) . "\n---\n", FILE_APPEND);
@@ -345,13 +433,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7, 'completed');
 
     if (!isset($_SESSION["user_id"])) {
-      $_SESSION["signup_intent"] = "business";
-      header("Location: auth/signup.php?next=" . urlencode("http://localhost/setupforge/packages.php"));
-      exit;
-    }
-
-    header("Location: packages.php");
+    $_SESSION["signup_intent"] = "business";
+    $nextUrl = $hasEquipment ? "packages.php" : "service_jobs.php";
+    header("Location: auth/signup.php?next=" . urlencode($nextUrl));
     exit;
+}
+
+// Check if user already has a paid equipment order (adding staff to existing setup)
+$alreadyPaid = false;
+if ($userId) {
+    $paidCheck = pg_query_params($conn,
+        "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' AND order_type = 'setup' AND order_total > 0 LIMIT 1",
+        [$userId]);
+    $alreadyPaid = ($paidCheck && pg_num_rows($paidCheck) > 0);
+}
+
+if ($alreadyPaid || !$hasEquipment) {
+    header("Location: service_jobs.php");
+} else {
+    header("Location: packages.php");
+}
+exit;
   }
 }
 
@@ -392,15 +494,21 @@ $modulesList = [
 
 
 /* ---------- GUARD: prevent jumping ahead ---------- */
-if ($step === 2 && $business !== "Restaurant") redirect_step(3);
+if ($step === 2 && $business !== "Restaurant") {
+    if ($hasEquipment) redirect_step(3);
+    elseif ($hasInstall) redirect_step(4);
+    elseif ($hasStaff) redirect_step(7);
+    else redirect_step(3);
+}
+
 if ($step < 0 || $step > 7) redirect_step(0);
 
 if ($step > 0 && $businessName === "") redirect_step(0);
 if ($step > 1 && $business === "") redirect_step(1);
 if ($step > 2 && $business === "Restaurant" && $restaurantType === "") redirect_step(2);
-if ($step > 3 && $indoorSeats < 1) redirect_step(3);
-if ($step === 4 && ($indoorTables < 1)) redirect_step(3);
-if ($step > 5 && $budget <= 0) redirect_step(5);
+if ($hasEquipment && $step > 3 && $indoorSeats < 1) redirect_step(3);
+if ($hasEquipment && $step === 4 && ($indoorTables < 1)) redirect_step(3);
+if ($hasEquipment && $step > 5 && $budget <= 0) redirect_step(5);
 
 $totalSteps = 9;
 $progressPct = (int)round((($step + 1) / $totalSteps) * 100);
@@ -441,16 +549,26 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     <!-- PROGRESS BAR -->
     <div class="sf-wiz-progress">
       <?php
-        $steps   = [0=>"Name", 1=>"Type", 2=>"Style", 3=>"Tables", 4=>"Space", 5=>"Budget", 6=>"Services", 7=>"Staff"];
-        $display = [0, 1, 2, 3, 4, 5, 6, 7];
-        foreach($display as $i => $s):
-          $active = ($step === $s);
-          $done   = ($step > $s);
-      ?>
+  $allSteps = [0=>"Name", 1=>"Type", 2=>"Style", 3=>"Tables", 4=>"Space", 5=>"Budget", 6=>"Services", 7=>"Staff"];
+  
+  // Build display steps based on selected services
+  $display = [0, 1, 2]; // always show name, type, restaurant type
+  if ($hasEquipment) $display[] = 3; // tables
+  if ($hasInstall)   $display[] = 4; // area
+  if ($hasEquipment) $display[] = 5; // budget
+  if ($hasInstall)   $display[] = 6; // installation
+  if ($hasStaff)     $display[] = 7; // staff
+  $display = array_unique($display);
+  sort($display);
+
+  foreach($display as $i => $s):
+    $active = ($step === $s);
+    $done   = ($step > $s);
+?>
       <div class="sf-wiz-step <?= $done ? 'is-done' : ($active ? 'is-active' : '') ?>">
         <div class="sf-wiz-line"></div>
         <span class="sf-wiz-num">0<?= $i+1 ?></span>
-        <span class="sf-wiz-label"><?= $steps[$s] ?></span>
+        <span class="sf-wiz-label"><?= $allSteps[$s] ?></span>
       </div>
       <?php endforeach; ?>
     </div>
@@ -785,7 +903,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     </div>
 
     <div class="sf-actions" style="margin-top:32px;">
-      <a class="sf-btn-main sf-btn-back" href="setup.php?step=3">← Back</a>
+      <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasEquipment ? '3' : '2' ?>">← Back</a>
       <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
     </div>
   </form>
@@ -884,7 +1002,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <p class="sf6-info-note"><i class="bi bi-building"></i> These services are fulfilled by verified local companies, not individual workers.</p>
 <p class="sf6-foot-summary" id="sf6-count-text">0 services selected</p>
 <div class="sf-actions" style="margin-top:24px;">
-  <a class="sf-btn-main sf-btn-back" href="setup.php?step=5">← Back</a>
+  <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasEquipment ? '5' : '4' ?>">← Back</a>
   <button class="sf-btn-main sf-btn-next" type="submit">Continue →</button>
 </div>
 </form>
@@ -947,7 +1065,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
 <p class="sf6-foot-summary" id="sf7-count-text">0 staff total</p>
 <div class="sf-actions" style="margin-top:24px;">
-  <a class="sf-btn-main sf-btn-back" href="setup.php?step=6">← Back</a>
+  <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasInstall ? '6' : ($hasEquipment ? '5' : '2') ?>">← Back</a>
   <button class="sf-btn-main sf-btn-next" type="submit">Finish →</button>
 </div>
 </form>
@@ -1010,7 +1128,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
   </div>
 
   <div class="sf-actions">
-    <a class="sf-btn-main sf-btn-back" href="setup.php?step=4">&#8592; Back</a>
+    <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasInstall ? '4' : '3' ?>">&#8592; Back</a>
     <button class="sf-btn-main sf-btn-next" type="submit">Next &#8594;</button>
   </div>
 </form>
