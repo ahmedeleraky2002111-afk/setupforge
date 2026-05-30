@@ -35,9 +35,13 @@ $budget_egp    = (int)($w["budget"] ?? 0);
 
 /* Only force wizard guard when signup intent is business */
 if (!empty($_SESSION["signup_intent"]) && $_SESSION["signup_intent"] === "business") {
-  if (!$business_type || ($place_size === null || (int)$place_size < 1) || $budget_egp <= 0) {
-    header("Location: ../setup.php?step=1");
-    exit;
+  $services = $_SESSION['wizard']['services'] ?? [];
+  $hasEquipment = in_array('equipment', $services);
+  if ($hasEquipment) {
+    if (!$business_type || ($place_size === null || (int)$place_size < 1) || $budget_egp <= 0) {
+      header("Location: ../setup.php?step=1");
+      exit;
+    }
   }
 }
 
@@ -94,21 +98,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $user_id = (int)$row["id"];
 
         if ($userType === "business") {
-          $sqlBiz = "
-            INSERT INTO businesses (user_id, business_type, place_size, budget_egp, status)
-            VALUES ($1,$2,$3,$4,$5)
-          ";
-          $resBiz = pg_query_params($conn, $sqlBiz, [
-            $user_id,
-            $business_type,
-            $place_size,
-            $budget_egp,
-            $DEFAULT_BUSINESS_STATUS
-          ]);
+          // Business row already created by save_wizard_to_db() during wizard steps
+          // Just update the user_id link in case it was created as guest
+          $resBiz = pg_query_params($conn, "
+            INSERT INTO businesses (user_id, status)
+            VALUES ($1, $2)
+            ON CONFLICT (user_id) DO UPDATE SET status = $2
+          ", [$user_id, $DEFAULT_BUSINESS_STATUS]);
 
           if (!$resBiz) {
             pg_query($conn, "ROLLBACK");
-            $error = "Signup failed (business insert). Check enum value for business status.";
+            $error = "Signup failed (business insert).";
           } else {
             pg_query($conn, "COMMIT");
 
@@ -117,7 +117,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $_SESSION["user_type"] = $userType;
 
             unset($_SESSION["signup_intent"]);
+            // For non-equipment users, create zero order + service records
+$signupServices = $_SESSION['wizard']['services'] ?? [];
+$hasEquipmentSignup = in_array('equipment', $signupServices);
 
+if (!$hasEquipmentSignup && !empty($signupServices)) {
+    require_once "../create_service_records.php";
+
+    // Create zero order
+    $zeroOrderRes = pg_query_params($conn, "
+        INSERT INTO orders (business_user_id, order_type, order_total, payment_status, status, order_date)
+        VALUES ($1, 'setup', 0, 'paid', 'confirmed', NOW())
+        RETURNING id
+    ", [$user_id]);
+
+    $zeroOrderId = null;
+    if ($zeroOrderRes && pg_num_rows($zeroOrderRes) > 0) {
+        $zeroOrderId = (int)pg_fetch_assoc($zeroOrderRes)["id"];
+    }
+
+    if ($zeroOrderId) {
+        create_service_records($conn, $user_id, $zeroOrderId, $_SESSION['wizard'] ?? []);
+    }
+}
             header("Location: " . $next);
             exit;
           }

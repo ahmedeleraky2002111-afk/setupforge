@@ -280,7 +280,7 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
     // If no equipment, no install, no staff → finishing/advertising only
     if (!$hasEquipment && !$hasInstall && !$hasStaff) {
         if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 1, 'completed');
-        if (!$userId) { $_SESSION["signup_intent"] = "business"; header("Location: auth/signup.php?next=" . urlencode("service_jobs.php")); exit; }
+        if (!$userId) { $_SESSION["signup_intent"] = "business"; header("Location: auth/signup.php?next=" . urlencode("../service_jobs.php")); exit; }
         header("Location: service_jobs.php"); exit;
     }
     // If no equipment but has staff or install → skip tables
@@ -300,7 +300,7 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
         if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 2, 'completed');
         if (!$userId) {
             $_SESSION["signup_intent"] = "business";
-            header("Location: auth/signup.php?next=" . urlencode("service_jobs.php"));
+            header("Location: auth/signup.php?next=" . urlencode("../service_jobs.php"));
             exit;
         }
         header("Location: service_jobs.php");
@@ -396,7 +396,7 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
         if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 6, 'completed');
         if (!$userId) {
             $_SESSION["signup_intent"] = "business";
-            header("Location: auth/signup.php?next=" . urlencode("service_jobs.php"));
+            header("Location: auth/signup.php?next=" . urlencode("../service_jobs.php"));
             exit;
         }
         header("Location: service_jobs.php");
@@ -406,6 +406,10 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
 
   if ($currentStep === 7) {
     file_put_contents(__DIR__ . "/wizard_debug.txt", print_r($_POST, true) . "\n---\n", FILE_APPEND);
+    file_put_contents(__DIR__ . "/step7_debug.txt", 
+        "userId=$userId hasEquipment=" . var_export($hasEquipment, true) . 
+        " hasStaff=" . var_export($hasStaff, true) . 
+        " services=" . json_encode($services) . "\n", FILE_APPEND);
 
     $staffingNeeded = $_POST["staffing_needed"] ?? "no";
     $staffRoles     = $_POST["staff_roles"] ?? [];
@@ -434,7 +438,7 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
 
     if (!isset($_SESSION["user_id"])) {
     $_SESSION["signup_intent"] = "business";
-    $nextUrl = $hasEquipment ? "packages.php" : "service_jobs.php";
+    $nextUrl = $hasEquipment ? "../packages.php" : "../service_jobs.php";
     header("Location: auth/signup.php?next=" . urlencode($nextUrl));
     exit;
 }
@@ -1085,6 +1089,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     if (row) row.classList.toggle('sf6-staff-row--active', counts[role] > 0);
     var total = Object.values(counts).reduce(function(s,k){ return s + k; }, 0);
     document.getElementById('sf7-count-text').textContent = total + ' staff total';
+    var summaryEl = document.getElementById('summary-staff-count');
+    if (summaryEl) summaryEl.textContent = total > 0 ? total + ' staff' : '—';
   }
 
   Object.keys(counts).forEach(function(role){ updateDisplay(role); });
@@ -1167,18 +1173,53 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
             <span>Style</span>
             <strong><?= $restaurantType !== "" ? h($restaurantTypes[$restaurantType] ?? $restaurantType) : "—" ?></strong>
           </div>
-          <div class="sf-wiz-summary-row">
-            <span>Seats</span>
-            <strong><?= ($indoorSeats + $outdoorSeats) > 0 ? ($indoorSeats + $outdoorSeats) : "—" ?></strong>
-          </div>
-          <div class="sf-wiz-summary-row">
-            <span>Budget ceiling</span>
-            <strong><?= $budget > 0 ? number_format($budget) . " EGP" : "—" ?></strong>
-          </div>
-          <div class="sf-wiz-summary-row">
-            <span>Modules</span>
-            <strong><?= count($modules) > 0 ? implode(", ", $modules) : "—" ?></strong>
-          </div>
+          <?php if ($hasEquipment): ?>
+<div class="sf-wiz-summary-row">
+    <span>Seats</span>
+    <strong><?= ($indoorSeats + $outdoorSeats) > 0 ? ($indoorSeats + $outdoorSeats) : "—" ?></strong>
+</div>
+<div class="sf-wiz-summary-row">
+    <span>Budget ceiling</span>
+    <strong><?= $budget > 0 ? number_format($budget) . " EGP" : "—" ?></strong>
+</div>
+<div class="sf-wiz-summary-row">
+    <span>Modules</span>
+    <strong><?= count($modules) > 0 ? implode(", ", $modules) : "—" ?></strong>
+</div>
+<?php endif; ?>
+
+<?php if ($hasStaff): ?>
+<div class="sf-wiz-summary-row">
+    <span>Staff</span>
+    <strong id="summary-staff-count"><?php
+        $totalStaff = 0;
+        foreach (['waiter','chef','cashier','security','barista','busboy','host','kitchen_helper'] as $role)
+            $totalStaff += (int)($w[$role . '_count'] ?? 0);
+        echo $totalStaff > 0 ? $totalStaff . ' staff' : '—';
+    ?></strong>
+</div>
+<?php endif; ?>
+
+<?php if ($hasInstall): ?>
+<div class="sf-wiz-summary-row">
+    <span>Area</span>
+    <strong><?= $areaSqm > 0 ? $areaSqm . ' m²' : '—' ?></strong>
+</div>
+<?php endif; ?>
+
+<?php if ($hasFinishing): ?>
+<div class="sf-wiz-summary-row">
+    <span>Finishing</span>
+    <strong>Requested</strong>
+</div>
+<?php endif; ?>
+
+<?php if ($hasAdvertising): ?>
+<div class="sf-wiz-summary-row">
+    <span>Advertising</span>
+    <strong>Requested</strong>
+</div>
+<?php endif; ?>
           <div class="sf-wiz-summary-note">
             <i class="bi bi-info-circle"></i> We score recommendations live — no submit button hidden away
           </div>
