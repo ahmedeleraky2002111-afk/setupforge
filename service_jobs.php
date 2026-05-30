@@ -703,7 +703,7 @@ function formatInstallationServices($raw) {
       <?php if (!$hasInstallation): ?>
         <div class="sf-hc-empty">
           <h4>No Installation Services Yet</h4>
-          <p>Once your order includes installation services, companies will appear here.</p>
+          <p>Once your setup is complete, installation companies will appear here.</p>
         </div>
       <?php else: ?>
         <?php
@@ -932,7 +932,7 @@ function formatInstallationServices($raw) {
       <?php if (!$hasFinishing): ?>
         <div class="sf-hc-empty">
           <h4>No Finishing Request Yet</h4>
-          <p>Complete your payment to unlock finishing services.</p>
+          <p>Once your setup is complete, finishing services will appear here.</p>
         </div>
       <?php else:
         $fReqId      = (int)$finishingReq["request_id"];
