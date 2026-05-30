@@ -1,6 +1,5 @@
 gconfig.php
 itignore# Database connection - NEVER push this
-db.php
 
 # Environment and config files - NEVER push these
 .env
@@ -32,7 +31,7 @@ desktop.ini
 logs/
 
 # Uploaded files (user data)
-uploads/
+# uploads/
 storage/
 
 # Cache

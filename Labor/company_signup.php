@@ -13,6 +13,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $company_name     = $_POST['company_name'];
     $description      = $_POST['description'];
     $services         = $_POST['services'] ?? [];
+    $specialties      = $_POST['specialties'] ?? [];
     $base_price       = $_POST['base_price'];
     $starting_from    = $_POST['starting_from'];
     $company_size     = $_POST['company_size'];
@@ -48,8 +49,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // 2) Insert into companies
     $resultCompany = pg_query_params($conn, "
-        INSERT INTO companies (user_id, company_name, description, services, base_price, starting_from, company_size, established_year, location, website, image, availability_status, status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'available', 'active')
+        INSERT INTO companies (user_id, company_name, description, services, base_price, starting_from, company_size, established_year, location, website, image, specialties, availability_status, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'available', 'active')
     ", [
         $user_id,
         $company_name,
@@ -61,7 +62,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $established_year,
         $location,
         $website,
-        $imagePath
+        $imagePath,
+        !empty($specialties) ? '{' . implode(',', $specialties) . '}' : null
     ]);
 
     if ($resultCompany) {
@@ -144,6 +146,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <label><input type="checkbox" name="services[]" value="network"> Network</label>
             <label><input type="checkbox" name="services[]" value="ac"> AC</label>
             <label><input type="checkbox" name="services[]" value="kitchen"> Kitchen</label>
+            <label><input type="checkbox" name="services[]" value="finishing"> Finishing</label>
+            <label><input type="checkbox" name="services[]" value="advertising"> Advertising</label>
+        </div>
+        <div class="section-title">Specialties <span style="font-size:.75rem;color:#9ca3af;">(for finishing companies)</span></div>
+        <div class="services-grid">
+            <label><input type="checkbox" name="specialties[]" value="painting"> Painting</label>
+            <label><input type="checkbox" name="specialties[]" value="flooring"> Flooring</label>
+            <label><input type="checkbox" name="specialties[]" value="gypsum"> Gypsum & Ceilings</label>
+            <label><input type="checkbox" name="specialties[]" value="decor"> Decor</label>
+            <label><input type="checkbox" name="specialties[]" value="facades"> Facades</label>
         </div>
 
         <div class="section-title">Company Image</div>

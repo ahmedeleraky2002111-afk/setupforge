@@ -83,7 +83,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         exit;
 
                     case "business":
-                        header("Location: ../home.php");
+                        // Check if they have a completed paid order → send to overview
+                        $orderCheck = pg_query_params($conn,
+                            "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' AND order_type = 'setup' LIMIT 1",
+                            [$uid]
+                        );
+                        if ($orderCheck && pg_num_rows($orderCheck) > 0) {
+                            header("Location: ../business_overview.php");
+                        } else {
+                            header("Location: ../home.php");
+                        }
                         exit;
 
                     case "customer":
@@ -93,9 +102,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     case "labor":
                         header("Location: ../Labor/dashboard.php");
                         exit;
-                        case "company":
-    header("Location: ../Labor/company_dashboard.php");
-    exit;
+                    case "company":
+                        header("Location: ../Labor/company_dashboard.php");
+                        exit;
 
                     case "vendor":
                         header("Location: ../Vendor/vendor_dashboard.php");

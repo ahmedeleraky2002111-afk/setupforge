@@ -25,3 +25,220 @@ bizRow: Array
     [updated_at] => 2026-05-18 18:49:51.468381+03
 )
 
+userId: 235
+bizRow: Array
+(
+    [user_id] => 235
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 80
+    [budget_egp] => 4000000
+    [location_text] => 
+    [business_name] => 
+    [seat_count] => 
+    [setup_status] => not_started
+    [setup_step] => 0
+    [restaurant_type] => 
+    [indoor_tables] => 0
+    [outdoor_tables] => 0
+    [area_sqm] => 0
+    [modules] => 
+    [installation_services] => 
+    [staffing_data] => {}
+    [updated_at] => 2026-05-24 13:56:37.479531+03
+)
+
+userId: 235
+bizRow: Array
+(
+    [user_id] => 235
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 80
+    [budget_egp] => 4000000
+    [location_text] => 
+    [business_name] => 
+    [seat_count] => 
+    [setup_status] => not_started
+    [setup_step] => 0
+    [restaurant_type] => 
+    [indoor_tables] => 0
+    [outdoor_tables] => 0
+    [area_sqm] => 0
+    [modules] => 
+    [installation_services] => 
+    [staffing_data] => {}
+    [updated_at] => 2026-05-24 13:56:37.479531+03
+)
+
+userId: 235
+bizRow: Array
+(
+    [user_id] => 235
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 80
+    [budget_egp] => 4000000
+    [location_text] => 
+    [business_name] => ww
+    [seat_count] => 0
+    [setup_status] => in_progress
+    [setup_step] => 3
+    [restaurant_type] => standard_dining
+    [indoor_tables] => 
+    [outdoor_tables] => 
+    [area_sqm] => 
+    [modules] => 
+    [installation_services] => 
+    [staffing_data] => {"chef": 0, "host": 0, "busboy": 0, "waiter": 0, "barista": 0, "cashier": 0, "security": 0, "kitchen_helper": 0}
+    [updated_at] => 2026-05-24 14:48:22.569489+03
+)
+
+userId: 235
+bizRow: Array
+(
+    [user_id] => 235
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 80
+    [budget_egp] => 4000000
+    [location_text] => 
+    [business_name] => ww
+    [seat_count] => 0
+    [setup_status] => in_progress
+    [setup_step] => 3
+    [restaurant_type] => standard_dining
+    [indoor_tables] => 
+    [outdoor_tables] => 
+    [area_sqm] => 
+    [modules] => 
+    [installation_services] => 
+    [staffing_data] => {"chef": 0, "host": 0, "busboy": 0, "waiter": 0, "barista": 0, "cashier": 0, "security": 0, "kitchen_helper": 0}
+    [updated_at] => 2026-05-24 14:48:22.569489+03
+)
+
+userId: 235
+bizRow: Array
+(
+    [user_id] => 235
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 80
+    [budget_egp] => 4000000
+    [location_text] => 
+    [business_name] => ww
+    [seat_count] => 0
+    [setup_status] => in_progress
+    [setup_step] => 3
+    [restaurant_type] => standard_dining
+    [indoor_tables] => 
+    [outdoor_tables] => 
+    [area_sqm] => 
+    [modules] => 
+    [installation_services] => 
+    [staffing_data] => {"chef": 0, "host": 0, "busboy": 0, "waiter": 0, "barista": 0, "cashier": 0, "security": 0, "kitchen_helper": 0}
+    [updated_at] => 2026-05-24 14:48:22.569489+03
+)
+
+userId: 235
+bizRow: Array
+(
+    [user_id] => 235
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 80
+    [budget_egp] => 4000000
+    [location_text] => 
+    [business_name] => ww
+    [seat_count] => 20
+    [setup_status] => completed
+    [setup_step] => 7
+    [restaurant_type] => standard_dining
+    [indoor_tables] => 5
+    [outdoor_tables] => 0
+    [area_sqm] => 50
+    [modules] => {kitchen,pos,furniture,electronics,ac}
+    [installation_services] => {ac}
+    [staffing_data] => {"chef": 0, "host": 0, "busboy": 0, "waiter": 0, "barista": 0, "cashier": 0, "security": 0, "kitchen_helper": 0}
+    [updated_at] => 2026-05-24 14:53:30.822834+03
+)
+
+userId: 235
+bizRow: Array
+(
+    [user_id] => 235
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 80
+    [budget_egp] => 4000000
+    [location_text] => 
+    [business_name] => ww
+    [seat_count] => 20
+    [setup_status] => completed
+    [setup_step] => 7
+    [restaurant_type] => standard_dining
+    [indoor_tables] => 5
+    [outdoor_tables] => 0
+    [area_sqm] => 50
+    [modules] => {kitchen,pos,furniture,electronics,ac}
+    [installation_services] => {ac}
+    [staffing_data] => {"chef": 0, "host": 0, "busboy": 0, "waiter": 0, "barista": 0, "cashier": 0, "security": 0, "kitchen_helper": 0}
+    [updated_at] => 2026-05-24 14:53:30.822834+03
+)
+
+userId: 235
+bizRow: Array
+(
+    [user_id] => 235
+    [business_type] => Restaurant
+    [industry] => 
+    [business_logo] => 
+    [status] => active
+    [tax_card] => 
+    [commercial_reg] => 
+    [place_size] => 80
+    [budget_egp] => 4000000
+    [location_text] => 
+    [business_name] => ww
+    [seat_count] => 0
+    [setup_status] => in_progress
+    [setup_step] => 3
+    [restaurant_type] => fast_food
+    [indoor_tables] => 
+    [outdoor_tables] => 
+    [area_sqm] => 
+    [modules] => 
+    [installation_services] => 
+    [staffing_data] => {"chef": 0, "host": 0, "busboy": 0, "waiter": 0, "barista": 0, "cashier": 0, "security": 0, "kitchen_helper": 0}
+    [updated_at] => 2026-05-24 14:55:53.015085+03
+    [floors] => 1
+)
+

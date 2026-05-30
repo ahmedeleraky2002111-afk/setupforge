@@ -25,21 +25,69 @@ $module         = trim($_POST["module"] ?? "");
 $product_type   = trim($_POST["product_type"] ?? "");
 
 // ---------- Auto-calculate tier ----------
+// Thresholds: [starter_max, balanced_max]
+// Below starter_max  → Starter
+// Up to balanced_max → Balanced
+// Above             → Premium
 function calculate_tier(string $product_type, float $price): string {
   $thresholds = [
-    "ac"       => [50000, 120000],
-    "fridge"   => [15000,  40000],
-    "freezer"  => [15000,  40000],
-    "oven"     => [12000,  35000],
-    "stove"    => [10000,  30000],
-    "tv"       => [ 5000,  15000],
-    "terminal" => [ 3000,   8000],
-    "laptop"   => [ 8000,  20000],
-    "monitor"  => [ 8000,  20000],
-    "router"   => [ 3000,   8000],
-    "switch"   => [ 3000,   8000],
-    "ups"      => [ 3000,   8000],
-    "blender" => [ 700,   3000],
+    // POS
+    "terminal"    => [15000,  25000],
+    "printer"     => [ 4000,   6000],
+    "drawer"      => [ 2800,   3300],
+    "software"    => [ 9000,  14000],
+    "kds"         => [13000,  17000],
+    "scanner"     => [ 3000,   4000],
+    "tablet"      => [14000,  18000],
+    // Kitchen
+    "oven"        => [12000,  35000],
+    "stove"       => [10000,  30000],
+    "fryer"       => [ 8000,  20000],
+    "grill"       => [ 6000,  18000],
+    "microwave"   => [ 3000,   8000],
+    "fridge"      => [15000,  40000],
+    "freezer"     => [15000,  40000],
+    "blender"     => [  700,   3000],
+    "mixer"       => [ 4000,  12000],
+    "coffee"      => [ 8000,  25000],
+    // Furniture
+    "dining_set"  => [ 8000,  20000],
+    "table"       => [ 2000,   6000],
+    "chair"       => [  800,   2500],
+    "tv"          => [ 5000,  15000],
+    "sofa"        => [ 6000,  18000],
+    "bar_stool"   => [  800,   2500],
+    "outdoor_furniture" => [ 3000, 10000],
+    "reception_desk"    => [ 5000, 15000],
+    "shelving"    => [ 2000,   6000],
+    "speaker"     => [ 2000,   8000],
+    "light"       => [  500,   2000],
+    // AC
+    "ac"          => [30000,  80000],
+    "exhaust_fan" => [ 2000,   6000],
+    "air_curtain" => [ 3000,   8000],
+    "ceiling_fan" => [ 2000,   6000],
+    // Kitchen extras
+    "dishwasher"     => [20000, 60000],
+    "prep_table"     => [ 5000, 15000],
+    "exhaust_hood"   => [ 8000, 25000],
+    "bain_marie"     => [ 5000, 15000],
+    "slicer"         => [ 5000, 15000],
+    "sink"           => [ 3000,  8000],
+    "food_processor" => [ 5000, 15000],
+    "rice_cooker"    => [ 3000,  8000],
+    "meat_grinder"   => [ 5000, 15000],
+    "ice_machine"    => [15000, 40000],
+    // Furniture extras
+    "sound_system"   => [ 8000, 25000],
+    "curtain"        => [ 1000,  4000],
+    "wall_decor"     => [  500,  3000],
+    "menu_stand"     => [  500,  2000],
+    "hostess_stand"  => [ 3000, 10000],
+    // POS extras
+    "customer_display" => [8000, 15000],
+    "label_printer"    => [3000,  6000],
+    "scale"            => [2000,  5000],
   ];
   [$starter_max, $balanced_max] = $thresholds[$product_type] ?? [3000, 8000];
   if ($price < $starter_max)   return "Starter";
@@ -48,14 +96,13 @@ function calculate_tier(string $product_type, float $price): string {
 }
 
 $tier     = calculate_tier($product_type, $price);
-$priority = 1; // default, will be adjusted by rating system later
+$priority = 1;
 
 // ---------- Optional fields ----------
-// business_type comes as array of checkboxes, store as comma-separated string
 $business_type_arr = $_POST["business_type"] ?? [];
 $business_type = !empty($business_type_arr) ? implode(",", array_map('trim', $business_type_arr)) : null;
 
-// product_group_key
+// product_group_key — auto-generate if blank
 $product_group_key = trim($_POST["product_group_key"] ?? "");
 if ($product_group_key === "") {
   $slug_base = strtolower($product_type . " " . $product_name);
@@ -117,7 +164,7 @@ if ($productId <= 0) {
 // ---------- Image uploads ----------
 if (!empty($_FILES["images"]) && is_array($_FILES["images"]["name"])) {
   $count   = min(count($_FILES["images"]["name"]), 8);
-$baseDir = dirname(__DIR__) . "/Vendor/uploads/products/vendor_" . $vendorId . "/product_" . $productId . "/";
+  $baseDir = dirname(__DIR__) . "/Vendor/uploads/products/vendor_" . $vendorId . "/product_" . $productId . "/";
   if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
 
   for ($i = 0; $i < $count; $i++) {
@@ -128,9 +175,9 @@ $baseDir = dirname(__DIR__) . "/Vendor/uploads/products/vendor_" . $vendorId . "
     if ($size <= 0) continue;
     $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
     if (!in_array($ext, ["jpg","jpeg","png","webp"], true)) continue;
-    $safeFile  = "img_" . time() . "_" . $i . "." . $ext;
+    $safeFile = "img_" . time() . "_" . $i . "." . $ext;
     if (!move_uploaded_file($tmp, $baseDir . $safeFile)) continue;
-$publicUrl = "Vendor/uploads/products/vendor_" . $vendorId . "/product_" . $productId . "/" . $safeFile;
+    $publicUrl = "Vendor/uploads/products/vendor_" . $vendorId . "/product_" . $productId . "/" . $safeFile;
     pg_query_params($conn, "INSERT INTO product_images (product_id, image_url) VALUES ($1,$2)", [$productId, $publicUrl]);
   }
 }

@@ -1,6 +1,8 @@
 <?php
+
 // home.php
 session_start();
+
 require_once "db.php";
 
 /*
@@ -9,7 +11,7 @@ require_once "db.php";
 |--------------------------------------------------------------------------
 */
 $setupBtnText = "Start Your Setup";
-$setupBtnLink = "setup.php?step=0";
+$setupBtnLink = "service_select.php";
 
 // Guest with active wizard session
 if (!isset($_SESSION["user_id"]) && !empty($_SESSION["wizard"])) {
@@ -26,7 +28,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
 
     // Check for completed (paid) order
     $paidRes = @pg_query_params($conn,
-        "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' LIMIT 1",
+        "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' AND order_type = 'setup' AND order_total > 0 LIMIT 1",
         [$userId]
     );
     if ($paidRes && pg_num_rows($paidRes) > 0) {
@@ -40,10 +42,13 @@ if (isset($_SESSION["user_id"]) && $conn) {
         );
         if ($bizRes && pg_num_rows($bizRes) > 0) {
             $biz = pg_fetch_assoc($bizRes);
-            if (($biz['setup_status'] ?? '') === 'in_progress' && (int)($biz['setup_step'] ?? 0) > 0) {
-                $setupBtnText = "Resume Setup";
-                $setupBtnLink = "setup.php";
-            }
+            if (($biz['setup_status'] ?? '') === 'completed') {
+    $setupBtnText = "Resume Setup";
+    $setupBtnLink = "packages.php";
+} elseif (($biz['setup_status'] ?? '') === 'in_progress' && (int)($biz['setup_step'] ?? 0) > 0) {
+    $setupBtnText = "Resume Setup";
+    $setupBtnLink = "setup.php";
+}
         }
     }
 }
@@ -67,7 +72,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
     <!-- HERO -->
     <section class="sf-home-hero" id="sfHomeHero">
       <video class="sf-home-hero-video" autoplay muted loop playsinline>
-        <source src="assets/videos/home1.mp4" type="video/mp4">
+        <source src="assets/Videos/home1.mp4" type="video/mp4">
         Your browser does not support the video tag.
       </video>
 
@@ -93,7 +98,6 @@ if (isset($_SESSION["user_id"]) && $conn) {
         </div>
       </div>
     </section>
-
     <!-- OUR SERVICES -->
         <!-- OUR SERVICES -->
     <section class="sf-home-services-section">
@@ -107,7 +111,7 @@ if (isset($_SESSION["user_id"]) && $conn) {
 
         <div class="sf-home-services-grid">
 
-          <div class="sf-home-service-card reveal-up">
+          <a href="service_select.php?preselect=equipment" style="text-decoration:none"><div class="sf-home-service-card reveal-up">
 
   <img src="assets/images/service-packages.png" alt="Smart Setup Packages" class="sf-home-service-bg">
 
@@ -126,9 +130,9 @@ if (isset($_SESSION["user_id"]) && $conn) {
   </p>
 </div>
 
-</div>
+</div></a>
 
-          <div class="sf-home-service-card reveal-up">
+          <a href="service_select.php?preselect=installation" style="text-decoration:none"><div class="sf-home-service-card reveal-up">
 
   <img src="assets/images/home-installation.png" alt="Installation and Setup" class="sf-home-service-bg">
 
@@ -147,9 +151,9 @@ if (isset($_SESSION["user_id"]) && $conn) {
   </p>
 </div>
 
-</div>
+</div></a>
 
-          <div class="sf-home-service-card reveal-up">
+          <a href="service_select.php?preselect=staff" style="text-decoration:none"><div class="sf-home-service-card reveal-up">
 
   <img src="assets/images/home-staffing.png" alt="Staffing" class="sf-home-service-bg">
 
@@ -168,14 +172,168 @@ if (isset($_SESSION["user_id"]) && $conn) {
   </p>
 </div>
 
-</div>
+</div></a>
 
         </div>
       </div>
     </section>
+<!-- TRUSTED BRANDS -->
+<section class="sf-brand-strip">
+  <div class="container-fluid px-0">
 
+    <div class="sf-brand-strip-head reveal-up">
+      <p class="sf-brand-strip-kicker">Trusted Brands</p>
+
+      <h2 class="sf-brand-strip-title">
+        Equipment and technology from industry-leading brands
+      </h2>
+    </div>
+
+    <div class="sf-brand-marquee">
+
+<div class="sf-brand-track">
+
+  <!-- SET 1 -->
+  <div class="sf-brand-item">
+    <img src="assets/images/samsung.png" alt="Samsung">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/lg.png" alt="LG">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/bosch.png" alt="Bosch">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/dell.png" alt="Dell">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/ikea.png" alt="IKEA">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/epson.png" alt="Epson">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/hp.png" alt="HP">
+  </div>
+
+  <!-- DUPLICATE FOR INFINITE LOOP -->
+  <div class="sf-brand-item">
+    <img src="assets/images/samsung.png" alt="Samsung">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/lg.png" alt="LG">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/bosch.png" alt="Bosch">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/dell.png" alt="Dell">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/ikea.png" alt="IKEA">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/epson.png" alt="Epson">
+  </div>
+  <div class="sf-brand-item">
+    <img src="assets/images/hp.png" alt="HP">
+  </div>
+
+</div>
+    </div>
+  </div>
+</section>
   </main>
+<!-- PARTNER WITH US -->
+<!-- WORK WITH US SLIDER -->
+<?php if (!isset($_SESSION['user_id']) || !(@pg_query_params($conn, "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' AND order_type = 'setup' AND order_total > 0 LIMIT 1", [$_SESSION['user_id']]) && pg_num_rows(@pg_query_params($conn, "SELECT 1 FROM orders WHERE business_user_id = $1 AND payment_status = 'paid' AND order_type = 'setup' AND order_total > 0 LIMIT 1", [$_SESSION['user_id']])) > 0)): ?>
+<section class="sf-ww-section" style="background:#ffffff;">
 
+  <div class="sf-ww-track-wrap">
+    <div class="sf-ww-track" id="sfWwTrack">
+
+      <!-- SLIDE 1: VENDORS -->
+      <div class="sf-ww-card">
+        <div class="sf-ww-card-bg" style="background: linear-gradient(160deg, #0d1b2a 0%, #1e3a5f 60%, #0a1628 100%);"></div>
+        <div class="sf-ww-card-overlay"></div>
+        <img src="assets/images/vendor-slide.png
+        " class="sf-ww-slide-image" alt="Vendor">
+          <div class="sf-ww-mock-body">
+            <div class="sf-ww-mock-stat-row">
+              <div class="sf-ww-mock-stat"><span class="sf-ww-mock-stat-val">142</span><span class="sf-ww-mock-stat-label">Orders this month</span></div>
+              <div class="sf-ww-mock-stat"><span class="sf-ww-mock-stat-val">38,500 EGP</span><span class="sf-ww-mock-stat-label">Revenue</span></div>
+            </div>
+            <div class="sf-ww-mock-divider"></div>
+            <div class="sf-ww-mock-row"><div class="sf-ww-mock-thumb"></div><div class="sf-ww-mock-info"><span class="sf-ww-mock-name">6-Burner Gas Range</span><span class="sf-ww-mock-sub">Kitchen · 12 orders</span></div><span class="sf-ww-mock-badge green">Active</span></div>
+            <div class="sf-ww-mock-row"><div class="sf-ww-mock-thumb"></div><div class="sf-ww-mock-info"><span class="sf-ww-mock-name">POS Terminal X200</span><span class="sf-ww-mock-sub">Electronics · 8 orders</span></div><span class="sf-ww-mock-badge green">Active</span></div>
+            <div class="sf-ww-mock-row"><div class="sf-ww-mock-thumb"></div><div class="sf-ww-mock-info"><span class="sf-ww-mock-name">4-Seat Dining Set</span><span class="sf-ww-mock-sub">Furniture · 5 orders</span></div><span class="sf-ww-mock-badge yellow">Low stock</span></div>
+          </div>
+        <div class="sf-ww-card-body">
+          <p class="sf-ww-card-kicker">For Suppliers</p>
+          <h3 class="sf-ww-card-title">Sell on SetupForge</h3>
+          <p class="sf-ww-card-desc">Reach hundreds of businesses actively setting up. List your products and get orders directly.</p>
+          <p class="sf-ww-card-tags">Great for: Equipment Suppliers · Furniture Companies · Tech Distributors</p>
+          <a href="Vendor/vendor_signup.php" class="sf-ww-arrow-cta"> → </a>
+        </div>
+      </div>
+
+      <!-- SLIDE 2: SERVICE COMPANIES -->
+      <div class="sf-ww-card">
+        <div class="sf-ww-card-bg" style="background: linear-gradient(160deg, #0a1f1c 0%, #0f3d34 60%, #071a16 100%);"></div>
+        <div class="sf-ww-card-overlay"></div>
+        <img src="assets/images/company-slide.png" class="sf-ww-slide-image" alt="Company">
+          <div class="sf-ww-mock-body">
+            <div class="sf-ww-mock-stat-row">
+              <div class="sf-ww-mock-stat"><span class="sf-ww-mock-stat-val">7</span><span class="sf-ww-mock-stat-label">Active jobs</span></div>
+              <div class="sf-ww-mock-stat"><span class="sf-ww-mock-stat-val">3</span><span class="sf-ww-mock-stat-label">Pending quotes</span></div>
+            </div>
+            <div class="sf-ww-mock-divider"></div>
+            <div class="sf-ww-mock-job"><div class="sf-ww-mock-job-top"><span class="sf-ww-mock-name">Cairo Grill — Kitchen Install</span><span class="sf-ww-mock-badge teal">Visit requested</span></div><span class="sf-ww-mock-sub">Maadi, Cairo</span></div>
+            <div class="sf-ww-mock-job"><div class="sf-ww-mock-job-top"><span class="sf-ww-mock-name">Brew House — POS Setup</span><span class="sf-ww-mock-badge yellow">Quoted</span></div><span class="sf-ww-mock-sub">New Cairo</span></div>
+            <div class="sf-ww-mock-job"><div class="sf-ww-mock-job-top"><span class="sf-ww-mock-name">Spice Route — Full Setup</span><span class="sf-ww-mock-badge green">Accepted</span></div><span class="sf-ww-mock-sub">Zamalek</span></div>
+          </div>
+        <div class="sf-ww-card-body">
+          <p class="sf-ww-card-kicker">For Installation Companies</p>
+          <h3 class="sf-ww-card-title">Become a Service Partner</h3>
+          <p class="sf-ww-card-desc">Get hired by businesses ready to launch. Submit quotes, manage jobs, and grow your client base.</p>
+          <p class="sf-ww-card-tags">Great for: Installation Firms · Electrical Companies · Technical Services</p>
+          <a href="Labor/company_signup.php" class="sf-ww-arrow-cta"> → </a>
+        </div>
+      </div>
+
+      <!-- SLIDE 3: LABOR -->
+      <div class="sf-ww-card">
+        <div class="sf-ww-card-bg" style="background: linear-gradient(160deg, #1a0d2e 0%, #2e1a52 60%, #130a22 100%);"></div>
+        <div class="sf-ww-card-overlay"></div>
+        <img src="assets/images/labor-slide.png" class="sf-ww-slide-image" alt="Labor">
+          <div class="sf-ww-mock-body">
+            <div class="sf-ww-mock-profile-row">
+              <div class="sf-ww-mock-avatar">AH</div>
+              <div class="sf-ww-mock-info"><span class="sf-ww-mock-name">Ahmed Hassan</span><span class="sf-ww-mock-sub">Head Chef · Cairo</span></div>
+              <span class="sf-ww-mock-badge green">Available</span>
+            </div>
+            <div class="sf-ww-mock-divider"></div>
+            <div class="sf-ww-mock-job"><div class="sf-ww-mock-job-top"><span class="sf-ww-mock-name">Burger Palace — Head Chef</span><span class="sf-ww-mock-badge teal">New offer</span></div><span class="sf-ww-mock-sub">Heliopolis · 8,500 EGP/mo</span></div>
+            <div class="sf-ww-mock-job"><div class="sf-ww-mock-job-top"><span class="sf-ww-mock-name">The Grill Co. — Sous Chef</span><span class="sf-ww-mock-badge yellow">Pending</span></div><span class="sf-ww-mock-sub">Dokki · 6,200 EGP/mo</span></div>
+          </div>
+        <div class="sf-ww-card-body">
+          <p class="sf-ww-card-kicker">For Workers</p>
+          <h3 class="sf-ww-card-title">Apply for a Job</h3>
+          <p class="sf-ww-card-desc">Find work with businesses that are hiring. Get matched with opportunities that fit your skills and city.</p>
+          <p class="sf-ww-card-tags">Great for: Chefs · Cashiers · Waitstaff · Warehouse Workers</p>
+          <a href="Labor/labor_signup.php" class="sf-ww-arrow-cta"> → </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ARROWS -->
+  <button class="sf-ww-arrow sf-ww-arrow--prev" id="sfWwPrev" aria-label="Previous">&#8592;</button>
+  <button class="sf-ww-arrow sf-ww-arrow--next" id="sfWwNext" aria-label="Next">&#8594;</button>
+
+</section>
+<?php endif; ?>
   <footer class="sf-footer mt-5">
     <div class="container py-5">
       <div class="row g-4">
