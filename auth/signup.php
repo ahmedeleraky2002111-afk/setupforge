@@ -137,8 +137,14 @@ if (!$hasEquipmentSignup && !empty($signupServices)) {
     }
 
     if ($zeroOrderId) {
-        create_service_records($conn, $user_id, $zeroOrderId, $_SESSION['wizard'] ?? []);
-    }
+    create_service_records($conn, $user_id, $zeroOrderId, $_SESSION['wizard'] ?? []);
+}
+
+// Save services to staffing_data so service_jobs.php shows correct tabs
+$staffingJson = json_encode(['services' => $signupServices]);
+pg_query_params($conn,
+    "UPDATE businesses SET staffing_data = $2 WHERE user_id = $1",
+    [$user_id, $staffingJson]);
 }
             header("Location: " . $next);
             exit;
