@@ -1,0 +1,2 @@
+userId=0 hasEquipment=false hasStaff=true services=["staff","finishing"]
+userId=0 hasEquipment=false hasStaff=true services=["staff","finishing"]

@@ -1,0 +1,89 @@
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 1
+    [staff_roles] => Array
+        (
+            [0] => waiter
+            [1] => chef
+        )
+
+    [chef_count] => 1
+    [cashier_count] => 0
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 1
+    [staff_roles] => Array
+        (
+            [0] => waiter
+            [1] => chef
+            [2] => security
+        )
+
+    [chef_count] => 1
+    [cashier_count] => 0
+    [security_count] => 3
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 1
+    [staff_roles] => Array
+        (
+            [0] => waiter
+            [1] => chef
+            [2] => cashier
+            [3] => security
+        )
+
+    [chef_count] => 1
+    [cashier_count] => 1
+    [security_count] => 2
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 2
+    [staff_roles] => Array
+        (
+            [0] => waiter
+            [1] => chef
+            [2] => cashier
+            [3] => security
+        )
+
+    [chef_count] => 1
+    [cashier_count] => 1
+    [security_count] => 2
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 0
+    [kitchen_helper_count] => 0
+)
+
+---
