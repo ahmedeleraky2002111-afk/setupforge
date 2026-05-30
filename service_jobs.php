@@ -362,12 +362,21 @@ if ($advertisingRes) {
 }
 $totalAdvertising = count($advertisingList);
 
-$bizRes = pg_query_params($conn, "SELECT business_name FROM businesses WHERE user_id = $1 LIMIT 1", [$business_id]);
+$bizRes = pg_query_params($conn, "SELECT business_name, staffing_data FROM businesses WHERE user_id = $1 LIMIT 1", [$business_id]);
 $businessName = "Your Business";
+$bizServices = [];
 if ($bizRes && pg_num_rows($bizRes) > 0) {
     $brow = pg_fetch_assoc($bizRes);
     $businessName = $brow["business_name"] ?? "Your Business";
+    if (!empty($brow["staffing_data"])) {
+        $staffingData = json_decode($brow["staffing_data"], true);
+        $bizServices = $staffingData["services"] ?? [];
+    }
 }
+$showLabor        = empty($bizServices) || in_array('staff', $bizServices);
+$showInstallation = empty($bizServices) || in_array('installation', $bizServices);
+$showFinishing    = empty($bizServices) || in_array('finishing', $bizServices);
+$showAdvertising  = empty($bizServices) || in_array('advertising', $bizServices);
 
 $myCompanyReviews = [];
 $crRes = pg_query_params($conn,
@@ -444,39 +453,56 @@ function formatInstallationServices($raw) {
           <h1 class="sf-hc-biz-name"><?= htmlspecialchars($businessName) ?></h1>
         </div>
         <div class="sf-hc-stats">
-          <div class="sf-hc-stat">
-            <div class="sf-hc-stat-label">Applicants</div>
-            <div class="sf-hc-stat-val"><?= $totalApplicants ?></div>
-          </div>
-          <div class="sf-hc-stat">
-            <div class="sf-hc-stat-label">Installation Services</div>
-            <div class="sf-hc-stat-val"><?= $totalInstallation ?></div>
-          </div>
-          <div class="sf-hc-stat">
-            <div class="sf-hc-stat-label">Finishing</div>
-            <div class="sf-hc-stat-val"><?= $totalFinishing ?></div>
-          </div>
-          <div class="sf-hc-stat">
-            <div class="sf-hc-stat-label">Advertising</div>
-            <div class="sf-hc-stat-val"><?= $totalAdvertising ?></div>
-          </div>
+          <?php if ($showLabor): ?>
+<div class="sf-hc-stat">
+    <div class="sf-hc-stat-label">Applicants</div>
+    <div class="sf-hc-stat-val"><?= $totalApplicants ?></div>
+</div>
+<?php endif; ?>
+<?php if ($showInstallation): ?>
+<div class="sf-hc-stat">
+    <div class="sf-hc-stat-label">Installation Services</div>
+    <div class="sf-hc-stat-val"><?= $totalInstallation ?></div>
+</div>
+<?php endif; ?>
+<?php if ($showFinishing): ?>
+<div class="sf-hc-stat">
+    <div class="sf-hc-stat-label">Finishing</div>
+    <div class="sf-hc-stat-val"><?= $totalFinishing ?></div>
+</div>
+<?php endif; ?>
+<?php if ($showAdvertising): ?>
+<div class="sf-hc-stat">
+    <div class="sf-hc-stat-label">Advertising</div>
+    <div class="sf-hc-stat-val"><?= $totalAdvertising ?></div>
+</div>
+<?php endif; ?>
 
         </div>
       </div>
 
       <div class="sf-hc-tabs">
-        <button class="sf-hc-tab is-active" onclick="switchTab('labor', this)">
-          Labor <span class="sf-hc-tab-count"><?= $totalApplicants ?></span>
-        </button>
-        <button class="sf-hc-tab" onclick="switchTab('installation', this)">
-          Installation Services <span class="sf-hc-tab-count"><?= $totalInstallation ?></span>
-        </button>
-        <button class="sf-hc-tab" onclick="switchTab('finishing', this)">
-          Finishing <span class="sf-hc-tab-count"><?= $totalFinishing ?></span>
-        </button>
-        <button class="sf-hc-tab" onclick="switchTab('advertising', this)">
-          Advertising <span class="sf-hc-tab-count"><?= $totalAdvertising ?></span>
-        </button>
+        <?php $firstTab = $showLabor ? 'labor' : ($showInstallation ? 'installation' : ($showFinishing ? 'finishing' : 'advertising')); ?>
+        <?php if ($showLabor): ?>
+<button class="sf-hc-tab <?= $firstTab === 'labor' ? 'is-active' : '' ?>" onclick="switchTab('labor', this)">
+  Labor <span class="sf-hc-tab-count"><?= $totalApplicants ?></span>
+</button>
+<?php endif; ?>
+<?php if ($showInstallation): ?>
+<button class="sf-hc-tab <?= $firstTab === 'installation' ? 'is-active' : '' ?>" onclick="switchTab('installation', this)">
+  Installation Services <span class="sf-hc-tab-count"><?= $totalInstallation ?></span>
+</button>
+<?php endif; ?>
+<?php if ($showFinishing): ?>
+<button class="sf-hc-tab <?= $firstTab === 'finishing' ? 'is-active' : '' ?>" onclick="switchTab('finishing', this)">
+  Finishing <span class="sf-hc-tab-count"><?= $totalFinishing ?></span>
+</button>
+<?php endif; ?>
+<?php if ($showAdvertising): ?>
+<button class="sf-hc-tab <?= $firstTab === 'advertising' ? 'is-active' : '' ?>" onclick="switchTab('advertising', this)">
+  Advertising <span class="sf-hc-tab-count"><?= $totalAdvertising ?></span>
+</button>
+<?php endif; ?>
       </div>
     </div>
   </div>
@@ -484,7 +510,7 @@ function formatInstallationServices($raw) {
   <div class="container sf-hc-body">
 
     <!-- LABOR PANEL -->
-    <div class="sf-hc-panel is-active" id="panel-labor">
+    <div class="sf-hc-panel <?= $showLabor ? 'is-active' : '' ?>" id="panel-labor">
       <?php if (empty($laborRoles)): ?>
         <div class="sf-hc-empty">
           <h4>No Labor Jobs Yet</h4>
@@ -699,7 +725,7 @@ function formatInstallationServices($raw) {
     </div>
 
     <!-- INSTALLATION PANEL -->
-    <div class="sf-hc-panel" id="panel-installation">
+    <div class="sf-hc-panel <?= !$showLabor && $showInstallation ? 'is-active' : '' ?>" id="panel-installation">
       <?php if (!$hasInstallation): ?>
         <div class="sf-hc-empty">
           <h4>No Installation Services Yet</h4>
@@ -928,7 +954,7 @@ function formatInstallationServices($raw) {
     </div>
 
     <!-- FINISHING PANEL -->
-    <div class="sf-hc-panel" id="panel-finishing">
+    <div class="sf-hc-panel <?= !$showLabor && !$showInstallation && $showFinishing ? 'is-active' : '' ?>" id="panel-finishing">
       <?php if (!$hasFinishing): ?>
         <div class="sf-hc-empty">
           <h4>No Finishing Request Yet</h4>
@@ -1116,7 +1142,7 @@ function formatInstallationServices($raw) {
     </div>
 
     <!-- ADVERTISING PANEL -->
-    <div class="sf-hc-panel" id="panel-advertising">
+    <div class="sf-hc-panel <?= !$showLabor && !$showInstallation && !$showFinishing && $showAdvertising ? 'is-active' : '' ?>" id="panel-advertising">
       <?php if (empty($advertisingList)): ?>
         <div class="sf-hc-empty">
           <h4>No Advertising Companies Yet</h4>
