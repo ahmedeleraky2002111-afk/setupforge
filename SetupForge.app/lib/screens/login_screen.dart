@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'app_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,11 +37,20 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (res["ok"] == true) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const AppShell(initialIndex: 0)),
-          (route) => false,
-        );
+        final userType = res["user_type"]?.toString() ?? "";
+        if (userType == "labor") {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/labor-shell',
+            (route) => false,
+          );
+        } else {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/app-shell',
+            (route) => false,
+          );
+        }
       } else {
         final msg = (res["error"] ?? "Login failed").toString();
         ScaffoldMessenger.of(
@@ -233,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: loading
                             ? null
                             : () {
-                                Navigator.pushNamed(context, '/signup');
+                                Navigator.pushNamed(context, '/role-select');
                               },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: sfBlue,

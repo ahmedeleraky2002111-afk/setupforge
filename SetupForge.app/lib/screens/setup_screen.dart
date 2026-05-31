@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import '../state/wizard_state.dart';
+import '../services/api_service.dart';
 
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key});
@@ -14,464 +10,501 @@ class SetupScreen extends StatefulWidget {
 
 class _SetupScreenState extends State<SetupScreen> {
   static const Color sfBlue = Color(0xFF004CAC);
-  // ignore: unused_field
-  static const Color sfTeal = Color(0xFF009994);
-  static const Color bg = Color(0xFFF5F7FB);
-  static const Color text = Color(0xFF121212);
-  static const Color muted = Color(0xFF6C757D);
-  static const Color border = Color(0x22000000);
+  static const Color sfBg = Color(0xFFF5F7FB);
+  static const Color sfText = Color(0xFF111827);
+  static const Color sfMuted = Color(0xFF6B7280);
 
-  int step = 0;
+  final api = ApiService();
 
-  late TextEditingController nameController;
-  late TextEditingController areaController;
+  // Wizard state
+  List<String> _services = [];
+  int _step = 0;
+  bool _loading = true;
+  bool _saving = false;
 
-  late final Map<String, VideoPlayerController> _videoControllers;
+  // Step data
+  String _businessName = '';
+  String _businessType = '';
+  String _restaurantType = '';
+  int _indoorTables = 5;
+  int _outdoorTables = 0;
+  int _areaSqm = 50;
+  int _floorCount = 1;
+  int _budget = 0;
+  List<String> _installationServices = [];
+  Map<String, int> _staffCounts = {
+    'waiter': 0,
+    'chef': 0,
+    'cashier': 0,
+    'security': 0,
+    'barista': 0,
+    'busboy': 0,
+    'host': 0,
+    'kitchen_helper': 0,
+  };
 
-  final List<_BusinessOption> businessOptions = const [
-    _BusinessOption(
-      title: 'Restaurant',
-      videoPath: 'assets/restaurant.mp4',
-      icon: Icons.restaurant_rounded,
-    ),
-    _BusinessOption(
-      title: 'Cafe',
-      videoPath: 'assets/cafe.mp4',
-      icon: Icons.local_cafe_rounded,
-    ),
-    _BusinessOption(
-      title: 'Gym',
-      videoPath: 'assets/gym.mp4',
-      icon: Icons.fitness_center_rounded,
-    ),
-    _BusinessOption(
-      title: 'Office',
-      videoPath: 'assets/office.mp4',
-      icon: Icons.business_center_rounded,
-    ),
-  ];
+  final _nameC = TextEditingController();
+
+  // Computed
+  bool get _hasEquipment => _services.contains('equipment');
+  bool get _hasInstall => _services.contains('installation');
+  bool get _hasStaff => _services.contains('staff');
+  bool get _hasFinishing => _services.contains('finishing');
+  bool get _hasAdvertising => _services.contains('advertising');
+
+  List<int> get _displaySteps {
+    final steps = [0, 1];
+    if (_businessType == 'Restaurant') steps.add(2);
+    if (_hasEquipment) steps.add(3);
+    if (_hasInstall) steps.add(4);
+    if (_hasEquipment) steps.add(5);
+    if (_hasInstall) steps.add(6);
+    if (_hasStaff) steps.add(7);
+    return steps;
+  }
+
+  int get _currentStepIndex => _displaySteps.indexOf(_step);
+  int get _totalSteps => _displaySteps.length;
 
   @override
   void initState() {
     super.initState();
-
-    final wizard = Provider.of<WizardState>(context, listen: false);
-
-    nameController = TextEditingController(text: wizard.businessName);
-    areaController = TextEditingController(
-      text: wizard.areaSqm == 0 ? '' : wizard.areaSqm.toString(),
-    );
-
-    _videoControllers = {
-      for (final option in businessOptions)
-        option.title: VideoPlayerController.asset(option.videoPath),
-    };
-
-    _initializeVideos();
+    // Read services from arguments after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
-  Future<void> _initializeVideos() async {
-    for (final controller in _videoControllers.values) {
-      await controller.initialize();
-      await controller.setLooping(true);
-      await controller.setVolume(0);
-      await controller.play();
-    }
+  Future<void> _init() async {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final services = List<String>.from(args?['services'] ?? []);
 
-    if (mounted) setState(() {});
+    setState(() => _services = services);
+
+    // Try to resume
+    final resumeRes = await api.resumeWizard();
+    if (!mounted) return;
+
+    if (resumeRes["ok"] == true && resumeRes["has_saved"] == true) {
+      final w = Map<String, dynamic>.from(resumeRes["wizard"] ?? {});
+      final savedStep = resumeRes["saved_step"] as int;
+      final savedServices = List<String>.from(w["services"] ?? []);
+
+      setState(() {
+        _services = savedServices.isNotEmpty ? savedServices : services;
+        _businessName = w["business_name"] ?? '';
+        _businessType = w["business_type"] ?? '';
+        _restaurantType = w["restaurant_type"] ?? '';
+        _indoorTables = (w["indoor_tables"] as int?) ?? 5;
+        _outdoorTables = (w["outdoor_tables"] as int?) ?? 0;
+        _areaSqm = (w["area_sqm"] as int?) ?? 50;
+        _budget = (w["budget"] as int?) ?? 0;
+        _floorCount = (w["floor_count"] as int?) ?? 1;
+        _installationServices = List<String>.from(
+          w["installation_services"] ?? [],
+        );
+        for (final role in _staffCounts.keys) {
+          _staffCounts[role] = (w["${role}_count"] as int?) ?? 0;
+        }
+        _nameC.text = _businessName;
+        _step = savedStep;
+        _loading = false;
+      });
+    } else {
+      setState(() => _loading = false);
+    }
   }
 
   @override
   void dispose() {
-    nameController.dispose();
-    areaController.dispose();
-
-    for (final controller in _videoControllers.values) {
-      controller.dispose();
-    }
-
+    _nameC.dispose();
     super.dispose();
   }
 
-  Future<void> _nextStep(WizardState wizard) async {
-    if (step == 1) {
-      wizard.setBusinessName(nameController.text.trim());
+  Map<String, dynamic> get _wizardData => {
+    "business_name": _businessName,
+    "business_type": _businessType,
+    "restaurant_type": _restaurantType,
+    "indoor_tables": _indoorTables,
+    "outdoor_tables": _outdoorTables,
+    "area_sqm": _areaSqm,
+    "floor_count": _floorCount,
+    "budget": _budget,
+    "services": _services,
+    "installation_services": _installationServices,
+    ..._staffCounts.map((k, v) => MapEntry("${k}_count", v)),
+  };
+
+  Future<void> _saveStep() async {
+    setState(() => _saving = true);
+    await api.saveWizardStep(step: _step, wizard: _wizardData);
+    if (mounted) setState(() => _saving = false);
+  }
+
+  Future<void> _next() async {
+    // Validate current step
+    if (_step == 0 && _nameC.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your business name')),
+      );
+      return;
     }
-    if (step == 2) {
-      wizard.setTableSize(4); // default until ratio system implemented
+    if (_step == 1 && _businessType.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a business type')),
+      );
+      return;
+    }
+    if (_step == 2 && _restaurantType.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a restaurant type')),
+      );
+      return;
+    }
+    if (_step == 5 && _budget == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a budget range')),
+      );
+      return;
     }
 
-    if (step == 4) {
-      wizard.setAreaSqm(int.tryParse(areaController.text.trim()) ?? 0);
+    // Save step 0 business name
+    if (_step == 0) {
+      setState(() => _businessName = _nameC.text.trim());
     }
 
-    if (step < 8) {
-      setState(() => step++);
+    await _saveStep();
+
+    final idx = _currentStepIndex;
+    if (idx < _totalSteps - 1) {
+      setState(() => _step = _displaySteps[idx + 1]);
     } else {
-      // Check auth before going to packages — matches website flow
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (!mounted) return;
-      if (token == null || token.isEmpty) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('signup_intent', 'business'); // ADD THIS
-        Navigator.pushNamed(context, '/signup');
-      } else {
-        Navigator.pushNamed(context, '/packages');
-      }
+      _finish();
     }
   }
 
-  void _prevStep() {
-    if (step > 0) {
-      setState(() => step--);
+  void _back() {
+    final idx = _currentStepIndex;
+    if (idx > 0) {
+      setState(() => _step = _displaySteps[idx - 1]);
     } else {
       Navigator.pop(context);
     }
   }
 
-  bool _canContinue(WizardState wizard) {
-    switch (step) {
-      case 0:
-        return wizard.businessType.isNotEmpty;
-      case 1:
-        return nameController.text.trim().isNotEmpty;
-      case 2:
-        return wizard.restaurantType.isNotEmpty;
-      case 3:
-        return (wizard.indoorTables + wizard.outdoorTables) > 0;
-      case 4:
-        return (int.tryParse(areaController.text.trim()) ?? 0) > 0;
-      case 5:
-        return wizard.budgetRange.isNotEmpty;
-      case 6:
-        return true;
-      case 7:
-        return true;
-      case 8:
-        return true;
-      default:
-        return true;
+  void _finish() {
+    if (_hasEquipment) {
+      Navigator.pushNamed(
+        context,
+        '/packages',
+        arguments: {'wizard': _wizardData},
+      );
+    } else {
+      // No equipment — go to services tab
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/app-shell',
+        (route) => false,
+        arguments: {'initialIndex': 3},
+      );
     }
   }
 
+  bool get _isLastStep => _currentStepIndex == _totalSteps - 1;
+
   @override
   Widget build(BuildContext context) {
-    final wizard = context.watch<WizardState>();
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: sfBg,
+        body: Center(child: CircularProgressIndicator(color: sfBlue)),
+      );
+    }
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: sfBg,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: text,
+        backgroundColor: sfBlue,
+        foregroundColor: Colors.white,
         title: const Text(
-          'My Setup',
+          'Setup',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
+        elevation: 0,
+        shape: const RoundedRectangleBorder(),
         leading: IconButton(
-          onPressed: _prevStep,
+          onPressed: _back,
           icon: const Icon(Icons.arrow_back_rounded),
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-          child: Column(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  minHeight: 8,
-                  value: (step + 1) / 9,
-                  backgroundColor: Colors.grey.shade300,
-                  valueColor: const AlwaysStoppedAnimation(sfBlue),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Step ${step + 1} of 9',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: muted,
+      body: Column(
+        children: [
+          // Progress bar
+          Container(
+            color: sfBlue,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRect(
+                  child: LinearProgressIndicator(
+                    value: _totalSteps > 0
+                        ? (_currentStepIndex + 1) / _totalSteps
+                        : 0,
+                    backgroundColor: Colors.white.withOpacity(0.3),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
+                    minHeight: 4,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: SingleChildScrollView(child: _buildStepContent(wizard)),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  if (step > 0)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _prevStep,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(54),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ),
-                  if (step > 0) const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _canContinue(wizard)
-                          ? () => _nextStep(wizard)
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: sfBlue,
-                        minimumSize: const Size.fromHeight(56),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                      child: Text(
-                        step == 8 ? 'Generate Packages' : 'Next',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
+                const SizedBox(height: 6),
+                Text(
+                  'Step ${_currentStepIndex + 1} of $_totalSteps',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
+
+          // Content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: _buildStep(),
+            ),
+          ),
+
+          // Bottom buttons
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                if (_currentStepIndex > 0) ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _saving ? null : _back,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: Color(0xFFE5E7EB)),
+                        shape: const RoundedRectangleBorder(),
+                      ),
+                      child: const Text(
+                        '← Back',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _saving ? null : _next,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: sfBlue,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: const RoundedRectangleBorder(),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isLastStep
+                                ? (_hasEquipment
+                                      ? 'View Packages →'
+                                      : 'Finish →')
+                                : 'Next →',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStepContent(WizardState wizard) {
-    switch (step) {
+  Widget _buildStep() {
+    switch (_step) {
       case 0:
-        return _sectionCard(
-          title: 'What business are you opening?',
-          subtitle: 'Choose the business type that best matches your setup.',
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: businessOptions.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.92,
+        return _stepWrap(
+          title: 'What\'s your business name?',
+          subtitle: 'We\'ll use it to personalize your setup experience.',
+          child: TextField(
+            controller: _nameC,
+            onChanged: (v) => setState(() => _businessName = v),
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Business name',
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.zero,
+                borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.zero,
+                borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.zero,
+                borderSide: BorderSide(color: sfBlue, width: 1.5),
+              ),
             ),
-            itemBuilder: (context, index) {
-              final option = businessOptions[index];
-              final selected = wizard.businessType == option.title;
-              final controller = _videoControllers[option.title]!;
-
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: selected ? sfBlue : border,
-                    width: selected ? 1.6 : 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: selected ? 0.07 : 0.03,
-                      ),
-                      blurRadius: selected ? 16 : 10,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(22),
-                  onTap: () => wizard.setBusinessType(option.title),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (controller.value.isInitialized)
-                          FittedBox(
-                            fit: BoxFit.cover,
-                            child: SizedBox(
-                              width: controller.value.size.width,
-                              height: controller.value.size.height,
-                              child: VideoPlayer(controller),
-                            ),
-                          )
-                        else
-                          Container(color: Colors.grey.shade200),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.58),
-                                Colors.black.withValues(alpha: 0.08),
-                              ],
-                            ),
-                          ),
-                        ),
-                        if (selected)
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              width: 34,
-                              height: 34,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.check_rounded,
-                                color: sfBlue,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        Positioned(
-                          left: 14,
-                          right: 14,
-                          bottom: 14,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(option.icon, color: Colors.white, size: 22),
-                              const SizedBox(height: 8),
-                              Text(
-                                option.title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
         );
 
       case 1:
-        return _sectionCard(
-          title: 'What is your business name?',
-          subtitle: 'This helps personalize your setup journey.',
-          child: TextField(
-            controller: nameController,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: 'Enter business name',
-              filled: true,
-              fillColor: const Color(0xFFF8FAFF),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: sfBlue, width: 1.4),
-              ),
-            ),
+        final types = [
+          {'value': 'Restaurant', 'icon': Icons.restaurant_rounded},
+          {'value': 'Café', 'icon': Icons.local_cafe_rounded},
+          {'value': 'Gym', 'icon': Icons.fitness_center_rounded},
+          {'value': 'Salon', 'icon': Icons.content_cut_rounded},
+        ];
+        return _stepWrap(
+          title: 'What type of business?',
+          subtitle: 'This helps us tailor your setup experience.',
+          child: GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.4,
+            children: types.map((t) {
+              final selected = _businessType == t['value'];
+              return GestureDetector(
+                onTap: () =>
+                    setState(() => _businessType = t['value'] as String),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: selected ? const Color(0xFFEFF6FF) : Colors.white,
+                    border: Border.all(
+                      color: selected ? sfBlue : const Color(0xFFE5E7EB),
+                      width: selected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        t['icon'] as IconData,
+                        color: selected ? sfBlue : sfMuted,
+                        size: 28,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        t['value'] as String,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: selected ? sfBlue : sfText,
+                        ),
+                      ),
+                      if (selected)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Icon(
+                            Icons.check_rounded,
+                            color: sfBlue,
+                            size: 16,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         );
 
       case 2:
-        final restaurantOptions = [
-          _RestaurantOption(
-            value: 'fast_food',
-            label: 'Fast Food',
-            icon: Icons.fastfood_rounded,
-            description: 'Quick service, high turnover',
-          ),
-          _RestaurantOption(
-            value: 'standard_dining',
-            label: 'Standard Dining',
-            icon: Icons.restaurant_rounded,
-            description: 'Full-service sit-down restaurant',
-          ),
-          _RestaurantOption(
-            value: 'premium_dining',
-            label: 'Premium Dining',
-            icon: Icons.star_border_rounded,
-            description: 'Fine dining, upscale experience',
-          ),
-          _RestaurantOption(
-            value: 'cloud_kitchen',
-            label: 'Cloud Kitchen',
-            icon: Icons.cloud_rounded,
-            description: 'Delivery-only, no dine-in',
-          ),
+        final types = [
+          {
+            'value': 'fast_food',
+            'label': 'Fast Food',
+            'desc': 'Quick service, high turnover',
+            'icon': Icons.fastfood_rounded,
+          },
+          {
+            'value': 'standard_dining',
+            'label': 'Casual Dining',
+            'desc': 'Full-service sit-down restaurant',
+            'icon': Icons.restaurant_rounded,
+          },
+          {
+            'value': 'premium_dining',
+            'label': 'Premium Dining',
+            'desc': 'Fine dining, upscale experience',
+            'icon': Icons.star_border_rounded,
+          },
+          {
+            'value': 'cloud_kitchen',
+            'label': 'Delivery Only',
+            'desc': 'Cloud kitchen, no dine-in',
+            'icon': Icons.delivery_dining_rounded,
+          },
         ];
-
-        return _sectionCard(
+        return _stepWrap(
           title: 'What type of restaurant?',
-          subtitle:
-              'Select the dining style that best describes your business.',
+          subtitle: 'This helps us tailor layout and equipment.',
           child: Column(
-            children: restaurantOptions.map((option) {
-              final selected = wizard.restaurantType == option.value;
-
+            children: types.map((t) {
+              final selected = _restaurantType == t['value'];
               return GestureDetector(
-                onTap: () => wizard.setRestaurantType(option.value),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
+                onTap: () =>
+                    setState(() => _restaurantType = t['value'] as String),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    color: selected ? const Color(0xFFEFF6FF) : Colors.white,
                     border: Border.all(
-                      color: selected ? sfBlue : border,
-                      width: selected ? 1.6 : 1,
+                      color: selected ? sfBlue : const Color(0xFFE5E7EB),
+                      width: selected ? 2 : 1,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: selected ? 0.06 : 0.03,
-                        ),
-                        blurRadius: selected ? 14 : 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: Row(
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: selected
-                              ? sfBlue.withValues(alpha: 0.1)
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(14),
+                          color: selected ? sfBlue : const Color(0xFFF3F4F6),
                         ),
                         child: Icon(
-                          option.icon,
-                          color: selected ? sfBlue : muted,
-                          size: 24,
+                          t['icon'] as IconData,
+                          color: selected ? Colors.white : sfMuted,
+                          size: 22,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -480,20 +513,18 @@ class _SetupScreenState extends State<SetupScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              option.label,
+                              t['label'] as String,
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: selected ? sfBlue : text,
+                                color: selected ? sfBlue : sfText,
                               ),
                             ),
-                            const SizedBox(height: 3),
                             Text(
-                              option.description,
+                              t['desc'] as String,
                               style: const TextStyle(
-                                fontSize: 13,
-                                color: muted,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 12.5,
+                                color: sfMuted,
                               ),
                             ),
                           ],
@@ -501,9 +532,9 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                       if (selected)
                         const Icon(
-                          Icons.check_circle_rounded,
+                          Icons.check_rounded,
                           color: sfBlue,
-                          size: 22,
+                          size: 20,
                         ),
                     ],
                   ),
@@ -514,116 +545,232 @@ class _SetupScreenState extends State<SetupScreen> {
         );
 
       case 3:
-        return _sectionCard(
+        return _stepWrap(
           title: 'How many tables?',
-          subtitle: 'Set the number of indoor and outdoor tables.',
+          subtitle: 'Indoor and outdoor seating helps us size your setup.',
+          child: Column(
+            children: [
+              _tableRow('Indoor Tables', _indoorTables, [5, 10, 15, 20], (v) {
+                setState(() => _indoorTables = v);
+              }, min: 1),
+              const SizedBox(height: 20),
+              _tableRow('Outdoor Tables', _outdoorTables, [0, 5, 10, 15], (v) {
+                setState(() => _outdoorTables = v);
+              }, min: 0),
+            ],
+          ),
+        );
+
+      case 4:
+        return _stepWrap(
+          title: 'What\'s your restaurant\'s area?',
+          subtitle: 'Indoor area helps us calculate AC units needed.',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _tableStepperRow(
-                label: 'Indoor Tables',
-                value: wizard.indoorTables,
-                onDecrement: wizard.indoorTables > 0
-                    ? () => wizard.setIndoorTables(wizard.indoorTables - 1)
-                    : null,
-                onIncrement: () =>
-                    wizard.setIndoorTables(wizard.indoorTables + 1),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Indoor Area',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: sfText,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    color: const Color(0xFFEFF6FF),
+                    child: Text(
+                      '$_areaSqm m²',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: sfBlue,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              _tableStepperRow(
-                label: 'Outdoor Tables',
-                value: wizard.outdoorTables,
-                onDecrement: wizard.outdoorTables > 0
-                    ? () => wizard.setOutdoorTables(wizard.outdoorTables - 1)
-                    : null,
-                onIncrement: () =>
-                    wizard.setOutdoorTables(wizard.outdoorTables + 1),
+              const SizedBox(height: 12),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackShape: const RectangularSliderTrackShape(),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 10,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 20,
+                  ),
+                  activeTrackColor: sfBlue,
+                  inactiveTrackColor: const Color(0xFFE5E7EB),
+                  thumbColor: sfBlue,
+                ),
+                child: Slider(
+                  value: _areaSqm.toDouble(),
+                  min: 10,
+                  max: 500,
+                  divisions: 98,
+                  onChanged: (v) => setState(() => _areaSqm = v.round()),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Multi-floor toggle
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Multiple floors?',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: sfText,
+                                ),
+                              ),
+                              Text(
+                                'Check if your space has more than one floor',
+                                style: TextStyle(fontSize: 12, color: sfMuted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _floorCount > 1,
+                          activeColor: sfBlue,
+                          onChanged: (v) =>
+                              setState(() => _floorCount = v ? 2 : 1),
+                        ),
+                      ],
+                    ),
+                    if (_floorCount > 1) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Number of floors',
+                            style: TextStyle(fontSize: 13, color: sfMuted),
+                          ),
+                          Row(
+                            children: [
+                              _stepBtn(Icons.remove, () {
+                                if (_floorCount > 2)
+                                  setState(() => _floorCount--);
+                              }),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Text(
+                                  '$_floorCount',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: sfText,
+                                  ),
+                                ),
+                              ),
+                              _stepBtn(Icons.add, () {
+                                if (_floorCount < 10)
+                                  setState(() => _floorCount++);
+                              }),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),
         );
-      case 4:
-        return _sectionCard(
-          title: 'What is your total area?',
-          subtitle:
-              'Enter the total floor area of your venue in square meters.',
-          child: TextField(
-            controller: areaController,
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: 'Enter area',
-              suffixText: 'sqm',
-              filled: true,
-              fillColor: const Color(0xFFF8FAFF),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: sfBlue, width: 1.4),
-              ),
-            ),
-          ),
-        );
 
       case 5:
-        final budgetOptions = ['Under 500k', '500k-1.5M', '1.5M-3M', '3M+'];
-
-        return _sectionCard(
-          title: 'What is your budget range?',
-          subtitle: 'This helps generate realistic recommendations.',
+        final budgets = [
+          {
+            'label': 'Under 600,000 EGP',
+            'sub': 'Small / street food',
+            'value': 400000,
+          },
+          {
+            'label': '600,000 – 2,000,000 EGP',
+            'sub': 'Casual dining',
+            'value': 1200000,
+          },
+          {
+            'label': '2,000,000 – 3,500,000 EGP',
+            'sub': 'Full fit-out',
+            'value': 2750000,
+          },
+          {
+            'label': '3,500,000+ EGP',
+            'sub': 'Premium restaurant',
+            'value': 4500000,
+          },
+        ];
+        return _stepWrap(
+          title: 'What\'s your budget?',
+          subtitle: 'Helps us recommend the right products and tier.',
           child: Column(
-            children: budgetOptions.map((range) {
-              final selected = wizard.budgetRange == range;
-
+            children: budgets.map((b) {
+              final selected = _budget == b['value'];
               return GestureDetector(
-                onTap: () => wizard.setBudgetRange(range),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 18,
-                  ),
+                onTap: () => setState(() => _budget = b['value'] as int),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    color: selected ? const Color(0xFFEFF6FF) : Colors.white,
                     border: Border.all(
-                      color: selected ? sfBlue : border,
-                      width: selected ? 1.6 : 1,
+                      color: selected ? sfBlue : const Color(0xFFE5E7EB),
+                      width: selected ? 2 : 1,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: selected ? 0.06 : 0.03,
-                        ),
-                        blurRadius: selected ? 14 : 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          'EGP $range',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: selected ? sfBlue : text,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              b['label'] as String,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: selected ? sfBlue : sfText,
+                              ),
+                            ),
+                            Text(
+                              b['sub'] as String,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: sfMuted,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       if (selected)
                         const Icon(
-                          Icons.check_circle_rounded,
+                          Icons.check_rounded,
                           color: sfBlue,
-                          size: 22,
+                          size: 20,
                         ),
                     ],
                   ),
@@ -634,71 +781,64 @@ class _SetupScreenState extends State<SetupScreen> {
         );
 
       case 6:
-        final serviceOptions = [
-          _ServiceOption(
-            value: 'pos',
-            label: 'POS',
-            icon: Icons.point_of_sale_rounded,
-          ),
-          _ServiceOption(
-            value: 'electrical',
-            label: 'Electrical',
-            icon: Icons.electrical_services_rounded,
-          ),
-          _ServiceOption(
-            value: 'network',
-            label: 'Network',
-            icon: Icons.wifi_rounded,
-          ),
-          _ServiceOption(value: 'ac', label: 'AC', icon: Icons.ac_unit_rounded),
-          _ServiceOption(
-            value: 'kitchen',
-            label: 'Kitchen Setup',
-            icon: Icons.kitchen_rounded,
-          ),
+        final services = [
+          {
+            'value': 'pos',
+            'label': 'POS System',
+            'desc': 'Cash register & payment terminal',
+            'icon': Icons.point_of_sale_rounded,
+          },
+          {
+            'value': 'electrical',
+            'label': 'Electrical Wiring',
+            'desc': 'Outlets, lighting & power setup',
+            'icon': Icons.electrical_services_rounded,
+          },
+          {
+            'value': 'network',
+            'label': 'Network & WiFi',
+            'desc': 'Internet, router & cabling',
+            'icon': Icons.wifi_rounded,
+          },
+          {
+            'value': 'ac',
+            'label': 'AC Installation',
+            'desc': 'Air conditioning & ventilation',
+            'icon': Icons.ac_unit_rounded,
+          },
+          {
+            'value': 'kitchen',
+            'label': 'Kitchen Setup',
+            'desc': 'Equipment installation & gas',
+            'icon': Icons.kitchen_rounded,
+          },
         ];
-
-        return _sectionCard(
+        return _stepWrap(
           title: 'Installation services',
-          subtitle: 'Select any services you need installed.',
+          subtitle: 'Select the services you need installed.',
           child: Column(
-            children: serviceOptions.map((option) {
-              final selected = wizard.installationServices.contains(
-                option.value,
-              );
-
+            children: services.map((s) {
+              final selected = _installationServices.contains(s['value']);
               return GestureDetector(
                 onTap: () {
-                  final updated = List<String>.from(
-                    wizard.installationServices,
-                  );
-                  if (selected) {
-                    updated.remove(option.value);
-                  } else {
-                    updated.add(option.value);
-                  }
-                  wizard.setInstallationServices(updated);
+                  setState(() {
+                    final key = s['value'] as String;
+                    if (selected) {
+                      _installationServices.remove(key);
+                    } else {
+                      _installationServices.add(key);
+                    }
+                  });
                 },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
+                    color: selected ? const Color(0xFFEFF6FF) : Colors.white,
                     border: Border.all(
-                      color: selected ? sfBlue : border,
-                      width: selected ? 1.6 : 1,
+                      color: selected ? sfBlue : const Color(0xFFE5E7EB),
+                      width: selected ? 2 : 1,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: selected ? 0.06 : 0.03,
-                        ),
-                        blurRadius: selected ? 14 : 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: Row(
                     children: [
@@ -706,38 +846,46 @@ class _SetupScreenState extends State<SetupScreen> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: selected
-                              ? sfBlue.withValues(alpha: 0.1)
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(12),
+                          color: selected ? sfBlue : const Color(0xFFF3F4F6),
                         ),
                         child: Icon(
-                          option.icon,
-                          color: selected ? sfBlue : muted,
+                          s['icon'] as IconData,
+                          color: selected ? Colors.white : sfMuted,
                           size: 22,
                         ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Text(
-                          option.label,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: selected ? sfBlue : text,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s['label'] as String,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: selected ? sfBlue : sfText,
+                              ),
+                            ),
+                            Text(
+                              s['desc'] as String,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: sfMuted,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
+                      Container(
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
                           color: selected ? sfBlue : Colors.transparent,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: selected ? sfBlue : border,
-                            width: 1.5,
+                            color: selected ? sfBlue : const Color(0xFFD1D5DB),
+                            width: 2,
                           ),
                         ),
                         child: selected
@@ -757,105 +905,170 @@ class _SetupScreenState extends State<SetupScreen> {
         );
 
       case 7:
-        const roles = [
-          'waiter',
-          'chef',
-          'cashier',
-          'security',
-          'barista',
-          'busboy',
-          'host',
-          'kitchen_helper',
+        final roles = [
+          {
+            'key': 'waiter',
+            'label': 'Waiters',
+            'desc': 'Front-of-house, serving tables',
+            'icon': Icons.room_service_outlined,
+          },
+          {
+            'key': 'chef',
+            'label': 'Chefs',
+            'desc': 'Kitchen staff & food preparation',
+            'icon': Icons.outdoor_grill_outlined,
+          },
+          {
+            'key': 'cashier',
+            'label': 'Cashiers',
+            'desc': 'Billing & payment handling',
+            'icon': Icons.payments_outlined,
+          },
+          {
+            'key': 'security',
+            'label': 'Security',
+            'desc': 'Entrance & premises safety',
+            'icon': Icons.security_outlined,
+          },
+          {
+            'key': 'barista',
+            'label': 'Baristas',
+            'desc': 'Coffee & beverages',
+            'icon': Icons.local_cafe_outlined,
+          },
+          {
+            'key': 'busboy',
+            'label': 'Table Cleaners',
+            'desc': 'Table clearing & resetting',
+            'icon': Icons.cleaning_services_outlined,
+          },
+          {
+            'key': 'host',
+            'label': 'Reception Staff',
+            'desc': 'Greeting & seating customers',
+            'icon': Icons.record_voice_over_outlined,
+          },
+          {
+            'key': 'kitchen_helper',
+            'label': 'Kitchen Helpers',
+            'desc': 'Dishwashing & prep support',
+            'icon': Icons.soup_kitchen_outlined,
+          },
         ];
-
-        return _sectionCard(
-          title: 'How many staff?',
-          subtitle: 'Set the number of staff for each role.',
+        final totalStaff = _staffCounts.values.fold(0, (a, b) => a + b);
+        return _stepWrap(
+          title: 'Staffing',
+          subtitle: 'Set the number of staff you need for each role.',
           child: Column(
-            children: roles.map((role) {
-              final displayName = role
-                  .replaceAll('_', ' ')
-                  .split(' ')
-                  .map((w) => w[0].toUpperCase() + w.substring(1))
-                  .join(' ');
-              final count = wizard.staffCounts[role] ?? 0;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: text,
+            children: [
+              ...roles.map((r) {
+                final key = r['key'] as String;
+                final count = _staffCounts[key] ?? 0;
+                final active = count > 0;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: active ? const Color(0xFFEFF6FF) : Colors.white,
+                    border: Border.all(
+                      color: active ? sfBlue : const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: active ? sfBlue : const Color(0xFFF3F4F6),
+                        ),
+                        child: Icon(
+                          r['icon'] as IconData,
+                          color: active ? Colors.white : sfMuted,
+                          size: 18,
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              r['label'] as String,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: active ? sfBlue : sfText,
+                              ),
+                            ),
+                            Text(
+                              r['desc'] as String,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: sfMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          _stepBtn(
+                            Icons.remove,
+                            count > 0
+                                ? () => setState(
+                                    () => _staffCounts[key] = count - 1,
+                                  )
+                                : null,
+                          ),
+                          SizedBox(
+                            width: 32,
+                            child: Text(
+                              '$count',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: sfText,
+                              ),
+                            ),
+                          ),
+                          _stepBtn(
+                            Icons.add,
+                            () => setState(() => _staffCounts[key] = count + 1),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                color: const Color(0xFFEFF6FF),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Total Staff',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: sfBlue,
+                      ),
                     ),
-                    _stepperControl(
-                      value: count,
-                      onDecrement: count > 0
-                          ? () {
-                              final updated = Map<String, int>.from(
-                                wizard.staffCounts,
-                              );
-                              updated[role] = count - 1;
-                              wizard.setStaffCounts(updated);
-                            }
-                          : null,
-                      onIncrement: () {
-                        final updated = Map<String, int>.from(
-                          wizard.staffCounts,
-                        );
-                        updated[role] = count + 1;
-                        wizard.setStaffCounts(updated);
-                      },
+                    Text(
+                      '$totalStaff',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: sfBlue,
+                      ),
                     ),
                   ],
                 ),
-              );
-            }).toList(),
-          ),
-        );
-
-      case 8:
-        final services = wizard.installationServices.isEmpty
-            ? ''
-            : wizard.installationServices.join(', ');
-        final staffEntries = wizard.staffCounts.entries
-            .where((e) => e.value > 0)
-            .map(
-              (e) =>
-                  '${e.key.replaceAll('_', ' ').split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ')}: ${e.value}',
-            )
-            .join(', ');
-        final restaurantLabel = wizard.restaurantType.isEmpty
-            ? ''
-            : wizard.restaurantType
-                  .replaceAll('_', ' ')
-                  .split(' ')
-                  .map((w) => w[0].toUpperCase() + w.substring(1))
-                  .join(' ');
-
-        return _sectionCard(
-          title: 'Review your setup',
-          subtitle:
-              'Make sure everything looks right before generating packages.',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _reviewRow('Business Type', wizard.businessType),
-              _reviewRow('Business Name', wizard.businessName),
-              _reviewRow('Restaurant Type', restaurantLabel),
-              _reviewRow('Indoor Tables', '${wizard.indoorTables}'),
-              _reviewRow('Outdoor Tables', '${wizard.outdoorTables}'),
-              _reviewRow('Table Size', '${wizard.tableSize}-seater'),
-              _reviewRow('Area', '${wizard.areaSqm} sqm'),
-              _reviewRow('Budget', wizard.budgetRange),
-              _reviewRow('Services', services),
-              _reviewRow('Staff', staffEntries),
+              ),
             ],
           ),
         );
@@ -865,192 +1078,140 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  Widget _tableStepperRow({
-    required String label,
-    required int value,
-    required VoidCallback? onDecrement,
-    required VoidCallback onIncrement,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: text,
-            ),
-          ),
-        ),
-        _stepperControl(
-          value: value,
-          onDecrement: onDecrement,
-          onIncrement: onIncrement,
-        ),
-      ],
-    );
-  }
-
-  Widget _stepperControl({
-    required int value,
-    required VoidCallback? onDecrement,
-    required VoidCallback onIncrement,
-  }) {
-    return Row(
-      children: [
-        _stepperButton(icon: Icons.remove_rounded, onTap: onDecrement),
-        SizedBox(
-          width: 36,
-          child: Text(
-            '$value',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              color: text,
-            ),
-          ),
-        ),
-        _stepperButton(icon: Icons.add_rounded, onTap: onIncrement),
-      ],
-    );
-  }
-
-  Widget _stepperButton({
-    required IconData icon,
-    required VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: onTap != null ? sfBlue : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: onTap != null ? Colors.white : Colors.grey.shade400,
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionCard({
+  Widget _stepWrap({
     required String title,
     required String subtitle,
     required Widget child,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            color: sfText,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: text,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 13.5,
-              height: 1.45,
-              color: muted,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 20),
-          child,
-        ],
-      ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 13.5, color: sfMuted, height: 1.4),
+        ),
+        const SizedBox(height: 20),
+        child,
+      ],
     );
   }
 
-  Widget _reviewRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 115,
-            child: Text(
+  Widget _tableRow(
+    String label,
+    int value,
+    List<int> presets,
+    void Function(int) onChange, {
+    int min = 0,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w800, color: text),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              value.isEmpty ? '-' : value,
               style: const TextStyle(
-                color: muted,
-                height: 1.4,
-                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: sfText,
               ),
             ),
-          ),
-        ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              color: const Color(0xFFEFF6FF),
+              child: Text(
+                '$value',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: sfBlue,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Presets
+        Row(
+          children: presets.map((p) {
+            final active = value == p;
+            return GestureDetector(
+              onTap: () => onChange(p),
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: active ? sfBlue : Colors.white,
+                  border: Border.all(
+                    color: active ? sfBlue : const Color(0xFFE5E7EB),
+                  ),
+                ),
+                child: Text(
+                  '$p',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: active ? Colors.white : sfText,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 10),
+        // Stepper
+        Row(
+          children: [
+            _stepBtn(
+              Icons.remove,
+              value > min ? () => onChange(value - 1) : null,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '$value',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: sfText,
+                ),
+              ),
+            ),
+            _stepBtn(Icons.add, () => onChange(value + 1)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _stepBtn(IconData icon, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: onTap != null ? sfBlue : const Color(0xFFF3F4F6),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: onTap != null ? Colors.white : const Color(0xFFD1D5DB),
+        ),
       ),
     );
   }
-}
-
-class _BusinessOption {
-  final String title;
-  final String videoPath;
-  final IconData icon;
-
-  const _BusinessOption({
-    required this.title,
-    required this.videoPath,
-    required this.icon,
-  });
-}
-
-class _RestaurantOption {
-  final String value;
-  final String label;
-  final IconData icon;
-  final String description;
-
-  const _RestaurantOption({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.description,
-  });
-}
-
-class _ServiceOption {
-  final String value;
-  final String label;
-  final IconData icon;
-
-  const _ServiceOption({
-    required this.value,
-    required this.label,
-    required this.icon,
-  });
 }

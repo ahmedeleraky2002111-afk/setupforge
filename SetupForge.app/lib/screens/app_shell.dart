@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-
+import '../services/api_service.dart';
 import 'home_screen.dart';
 import 'my_business_screen.dart';
-import 'explore_screen.dart';
+import 'products_screen.dart';
 import 'services_screen.dart';
+import 'services_info_screen.dart';
 
 class AppShell extends StatefulWidget {
   final int initialIndex;
-
   const AppShell({super.key, this.initialIndex = 0});
 
   @override
@@ -16,22 +16,38 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   late int _selectedIndex;
+  String _setupState = "none"; // none, in_progress, completed
+  final api = ApiService();
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    _loadSetupState();
   }
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    MyBusinessScreen(),
-    ExploreScreen(),
-    ServicesScreen(),
+  Future<void> _loadSetupState() async {
+    final res = await api.getHomeData();
+    if (mounted) {
+      setState(() {
+        _setupState = res["setup_state"]?.toString() ?? "none";
+      });
+    }
+  }
+
+  List<Widget> get _screens => [
+    const HomeScreen(),
+    const MyBusinessScreen(),
+    const ProductsScreen(),
+    _setupState == "completed"
+        ? const ServicesScreen()
+        : ServicesInfoScreen(setupState: _setupState),
   ];
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
+    // Refresh setup state when switching tabs
+    if (index == 3) _loadSetupState();
   }
 
   @override
@@ -62,15 +78,15 @@ class _AppShellState extends State<AppShell> {
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.storefront_rounded),
-              label: 'My Business',
+              icon: Icon(Icons.store_outlined),
+              label: 'My Setup',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.explore_rounded),
-              label: 'Explore',
+              icon: Icon(Icons.storefront_outlined),
+              label: 'Products',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.build_circle_rounded),
+              icon: Icon(Icons.miscellaneous_services_outlined),
               label: 'Services',
             ),
           ],

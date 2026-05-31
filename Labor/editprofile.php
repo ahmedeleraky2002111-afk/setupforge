@@ -2,280 +2,226 @@
 session_start();
 require_once "../db.php";
 
-/* CHECK LOGIN */
 if (!isset($_SESSION["user_id"])) {
     header("Location: ../auth/login.php");
     exit();
 }
-
-/* CHECK USER TYPE */
-if (!isset($_SESSION["user_type"]) || 
-   ($_SESSION["user_type"] !== "labor" && $_SESSION["user_type"] !== "technician")) {
-
+if (!isset($_SESSION["user_type"]) || $_SESSION["user_type"] !== "labor") {
     header("Location: ../home.php");
     exit();
 }
-  die("Database connection failed.");
 
-
-$user_id = $_SESSION['user_id'];
+$user_id = (int)$_SESSION["user_id"];
 $success = "";
+$error   = "";
 
-/* GET USER DATA */
+// Fetch current data
+$profileRes = pg_query_params($conn, "
+    SELECT u.name, u.email, u.phone, u.country, u.city, u.street,
+           l.skills, l.hourly_rate, l.availability_status,
+           l.labor_role, l.profile_picture, l.provider_type
+    FROM users u
+    INNER JOIN labors l ON l.user_id = u.id
+    WHERE u.id = $1 LIMIT 1
+", [$user_id]);
 
-$result = pg_query($conn,"
-SELECT name,email,phone,profile_picture,skills,bio
-FROM users
-WHERE id = $user_id
-");
+$user = $profileRes ? pg_fetch_assoc($profileRes) : null;
+if (!$user) { die("Profile not found."); }
 
-$user = pg_fetch_assoc($result);
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $name         = trim($_POST["name"] ?? "");
+    $phone        = trim($_POST["phone"] ?? "");
+    $country      = trim($_POST["country"] ?? "");
+    $city         = trim($_POST["city"] ?? "");
+    $street       = trim($_POST["street"] ?? "");
+    $skills       = trim($_POST["skills"] ?? "");
+    $hourly_rate  = (float)($_POST["hourly_rate"] ?? 0);
+    $labor_role   = trim($_POST["labor_role"] ?? "");
+    $availability = trim($_POST["availability_status"] ?? "available");
 
+    $allowed = ["available", "busy", "unavailable"];
+    if (!in_array($availability, $allowed)) $availability = "available";
 
-/* UPDATE PROFILE */
+    if ($name === "") {
+        $error = "Name is required.";
+    } else {
+        pg_query($conn, "BEGIN");
 
-if($_SERVER["REQUEST_METHOD"] == "POST"){
+        $r1 = pg_query_params($conn, "
+            UPDATE users SET name=$1, phone=$2, country=$3, city=$4, street=$5
+            WHERE id=$6
+        ", [$name, $phone ?: null, $country ?: null, $city ?: null, $street ?: null, $user_id]);
 
-$name = pg_escape_string($_POST['name']);
-$email = pg_escape_string($_POST['email']);
-$phone = pg_escape_string($_POST['phone']);
-$skills = pg_escape_string($_POST['skills']);
-$bio = pg_escape_string($_POST['bio']);
+        $r2 = pg_query_params($conn, "
+            UPDATE labors SET skills=$1, hourly_rate=$2, labor_role=$3,
+                              availability_status=$4, name=$5
+            WHERE user_id=$6
+        ", [$skills ?: null, $hourly_rate, $labor_role ?: null, $availability, $name, $user_id]);
 
-$profile_picture = $user['profile_picture'];
-
-/* HANDLE IMAGE UPLOAD */
-
-if(!empty($_FILES['profile_picture']['name'])){
-
-$target_dir = "uploads/";
-$file_name = time() . "_" . $_FILES["profile_picture"]["name"];
-$target_file = $target_dir . $file_name;
-
-move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file);
-
-$profile_picture = $target_file;
+        if ($r1 && $r2) {
+            pg_query($conn, "COMMIT");
+            $_SESSION["name"] = $name;
+            $success = "Profile updated successfully.";
+            // Refresh data
+            $profileRes = pg_query_params($conn, "
+                SELECT u.name, u.email, u.phone, u.country, u.city, u.street,
+                       l.skills, l.hourly_rate, l.availability_status,
+                       l.labor_role, l.profile_picture, l.provider_type
+                FROM users u
+                INNER JOIN labors l ON l.user_id = u.id
+                WHERE u.id = $1 LIMIT 1
+            ", [$user_id]);
+            $user = pg_fetch_assoc($profileRes);
+        } else {
+            pg_query($conn, "ROLLBACK");
+            $error = "Update failed. Please try again.";
+        }
+    }
 }
 
-$update = pg_query($conn,"
-UPDATE users
-SET name='$name',
-email='$email',
-phone='$phone',
-skills='$skills',
-bio='$bio',
-profile_picture='$profile_picture'
-WHERE id=$user_id
-");
-
-if($update){
-    header("Location: profile.php?updated=1");
-    exit();
-}
-
-$result = pg_query($conn,"
-SELECT name,email,phone,profile_picture,skills,bio
-FROM users
-WHERE id=$user_id
-");
-
-$user = pg_fetch_assoc($result);
-
-}
-
+function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-
-<title>Edit Profile - SetupForge</title>
-
-<style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Arial;
-}
-
-body{
-display:flex;
-background:#f4f7fb;
-}
-
-.sidebar{
-width:240px;
-background:#1554b3;
-color:white;
-height:100vh;
-padding:30px 20px;
-position:fixed;
-}
-
-.sidebar h2{
-margin-bottom:50px;
-font-size:28px;
-}
-
-.nav-link{
-display:block;
-padding:14px 18px;
-margin-bottom:15px;
-color:white;
-text-decoration:none;
-border-radius:12px;
-font-size:18px;
-}
-
-.nav-link:hover{
-background:rgba(255,255,255,0.15);
-}
-
-.nav-link.active{
-background:#16a085;
-}
-
-.main{
-margin-left:260px;
-padding:40px;
-width:100%;
-}
-
-.card{
-background:white;
-padding:30px;
-border-radius:15px;
-box-shadow:0px 5px 15px rgba(0,0,0,0.05);
-max-width:700px;
-}
-
-.profile-pic{
-width:110px;
-height:110px;
-border-radius:50%;
-object-fit:cover;
-margin-bottom:15px;
-}
-
-.form-group{
-margin-bottom:18px;
-}
-
-.form-group label{
-display:block;
-margin-bottom:5px;
-font-weight:bold;
-}
-
-.form-group input,
-.form-group textarea{
-width:100%;
-padding:10px;
-border:1px solid #ddd;
-border-radius:8px;
-}
-
-textarea{
-height:80px;
-resize:none;
-}
-
-.save-btn{
-background:#16a085;
-color:white;
-border:none;
-padding:12px;
-width:100%;
-border-radius:8px;
-cursor:pointer;
-font-size:16px;
-}
-
-.save-btn:hover{
-background:#138d75;
-}
-
-.success{
-background:#d4edda;
-color:#155724;
-padding:10px;
-margin-bottom:15px;
-border-radius:8px;
-}
-
-</style>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit Profile — SetupForge</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="labor.css?v=104">
 </head>
-
 <body>
 
-<div class="sidebar">
+<nav class="navbar navbar-expand-lg navbar-dark sf-navbar">
+    <div class="container">
+        <a class="navbar-brand sf-brand-wrap" href="dashboard.php">
+            <div class="sf-logo"><img src="../assets/images/Logo.png" alt="SetupForge"></div>
+            <span class="fw-bold">SetupForge</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#laborNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-center" id="laborNav">
+            <ul class="navbar-nav gap-3">
+                <li class="nav-item"><a class="nav-link sf-navlink" href="dashboard.php">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link sf-navlink" href="laborjobs.php">Available Jobs</a></li>
+                <li class="nav-item"><a class="nav-link sf-navlink" href="myjobs.php">My Jobs</a></li>
+                <li class="nav-item"><a class="nav-link sf-navlink active" href="profile.php">Profile</a></li>
+            </ul>
+        </div>
+        <div class="sf-nav-actions">
+            <div class="dropdown">
+                <button class="btn sf-profile-btn" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-fill"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end sf-dropdown">
+                    <li class="px-3 py-2 fw-semibold"><?= h($user["name"]) ?></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="profile.php">Profile</a></li>
+                    <li><a class="dropdown-item" href="../auth/logout.php">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
 
-<h2>SetupForge</h2>
+<div style="max-width:680px;margin:40px auto;padding:0 16px 60px;">
 
-<a href="dashboard.php" class="nav-link">Dashboard</a>
-<a href="laborjobs.php" class="nav-link">Available Jobs</a>
-<a href="myjobs.php" class="nav-link">My Jobs</a>
-<a href="profile.php" class="nav-link active">Profile</a>
-<a href="../auth/logout.php" class="nav-link">Logout</a>
+    <div style="margin-bottom:24px;">
+        <h1 style="font-size:1.8rem;font-weight:900;color:#111827;margin-bottom:4px;">Edit Profile</h1>
+        <p style="color:#6b7280;margin:0;">Update your personal and professional information.</p>
+    </div>
 
+    <?php if ($success): ?>
+        <div style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-bottom:20px;font-weight:700;color:#166534;">
+            <i class="bi bi-check-circle me-2"></i><?= h($success) ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($error): ?>
+        <div style="background:#fee2e2;border:1px solid #fecaca;border-radius:12px;padding:14px 16px;margin-bottom:20px;font-weight:700;color:#991b1b;">
+            <i class="bi bi-exclamation-circle me-2"></i><?= h($error) ?>
+        </div>
+    <?php endif; ?>
+
+    <form method="POST" style="background:#fff;border-radius:20px;padding:28px;border:1px solid #e5e7eb;box-shadow:0 4px 16px rgba(0,0,0,.05);">
+
+        <div style="font-size:.72rem;font-weight:800;color:#004cac;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">Personal Information</div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-12">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">Full Name *</label>
+                <input name="name" type="text" class="form-control" value="<?= h($user["name"]) ?>" required
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;">
+            </div>
+            <div class="col-md-6">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">Phone</label>
+                <input name="phone" type="text" class="form-control" value="<?= h($user["phone"]) ?>"
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;">
+            </div>
+            <div class="col-md-6">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">Country</label>
+                <input name="country" type="text" class="form-control" value="<?= h($user["country"]) ?>"
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;">
+            </div>
+            <div class="col-md-6">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">City</label>
+                <input name="city" type="text" class="form-control" value="<?= h($user["city"]) ?>"
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;">
+            </div>
+            <div class="col-md-6">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">Street</label>
+                <input name="street" type="text" class="form-control" value="<?= h($user["street"]) ?>"
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;">
+            </div>
+        </div>
+
+        <div style="font-size:.72rem;font-weight:800;color:#004cac;text-transform:uppercase;letter-spacing:.08em;margin:20px 0 16px;">Work Profile</div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-12">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">Skills</label>
+                <textarea name="skills" class="form-control" rows="3"
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;resize:none;"
+                    placeholder="e.g. Grill cooking, knife skills, latte art..."><?= h($user["skills"]) ?></textarea>
+            </div>
+            <div class="col-md-6">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">Labor Role / Title</label>
+                <input name="labor_role" type="text" class="form-control" value="<?= h($user["labor_role"]) ?>"
+                    placeholder="e.g. Head Chef"
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;">
+            </div>
+            <div class="col-md-6">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">Hourly Rate (EGP)</label>
+                <input name="hourly_rate" type="number" class="form-control" value="<?= h($user["hourly_rate"]) ?>"
+                    min="0" step="0.01"
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;">
+            </div>
+            <div class="col-12">
+                <label style="font-size:.85rem;font-weight:800;color:#1f2937;display:block;margin-bottom:6px;">Availability</label>
+                <select name="availability_status" class="form-select"
+                    style="border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.12);font-size:.95rem;">
+                    <option value="available" <?= $user["availability_status"] === "available" ? "selected" : "" ?>>Available</option>
+                    <option value="busy"      <?= $user["availability_status"] === "busy"      ? "selected" : "" ?>>Busy</option>
+                    <option value="unavailable" <?= $user["availability_status"] === "unavailable" ? "selected" : "" ?>>Unavailable</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="submit"
+            style="width:100%;padding:14px;background:#004cac;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:.95rem;cursor:pointer;margin-top:8px;">
+            <i class="bi bi-check2 me-2"></i>Save Changes
+        </button>
+
+        <a href="profile.php"
+            style="display:block;text-align:center;margin-top:12px;color:#6b7280;font-size:.9rem;font-weight:600;text-decoration:none;">
+            Cancel
+        </a>
+
+    </form>
 </div>
 
-<div class="main">
-
-<div class="card">
-
-<h2>Edit Profile</h2>
-
-<?php if($success){ ?>
-<div class="success"><?php echo $success; ?></div>
-<?php } ?>
-
-<?php if($user['profile_picture']){ ?>
-<img src="<?php echo $user['profile_picture']; ?>" class="profile-pic">
-<?php } ?>
-
-<form method="POST" enctype="multipart/form-data">
-
-<div class="form-group">
-<label>Profile Picture</label>
-<input type="file" name="profile_picture">
-</div>
-
-<div class="form-group">
-<label>Name</label>
-<input type="text" name="name" value="<?php echo htmlspecialchars($user['name']); ?>">
-</div>
-
-<div class="form-group">
-<label>Email</label>
-<input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>">
-</div>
-
-<div class="form-group">
-<label>Phone</label>
-<input type="text" name="phone" value="<?php echo htmlspecialchars($user['phone']); ?>">
-</div>
-
-<div class="form-group">
-<label>Skills</label>
-<input type="text" name="skills" placeholder="Electrician, Plumbing..." value="<?php echo htmlspecialchars($user['skills']); ?>">
-</div>
-
-<div class="form-group">
-<label>Bio</label>
-<textarea name="bio"><?php echo htmlspecialchars($user['bio']); ?></textarea>
-</div>
-
-<button class="save-btn">Save Changes</button>
-
-</form>
-
-</div>
-
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

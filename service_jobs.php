@@ -774,7 +774,7 @@ function formatInstallationServices($raw) {
 
                 if ($hasQuote && !$quoteRejected) {
   $displayPrice = number_format((float)$co["price"], 0) . ' EGP';
-  $priceLabel   = "Quote Received";
+$priceLabel   = "Est. Installation Cost";
   $priceSub     = $co["message"] ? htmlspecialchars($co["message"]) : '';
   // Still calculate breakdown for View Details button
   $cid = (int)$co["company_id"];
@@ -1032,7 +1032,7 @@ function formatInstallationServices($raw) {
 
                 if ($quoteAccepted || ($hasQuote && !$quoteRejected)) {
                   $displayPrice = number_format((float)$co["price"], 0) . ' EGP';
-                  $priceLabel   = "Quote Received";
+                  $priceLabel   = "Est. Installation Cost";
                   $priceSub     = $co["message"] ? htmlspecialchars($co["message"]) : '';
                 } else {
                   $displayPrice = $co["starting_from"] ? number_format((int)$co["starting_from"], 0) . ' EGP' : 'TBD';

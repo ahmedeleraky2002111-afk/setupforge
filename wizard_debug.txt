@@ -114,3 +114,570 @@ Array
 )
 
 ---
+Array
+(
+    [step] => 7
+    [staffing_needed] => yes
+    [waiter_count] => 0
+    [chef_count] => 1
+    [staff_roles] => Array
+        (
+            [0] => chef
+            [1] => host
+        )
+
+    [cashier_count] => 0
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 2
+    [kitchen_helper_count] => 0
+)
+
+---
+place_order session: Array
+(
+    [business_name] => Abdelhady%
+    [services] => Array
+        (
+            [0] => equipment
+            [1] => staff
+            [2] => installation
+            [3] => finishing
+            [4] => advertising
+        )
+
+    [business_type] => Restaurant
+    [restaurant_type] => standard_dining
+    [indoor_tables] => 10
+    [outdoor_tables] => 5
+    [indoor_seats] => 40
+    [outdoor_seats] => 20
+    [area_sqm] => 170
+    [floor_count] => 1
+    [modules] => Array
+        (
+            [0] => kitchen
+            [1] => pos
+            [2] => furniture
+            [3] => electronics
+            [4] => ac
+        )
+
+    [budget] => 2750000
+    [installation_needed] => yes
+    [installation_services] => Array
+        (
+            [0] => electrical
+            [1] => ac
+            [2] => kitchen
+        )
+
+    [technicians] => Array
+        (
+            [0] => electrical
+            [1] => ac
+            [2] => kitchen
+        )
+
+    [staffing_needed] => yes
+    [staff_roles] => Array
+        (
+            [0] => chef
+            [1] => host
+        )
+
+    [waiter_count] => 0
+    [chef_count] => 1
+    [cashier_count] => 0
+    [security_count] => 0
+    [barista_count] => 0
+    [busboy_count] => 0
+    [host_count] => 2
+    [kitchen_helper_count] => 0
+    [labor] => Array
+        (
+            [barista] => 0
+            [busboy] => 0
+            [host] => 2
+            [cashier] => 0
+            [waiter] => 0
+            [chef] => 1
+            [cleaner] => 0
+            [security] => 0
+            [kitchen_helper] => 0
+        )
+
+    [pos_cart_tier] => Premium
+    [kitchen_cart_tier] => Premium
+    [furniture_cart_tier] => Premium
+    [pos_cart] => Array
+        (
+            [items] => Array
+                (
+                    [terminal] => Array
+                        (
+                            [product_name] => ELO Z30 Android 12 POS Touchscreen Terminal with Separate 10" Customer Display
+                            [brand] => Elo
+                            [tier] => Premium
+                            [module] => pos
+                            [category_id] => 
+                            [type] => terminal
+                            [product_id] => 58
+                            [name] => ELO Z30 Android 12 POS Touchscreen Terminal with Separate 10" Customer Display
+                            [unit] => 35000
+                            [qty] => 2
+                            [image_url] => Vendor/uploads/products/vendor_20/product_58/img_1779224429_0.webp
+                            [vendor_name] => Partner Tech Middle East (POS)
+                            [product_group_key] => terminal_elo_z30_android_12_pos_touchscreen_terminal_with_se
+                            [vendor_user_id] => 20
+                            [alternatives] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [id] => 3
+                                            [name] => HP Engage One Pro Terminal
+                                            [brand] => HP
+                                            [tier] => premium
+                                            [vendor_name] => Gargour Technologies (POS)
+                                            [category_name] => Electronics
+                                            [price] => 24999
+                                            [image_url] => assets/images/HP Engage One Pro Terminal.png
+                                            [vendor_user_id] => 19
+                                            [product_group_key] => 
+                                            [created_at] => 2026-02-25 21:12:50.381654+00
+                                            [avg_rating] => 3.8
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [id] => 57
+                                            [name] => Elo-E700813 POS Terminal
+                                            [brand] => Elo
+                                            [tier] => Premium
+                                            [vendor_name] => Partner Tech Middle East (POS)
+                                            [category_name] => Electronics
+                                            [price] => 28000
+                                            [image_url] => Vendor/uploads/products/vendor_20/product_57/img_1779224327_0.webp
+                                            [vendor_user_id] => 20
+                                            [product_group_key] => terminal_eloe700813_pos_terminal
+                                            [created_at] => 2026-05-19 20:58:47.381317+00
+                                            [avg_rating] => 3.6
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [id] => 61
+                                            [name] => 15.6" Dual Screen POS System, Cash Register Machine with Touch Screen & Win10pro
+                                            [brand] => Win10pro
+                                            [tier] => Premium
+                                            [vendor_name] => Partner Tech Middle East (POS)
+                                            [category_name] => Electronics
+                                            [price] => 30000
+                                            [image_url] => Vendor/uploads/products/vendor_20/product_61/img_1779225791_0.webp
+                                            [vendor_user_id] => 20
+                                            [product_group_key] => terminal_156_dual_screen_pos_system_cash_register_machine_wi
+                                            [created_at] => 2026-05-19 21:23:11.969084+00
+                                            [avg_rating] => 3.8
+                                        )
+
+                                )
+
+                        )
+
+                    [printer] => Array
+                        (
+                            [product_name] => XP-T80Q 80mm Thermal Receipt Printer with Auto Cutter (XP-T80Q 80mm Lan And USB)
+                            [brand] => Generic
+                            [tier] => Premium
+                            [module] => pos
+                            [category_id] => 
+                            [type] => printer
+                            [product_id] => 56
+                            [name] => XP-T80Q 80mm Thermal Receipt Printer with Auto Cutter (XP-T80Q 80mm Lan And USB)
+                            [unit] => 7000
+                            [qty] => 2
+                            [image_url] => Vendor/uploads/products/vendor_20/product_56/img_1779223064_0.jpg
+                            [vendor_name] => Partner Tech Middle East (POS)
+                            [product_group_key] => printer_xpt80q_80mm_thermal_receipt_printer_with_auto_cutter
+                            [vendor_user_id] => 20
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                    [scanner] => Array
+                        (
+                            [type] => scanner
+                            [product_id] => 6
+                            [name] => Honeywell 2D Barcode Scanner
+                            [unit] => 4999
+                            [qty] => 1
+                            [image_url] => assets/images/Honeywell 2D Barcode Scanner.png
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                    [tablet] => Array
+                        (
+                            [type] => tablet
+                            [product_id] => 62
+                            [name] => ELO Z30 Android 12 POS Touchscreen Terminal - I-Series 4
+                            [unit] => 22500
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_20/product_62/img_1779225963_0.webp
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                )
+
+        )
+
+    [kitchen_cart] => Array
+        (
+            [items] => Array
+                (
+                    [oven] => Array
+                        (
+                            [type] => oven
+                            [product_id] => 8
+                            [name] => CHEFTOP-X™ Digital.ID™
+                            [unit] => 185000
+                            [qty] => 1
+                            [image_url] => assets/images/CHEFTOP-X™ Digital.ID™.png
+                            [brand] => CHEFTOP
+                            [vendor_name] => Ratomag Group
+                            [product_name] => CHEFTOP-X™ Digital.ID™
+                            [tier] => Premium
+                            [module] => kitchen
+                            [category_id] => 
+                            [product_group_key] => 
+                            [vendor_user_id] => 22
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                    [fryer] => Array
+                        (
+                            [type] => fryer
+                            [product_id] => 43
+                            [name] => Sistema Commercial Electric Fryer for Restaurant Equipment
+                            [unit] => 14750
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_30/product_43/img_1778356591_0.jpg
+                            [brand] => sistema
+                            [vendor_name] => Awad Serag
+                            [product_name] => Sistema Commercial Electric Fryer for Restaurant Equipment
+                            [tier] => Premium
+                            [module] => kitchen
+                            [category_id] => 
+                            [product_group_key] => fryer_sistema_commercial_electric_fryer_for_restaurant_equip
+                            [vendor_user_id] => 30
+                            [alternatives] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [id] => 44
+                                            [name] => Sistema Deep Fryer Professional Deep Fryer Stainless Steel 18L 4000W
+                                            [brand] => Sistema
+                                            [tier] => Premium
+                                            [vendor_name] => Awad Serag
+                                            [category_name] => Large Home Appliances
+                                            [price] => 18999
+                                            [image_url] => Vendor/uploads/products/vendor_30/product_44/img_1778356766_0.jpg
+                                            [vendor_user_id] => 30
+                                            [product_group_key] => fryer_sistema_deep_fryer_professional_deep_fryer_stainless_s
+                                            [created_at] => 2026-05-09 19:59:26.318578+00
+                                            [stock_quantity] => 0
+                                            [specs] => Array
+                                                (
+                                                )
+
+                                            [avg_rating] => 4
+                                        )
+
+                                )
+
+                        )
+
+                    [microwave] => Array
+                        (
+                            [type] => microwave
+                            [product_id] => 64
+                            [name] => Toshiba Microwave with Grill , 25 Liter 1000 Watt , Black - MW3-EG25PEI(BK)
+                            [unit] => 8699
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_17/product_64/img_1779228170_0.jpg
+                            [brand] => Toshiba
+                            [vendor_name] => B.TECH
+                            [product_name] => Toshiba Microwave with Grill , 25 Liter 1000 Watt , Black - MW3-EG25PEI(BK)
+                            [tier] => Premium
+                            [module] => kitchen
+                            [category_id] => 
+                            [product_group_key] => microwave_toshiba_microwave_with_grill_25_liter_1000_watt_bl
+                            [vendor_user_id] => 17
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                    [fridge] => Array
+                        (
+                            [type] => fridge
+                            [product_id] => 41
+                            [name] => Under Counter Stainless Steel Refrigerator for Restaurants and Hotels
+                            [unit] => 49296
+                            [qty] => 1
+                            [image_url] => Vendor/uploads/products/vendor_30/product_41/img_1778356311_0.jpg
+                            [brand] => Generic
+                            [vendor_name] => Awad Serag
+                            [product_name] => Under Counter Stainless Steel Refrigerator for Restaurants and Hotels
+                            [tier] => Premium
+                            [module] => kitchen
+                            [category_id] => 
+                            [product_group_key] => fridge_under_counter_stainless_steel_refrigerator_for_restau
+                            [vendor_user_id] => 30
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                )
+
+        )
+
+    [furniture_cart] => Array
+        (
+            [items] => Array
+                (
+                    [dining_set_4] => Array
+                        (
+                            [type] => dining_set_4
+                            [product_id] => 33
+                            [name] => Tanzanite Dining Set (4-Seater)
+                            [unit] => 36000
+                            [qty] => 5
+                            [image_url] => assets/images/Tanzanite Dining Set (4-Seater).jpg
+                            [brand] => Local
+                            [vendor_name] => IKEA Egypt
+                            [product_name] => Tanzanite Dining Set (4-Seater)
+                            [tier] => premium
+                            [module] => furniture
+                            [category_id] => 13
+                            [product_group_key] => dining_set_tanzanite_4_local
+                            [vendor_user_id] => 23
+                            [stock_quantity] => 4
+                            [specs] => Array
+                                (
+                                    [style] => premium
+                                    [is_set] => 1
+                                    [seat_count] => 4
+                                    [layout_type] => standard
+                                    [source_label] => manual
+                                    [restaurant_style] => standard_dining
+                                )
+
+                            [alternatives] => Array
+                                (
+                                )
+
+                        )
+
+                    [dining_set_6] => Array
+                        (
+                            [type] => dining_set_6
+                            [product_id] => 31
+                            [name] => Isabella Dining Set (6-Seater)
+                            [unit] => 42021
+                            [qty] => 2
+                            [image_url] => assets/images/Isabella Dining Set (6-Seater).jpg
+                            [brand] => Local
+                            [vendor_name] => IKEA Egypt
+                            [product_name] => Isabella Dining Set (6-Seater)
+                            [tier] => premium
+                            [module] => furniture
+                            [category_id] => 13
+                            [product_group_key] => dining_set_isabella_6_local
+                            [vendor_user_id] => 23
+                            [stock_quantity] => 4
+                            [specs] => Array
+                                (
+                                    [style] => classic
+                                    [is_set] => 1
+                                    [seat_count] => 6
+                                    [layout_type] => standard
+                                    [source_label] => manual
+                                    [restaurant_style] => standard_dining
+                                )
+
+                            [alternatives] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [id] => 36
+                                            [name] => Beech Wood Dining Set (6-Seater)
+                                            [brand] => Chic Homz
+                                            [tier] => premium
+                                            [vendor_name] => Homzmart Egypt
+                                            [category_name] => Furniture
+                                            [category_id] => 13
+                                            [price] => 49905
+                                            [image_url] => assets/images/Beech Wood Dining Set (6-Seater).png
+                                            [vendor_user_id] => 24
+                                            [product_group_key] => dining_set_beech_6_chic_homz
+                                            [created_at] => 2026-04-21 10:49:45.054503+00
+                                            [stock_quantity] => 3
+                                            [specs] => Array
+                                                (
+                                                    [style] => luxury
+                                                    [is_set] => 1
+                                                    [material] => beech_wood
+                                                    [seat_count] => 6
+                                                    [layout_type] => premium
+                                                    [source_label] => manual
+                                                    [restaurant_style] => premium_dining
+                                                )
+
+                                            [avg_rating] => 3.6
+                                        )
+
+                                )
+
+                        )
+
+                )
+
+        )
+
+    [ac_cart] => Array
+        (
+            [items] => Array
+                (
+                    [ac] => Array
+                        (
+                            [type] => ac
+                            [product_id] => 72
+                            [name] => Tefal Stand Fan , 16 Inch
+                            [unit] => 3150
+                            [qty] => 3
+                            [image_url] => Vendor/uploads/products/vendor_2/product_72/img_1780151757_0.jpeg
+                            [brand] => Tefal
+                            [vendor_name] => Vendor One
+                            [product_name] => Tefal Stand Fan , 16 Inch
+                            [tier] => Balanced
+                            [module] => ac
+                            [category_id] => 
+                            [product_group_key] => ceilingfan_tefal_stand_fan_16_inch
+                            [vendor_user_id] => 2
+                            [stock_quantity] => 300
+                            [specs] => Array
+                                (
+                                    [warranty] => 1 year
+                                    [with_light] => No
+                                    [blade_count] => 4
+                                    [diameter_cm] => 16
+                                    [power_watts] => 75
+                                )
+
+                            [hp] => 4
+                            [alternatives] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [id] => 71
+                                            [name] => Tornado Stand Fan 18 Inch
+                                            [brand] => Tornado
+                                            [tier] => Balanced
+                                            [vendor_name] => Vendor One
+                                            [category_name] => Large Home Appliances
+                                            [price] => 3765
+                                            [image_url] => Vendor/uploads/products/vendor_2/product_71/img_1780151346_0.jpeg
+                                            [vendor_user_id] => 2
+                                            [product_group_key] => ceilingfan_tornado_stand_fan_18_inch
+                                            [stock_quantity] => 300
+                                            [specs] => Array
+                                                (
+                                                    [warranty] => 1 year
+                                                    [with_light] => No
+                                                    [blade_count] => 4
+                                                    [diameter_cm] => 18
+                                                    [power_watts] => 220
+                                                )
+
+                                            [created_at] => 2026-05-30 14:29:06.406055+00
+                                            [avg_rating] => 0
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [id] => 73
+                                            [name] => Air Curtain 90cm - Single Motor
+                                            [brand] => Generic
+                                            [tier] => Balanced
+                                            [vendor_name] => Vendor One
+                                            [category_name] => Large Home Appliances
+                                            [price] => 4999
+                                            [image_url] => Vendor/uploads/products/vendor_2/product_73/img_1780152060_0.jpg
+                                            [vendor_user_id] => 2
+                                            [product_group_key] => aircurtain_air_curtain_90cm_single_motor
+                                            [stock_quantity] => 293
+                                            [specs] => Array
+                                                (
+                                                    [warranty] => 1 year
+                                                    [width_cm] => 84
+                                                    [power_watts] => 1200
+                                                )
+
+                                            [created_at] => 2026-05-30 14:41:00.828194+00
+                                            [avg_rating] => 0
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [id] => 69
+                                            [name] => Fresh Air Curtain Pro 120 cm
+                                            [brand] => Fresh
+                                            [tier] => Premium
+                                            [vendor_name] => Vendor One
+                                            [category_name] => Large Home Appliances
+                                            [price] => 9712
+                                            [image_url] => Vendor/uploads/products/vendor_2/product_69/img_1780150611_0.png
+                                            [vendor_user_id] => 2
+                                            [product_group_key] => aircurtain_fresh_air_curtain_pro_120_cm
+                                            [stock_quantity] => 300
+                                            [specs] => Array
+                                                (
+                                                    [warranty] => 2 years
+                                                    [width_cm] => 120
+                                                    [airflow_ms] => 2
+                                                    [power_watts] => 1650
+                                                )
+
+                                            [created_at] => 2026-05-30 14:16:51.454124+00
+                                            [avg_rating] => 0
+                                        )
+
+                                )
+
+                        )
+
+                )
+
+            [central_ac] => 
+        )
+
+    [ac_units] => 3
+    [ac_hp] => 4
+)
+
+---

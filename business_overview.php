@@ -316,22 +316,7 @@ foreach ($products as $p) {
       <!-- Left: name + type + location -->
       <div>
         <div class="ovw-hero-name"><?= h($business['business_name'] ?: $business['name']) ?></div>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <?php
-            $btype = strtolower($business['business_type'] ?? '');
-            $typeColors = ['restaurant'=>'#f97316','cafe'=>'#f59e0b','retail'=>'#22c55e','office'=>'#3b82f6'];
-            $tc = $typeColors[$btype] ?? '#6366f1';
-          ?>
-          <span style="background:#fff;color:<?= $tc ?>;border:1px solid <?= $tc ?>44;
-                border-radius:5px;padding:3px 13px;font-size:.8rem;font-weight:700">
-            <?= h(ucfirst($business['business_type'] ?: 'Business')) ?>
-          </span>
-          <?php $loc = $business['location_text'] ?: ($business['city'] ?: ''); if ($loc): ?>
-            <span style="color:rgba(255,255,255,0.8);font-size:.9rem">
-              <i class="bi bi-geo-alt-fill me-1" style="color:rgba(255,255,255,0.8)"></i><?= h($loc) ?>
-            </span>
-          <?php endif; ?>
-        </div>
+        
       </div>
 
       <!-- Right: order chip + paid date + buttons -->
