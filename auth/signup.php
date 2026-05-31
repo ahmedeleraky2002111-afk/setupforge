@@ -287,7 +287,7 @@ pg_query_params($conn,
     }
 
     .sf-auth-btn{
-      border-radius: 18px;
+      border-radius: 0px;
       padding: 14px 16px;
       font-weight: 800;
       font-size:1rem;
@@ -299,11 +299,12 @@ pg_query_params($conn,
     }
 
     .sf-auth-btn:hover{
-      color:#009994 !important;
-      background: linear-gradient(90deg, var(--sf-accent), #00a9a2);
-      transform: translateY(-1px);
-      box-shadow: 0 18px 34px rgba(0,153,148,.18);
-    }
+  color:#004cac !important;
+  background: #fff;
+  border: 2px solid #004cac;
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(0,76,172,.18);
+}
 
     .sf-auth-note{
       color: var(--sf-muted);
@@ -429,14 +430,7 @@ pg_query_params($conn,
         <div class="alert alert-danger mb-3"><?= h($error) ?></div>
       <?php endif; ?>
 
-      <div class="sf-auth-mini">
-        <div class="sf-auth-mini-row">
-          <span class="sf-pill sf-pill-primary"><?= h($business_type) ?></span>
-          <span class="sf-pill sf-pill-soft"><?= h($place_size) ?></span>
-          <span class="sf-pill sf-pill-accent">Budget: <?= h(number_format($budget_egp)) ?> EGP</span>
-        </div>
-        <div class="sf-auth-note">We’ll use these to generate your package instantly after signup.</div>
-      </div>
+      
 
       <form method="post" novalidate>
         <input type="hidden" name="next" value="<?= h($next) ?>">
@@ -481,7 +475,9 @@ pg_query_params($conn,
           </div>
         </div>
 
-        <button class="btn sf-auth-btn w-100 mt-4">Create account & view packages →</button>
+<div class="text-center mt-4">
+<button class="btn sf-auth-btn">Create account→</button>
+</div>
 
         <div class="text-center mt-3 sf-auth-note">
           Already have an account?
