@@ -85,9 +85,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="sf-lsup-left">
       <div class="sf-lsup-left-inner">
 
-        <a href="../home.php" class="sf-lsup-brand">
-          <img src="../assets/images/Logo.png" alt="SetupForge" class="sf-lsup-logo">
-          <span>SetupForge</span>
+        <a href="../home.php" class="sf-lsup-brand d-flex align-items-center gap-2">
+          <div class="sf-logo">
+            <img src="../assets/images/Logo.png" alt="SetupForge">
+          </div>
+          <span class="fw-bold text-white">SetupForge</span>
         </a>
 
         <div class="sf-lsup-left-copy">
