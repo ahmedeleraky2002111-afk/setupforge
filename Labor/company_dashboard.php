@@ -37,7 +37,12 @@ $isFinishingCompany = in_array('finishing', $company_services);
 /* HANDLE QUOTE SUBMISSION */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["submit_quote"])) {
     $req_id = (int)$_POST["request_id"];
-    $price = 0;
+    $priceRes = pg_query_params($conn,
+    "SELECT starting_from FROM companies WHERE company_id = $1 LIMIT 1",
+    [$company_id]);
+    $price = ($priceRes && pg_num_rows($priceRes) > 0)
+    ? (float)pg_fetch_assoc($priceRes)["starting_from"]
+    : 0;
     $message = trim($_POST["message"] ?? "");
     $website_link = trim($_POST["website_link"] ?? "");
 
@@ -83,9 +88,13 @@ $serviceFilter = !empty($serviceConditions) ? "AND (" . implode(" OR ", $service
 
 $newRequestsRes = pg_query_params($conn,
     "SELECT r.request_id, r.services, r.status, r.created_at,
-            u.name AS business_name, u.city, u.phone
+            COALESCE(b.business_name, u.name) AS business_name,
+            u.city, u.phone,
+            b.business_type, b.area_sqm, b.seat_count, b.indoor_tables, b.place_size
+
      FROM installation_requests r
      JOIN users u ON u.id = r.user_id
+     LEFT JOIN businesses b ON b.user_id = r.user_id
      WHERE r.status = 'pending'
      {$serviceFilter}
      AND r.request_id NOT IN (
@@ -149,22 +158,22 @@ function timeAgo($datetime) {
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark sf-navbar">
+<nav class="navbar navbar-expand-lg navbar-dark" style="background:#004cac;">
     <div class="container">
-        <a class="navbar-brand sf-brand-wrap" href="company_dashboard.php">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="company_dashboard.php">
             <div class="sf-logo"><img src="../assets/images/Logo.png" alt="SetupForge"></div>
             <span class="fw-bold">SetupForge</span>
         </a>
-        <div class="sf-nav-actions">
+        <div class="ms-auto">
             <div class="dropdown">
-                <button class="btn sf-profile-btn" data-bs-toggle="dropdown">
+                <button class="btn text-white" data-bs-toggle="dropdown">
                     <?php if (!empty($company['image'])): ?>
-                        <img src="../<?= htmlspecialchars($company['image']) ?>" style="width:46px;height:46px;border-radius:50%;object-fit:cover;">
+                        <img src="../<?= htmlspecialchars($company['image']) ?>" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.3);">
                     <?php else: ?>
-                        <i class="bi bi-person-fill"></i>
+                        <i class="bi bi-person-circle fs-4"></i>
                     <?php endif; ?>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end sf-dropdown">
+                <ul class="dropdown-menu dropdown-menu-end">
                     <li class="px-3 py-2 fw-semibold"><?= htmlspecialchars($userName) ?></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="edit_company_profile.php"><i class="bi bi-pencil me-2"></i>Edit Profile</a></li>
@@ -359,62 +368,115 @@ function timeAgo($datetime) {
 
     <!-- NEW REQUESTS -->
     <?php if (!$isAdvertisingOnly && !($isFinishingCompany && empty(array_diff($company_services, ['finishing'])))): ?>
-    <div class="panel" style="margin-bottom:28px">
-        <div class="panel-header">
-            <h2>Open Requests</h2>
-            <span class="sub">Businesses looking for your services</span>
-        </div>
-
-        <?php if ($newRequestsRes && pg_num_rows($newRequestsRes) > 0): ?>
-            <div class="table-wrap">
-                <table>
-                    <tr>
-                        <th>Business</th>
-                        <th>City</th>
-                        <th>Phone</th>
-                        <th>Service</th>
-                        <th>Date</th>
-                        <th>Action</th>
-                    </tr>
-                    <?php while ($req = pg_fetch_assoc($newRequestsRes)): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($req["business_name"]) ?></td>
-                        <td><?= htmlspecialchars($req["city"]) ?></td>
-                        <td><?= htmlspecialchars($req["phone"]) ?></td>
-                        <td><?= htmlspecialchars(formatServices($req["services"])) ?></td>
-                        <td><?= timeAgo($req["created_at"]) ?></td>
-                        <td>
-                            <button class="small-btn" onclick="toggleForm(<?= $req['request_id'] ?>)">
-                                Submit Quote
-                            </button>
-                            <div class="quote-form" id="form-<?= $req['request_id'] ?>">
-                                <form method="POST">
-                                    <input type="hidden" name="request_id" value="<?= (int)$req['request_id'] ?>">
-                                    
-                                    <div class="mb-2">
-                                        <label class="form-label fw-semibold">Message <span class="text-muted fw-normal">(optional)</span></label>
-                                        <textarea name="message" class="form-control" rows="2" placeholder="Brief note about your service..."></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold">Your Website <span class="text-muted fw-normal">(optional)</span></label>
-                                        <input type="url" name="website_link" class="form-control" placeholder="https://yourcompany.com" value="<?= htmlspecialchars($company['website'] ?? '') ?>">
-                                    </div>
-                                    <button type="submit" name="submit_quote" class="small-btn">Send Quote</button>
-                                    <button type="button" class="small-btn" style="background:#6c757d;margin-left:6px" onclick="toggleForm(<?= $req['request_id'] ?>)">Cancel</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
-                </table>
-            </div>
-        <?php else: ?>
-            <div class="empty-box">No open requests matching your services right now.</div>
-        <?php endif; ?>
+<div class="panel" style="margin-bottom:28px">
+    <div class="panel-header">
+        <h2>Open Requests</h2>
+        <span class="sub">Businesses looking for your services</span>
     </div>
+
+    <?php if ($newRequestsRes && pg_num_rows($newRequestsRes) > 0): ?>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:4px 0;">
+        <?php while ($req = pg_fetch_assoc($newRequestsRes)): ?>
+        <div style="background:#fff;border:1.5px solid #e5eaf2;border-radius:0;padding:20px;display:flex;flex-direction:column;gap:12px;">
+
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="width:42px;height:42px;border-radius:0;background:rgba(0,76,172,.08);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:#004cac;flex-shrink:0;">
+                    <?= strtoupper(substr($req["business_name"], 0, 2)) ?>
+                </div>
+                <span style="font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:999px;background:#fef9c3;color:#854d0e;border:1px solid rgba(234,179,8,.2);">
+                    Pending
+                </span>
+            </div>
+
+            <div>
+                <div style="font-size:1rem;font-weight:800;color:#111827;"><?= htmlspecialchars($req["business_name"]) ?></div>
+                <div style="font-size:.78rem;color:#6b7280;font-weight:600;margin-top:2px;">
+                    <i class="bi bi-geo-alt me-1" style="color:#004cac"></i><?= htmlspecialchars($req["city"] ?? "—") ?>
+                    <?php if (!empty($req["phone"])): ?>
+                        &nbsp;·&nbsp;<i class="bi bi-telephone me-1" style="color:#004cac"></i><?= htmlspecialchars($req["phone"]) ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:.78rem;font-weight:700;padding:4px 12px;border-radius:999px;background:rgba(0,76,172,.08);color:#004cac;border:1px solid rgba(0,76,172,.15);">
+                    <i class="bi bi-tools me-1"></i><?= htmlspecialchars(formatServices($req["services"])) ?>
+                </span>
+            </div>
+
+            <div style="font-size:.75rem;color:#9ca3af;font-weight:600;">
+                <i class="bi bi-clock me-1"></i><?= timeAgo($req["created_at"]) ?>
+            </div>
+            <?php
+$svcKey = trim(trim($req["services"], '{}'));
+$chips = [];
+
+// Business type — always show
+if (!empty($req["business_type"])) {
+    $chips[] = ['icon' => 'bi-shop', 'val' => ucfirst($req["business_type"])];
+}
+
+// Service-specific chips
+if (in_array($svcKey, ['ac', 'kitchen', 'network', 'electrical'])) {
+    if (!empty($req["area_sqm"]))
+        $chips[] = ['icon' => 'bi-rulers', 'val' => $req["area_sqm"] . ' sqm'];
+}
+if (in_array($svcKey, ['ac', 'kitchen', 'network', 'electrical'])) {
+    if (!empty($req["place_size"]))
+        $chips[] = ['icon' => 'bi-building', 'val' => ucfirst($req["place_size"])];
+}
+if ($svcKey === 'pos') {
+    if (!empty($req["indoor_tables"]))
+        $chips[] = ['icon' => 'bi-people', 'val' => $req["indoor_tables"] . ' seats'];
+    if (!empty($req["seat_count"]))
+        $chips[] = ['icon' => 'bi-person-check', 'val' => $req["seat_count"] . ' total seats'];
+}
+?>
+<?php if (!empty($chips)): ?>
+<div style="display:flex;flex-wrap:wrap;gap:6px;">
+    <?php foreach ($chips as $chip): ?>
+    <span style="display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:999px;background:#f1f5f9;color:#374151;border:1px solid rgba(0,0,0,.08);">
+        <i class="bi <?= $chip['icon'] ?>"></i> <?= htmlspecialchars($chip['val']) ?>
+    </span>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+            <button onclick="toggleForm(<?= $req['request_id'] ?>)"
+                style="width:100%;padding:9px;background:#004cac;color:#fff;border:none;border-radius:0;font-weight:700;font-size:.85rem;cursor:pointer;">
+                <i class="bi bi-send me-1"></i> Submit Quote
+            </button>
+
+            <div class="quote-form" id="form-<?= $req['request_id'] ?>">
+                <form method="POST">
+                    <input type="hidden" name="request_id" value="<?= (int)$req['request_id'] ?>">
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold" style="font-size:.82rem;">Message <span class="text-muted fw-normal">(optional)</span></label>
+                        <textarea name="message" class="form-control form-control-sm" rows="2" placeholder="Brief note..."></textarea>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button type="submit" name="submit_quote"
+                            style="flex:1;padding:8px;background:#004cac;color:#fff;border:none;border-radius:0;font-weight:700;font-size:.82rem;cursor:pointer;">
+                            Send Quote
+                        </button>
+                        <button type="button" onclick="toggleForm(<?= $req['request_id'] ?>)"
+                            style="padding:8px 14px;background:#f1f5f9;color:#374151;border:none;border-radius:0;font-weight:700;font-size:.82rem;cursor:pointer;">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+        <?php endwhile; ?>
+        </div>
+    <?php else: ?>
+        <div class="empty-box">No open requests matching your services right now.</div>
+    <?php endif; ?>
+</div>
     <?php endif; ?>
 
-    <<?php if (!$isAdvertisingOnly && !($isFinishingCompany && empty(array_diff($company_services, ['finishing'])))): ?>
+    <?php if (!$isAdvertisingOnly && !($isFinishingCompany && empty(array_diff($company_services, ['finishing'])))): ?>
     <!-- MY QUOTES -->
     <div class="panel">
         <div class="panel-header">
