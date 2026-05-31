@@ -53,6 +53,18 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF004CAC),
+        elevation: 0,
+        titleSpacing: 16,
+        title: Image.asset('assets/logo.png', height: 32, fit: BoxFit.contain),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline_rounded, color: Colors.white),
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
+          ),
+        ],
+      ),
       body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

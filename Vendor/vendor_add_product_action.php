@@ -165,19 +165,28 @@ if ($productId <= 0) {
 if (!empty($_FILES["images"]) && is_array($_FILES["images"]["name"])) {
   $count   = min(count($_FILES["images"]["name"]), 8);
   $baseDir = dirname(__DIR__) . "/Vendor/uploads/products/vendor_" . $vendorId . "/product_" . $productId . "/";
-  if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
-
   for ($i = 0; $i < $count; $i++) {
     if (($_FILES["images"]["error"][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
     $tmp  = $_FILES["images"]["tmp_name"][$i];
-    $name = $_FILES["images"]["name"][$i] ?? "image";
     $size = (int)($_FILES["images"]["size"][$i] ?? 0);
     if ($size <= 0) continue;
-    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-    if (!in_array($ext, ["jpg","jpeg","png","webp"], true)) continue;
-    $safeFile = "img_" . time() . "_" . $i . "." . $ext;
-    if (!move_uploaded_file($tmp, $baseDir . $safeFile)) continue;
-    $publicUrl = "Vendor/uploads/products/vendor_" . $vendorId . "/product_" . $productId . "/" . $safeFile;
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+      CURLOPT_URL            => "https://api.cloudinary.com/v1_1/del8tyjmo/image/upload",
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_POST           => true,
+      CURLOPT_POSTFIELDS     => [
+        "file"      => new CURLFile($tmp),
+        "upload_preset" => "sf_products",
+      ],
+    ]);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+    if (empty($data["secure_url"])) continue;
+    $publicUrl = $data["secure_url"];
     pg_query_params($conn, "INSERT INTO product_images (product_id, image_url) VALUES ($1,$2)", [$productId, $publicUrl]);
   }
 }
