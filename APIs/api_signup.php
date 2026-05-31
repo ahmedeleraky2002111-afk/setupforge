@@ -26,7 +26,7 @@ try {
   $city    = trim($_POST["city"] ?? "");
   $street  = trim($_POST["street"] ?? "");
   $user_type = trim($_POST["user_type"] ?? "business");
-if (!in_array($user_type, ["business", "customer"])) {
+if (!in_array($user_type, ["business", "customer", "labor"])) {
     $user_type = "business";
 }
   if (!isset($conn)) {

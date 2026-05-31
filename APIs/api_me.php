@@ -26,7 +26,7 @@ try {
     exit;
   }
 
-  $result = pg_query_params($conn, "SELECT id, name, email FROM users WHERE api_token = $1 LIMIT 1", [$token]);
+$result = pg_query_params($conn, "SELECT id, name, email, user_type FROM users WHERE api_token = $1 LIMIT 1", [$token]);
   $user = pg_fetch_assoc($result);
 
   if (!$user) {
@@ -34,7 +34,7 @@ try {
     exit;
   }
 
-  echo json_encode(["ok" => true, "user" => $user]);
+echo json_encode(["ok" => true, "user" => $user, "user_type" => $user["user_type"]]);
 } catch (Throwable $e) {
   file_put_contents(__DIR__ . "/api_error.log", date("c") . " api_me: " . $e->getMessage() . "\n", FILE_APPEND);
   http_response_code(500);

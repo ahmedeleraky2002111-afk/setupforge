@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   static const Color primaryBlue = Color(0xFF004CAC);
-  static const Color primaryTeal = Color(0xFF009994);
   static const Color bg = Color(0xFFF5F7FB);
   static const Color card = Colors.white;
   static const Color textDark = Color(0xFF1F2937);
@@ -17,7 +16,6 @@ class AppTheme {
     colorScheme: ColorScheme.fromSeed(
       seedColor: primaryBlue,
       primary: primaryBlue,
-      secondary: primaryTeal,
       surface: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
@@ -31,7 +29,7 @@ class AppTheme {
       color: card,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.zero,
         side: const BorderSide(color: border),
       ),
       margin: EdgeInsets.zero,
@@ -42,15 +40,15 @@ class AppTheme {
       hintStyle: const TextStyle(color: textMuted),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         borderSide: const BorderSide(color: border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         borderSide: const BorderSide(color: border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         borderSide: const BorderSide(color: primaryBlue, width: 1.5),
       ),
     ),
@@ -60,7 +58,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         minimumSize: const Size(double.infinity, 54),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
     ),
@@ -69,8 +67,15 @@ class AppTheme {
         foregroundColor: primaryBlue,
         minimumSize: const Size(double.infinity, 54),
         side: const BorderSide(color: primaryBlue),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: primaryBlue,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
       ),
     ),
     textTheme: const TextTheme(

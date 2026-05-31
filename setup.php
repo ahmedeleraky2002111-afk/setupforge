@@ -1007,7 +1007,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <p class="sf6-foot-summary" id="sf6-count-text">0 services selected</p>
 <div class="sf-actions" style="margin-top:24px;">
   <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasEquipment ? '5' : '4' ?>">← Back</a>
-  <button class="sf-btn-main sf-btn-next" type="submit">Continue →</button>
+  <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
 </div>
 </form>
 

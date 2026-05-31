@@ -8195,3 +8195,120 @@ div#sfWwTrack {
   color: #6b7280;
   line-height: 1.5;
 }
+/* ── Role Select Page ── */
+.sf-role-wrap {
+  min-height: 100vh;
+  background: #f4f6fb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+}
+
+.sf-role-heading {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #111;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.sf-role-sub {
+  font-size: 1rem;
+  color: #555;
+  text-align: center;
+  margin-bottom: 40px;
+  max-width: 420px;
+  line-height: 1.55;
+}
+
+.sf-role-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.sf-role-card {
+  background: #fff;
+  border: 1.5px solid #dde3ee;
+  padding: 36px 20px 32px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .18s, transform .15s, box-shadow .18s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border-radius: 0;
+  text-decoration: none;
+  color: inherit;
+  min-height: 220px;
+}
+
+.sf-role-card:hover {
+  border-color: #004cac;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 76, 172, .13);
+  color: inherit;
+  text-decoration: none;
+}
+
+.sf-role-card:hover .sf-role-icon {
+  background: #004cac;
+  color: #fff;
+}
+
+.sf-role-card:hover .sf-role-title {
+  color: #004cac;
+}
+
+.sf-role-icon {
+  width: 56px;
+  height: 56px;
+  background: #edf2fb;
+  color: #004cac;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  transition: background .18s, color .18s;
+  border-radius: 0;
+}
+
+.sf-role-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.sf-role-desc {
+  font-size: .82rem;
+  color: #666;
+  line-height: 1.5;
+}
+
+
+
+.sf-role-signin {
+  margin-top: 36px;
+  font-size: .92rem;
+  color: #666;
+}
+
+.sf-role-signin a {
+  color: #004cac;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sf-role-signin a:hover {
+  text-decoration: underline;
+}
+.sf-role-wrap {
+  padding-top: 40px;
+}

@@ -1,3 +1,4 @@
 userId=0 hasEquipment=false hasStaff=true services=["staff","finishing"]
 userId=0 hasEquipment=false hasStaff=true services=["staff","finishing"]
 userId=0 hasEquipment=false hasStaff=true services=["staff","advertising"]
+userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
