@@ -410,8 +410,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         [$imgId, $productId]
       ));
       if ($imgRow) {
-        $physPath = dirname(__DIR__) . "/" . $imgRow["image_url"];
-        if (file_exists($physPath)) @unlink($physPath);
+        // File is on Cloudinary, no local file to delete
         pg_query_params($conn, "DELETE FROM product_images WHERE id=$1 AND product_id=$2", [$imgId, $productId]);
       }
     }
@@ -425,23 +424,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $allowed = max(0, 8 - $currentCount);
 
     if ($allowed > 0 && !empty($_FILES["new_images"]["name"])) {
-      $baseDir = dirname(__DIR__) . "/Vendor/uploads/products/vendor_{$vendorId}/product_{$productId}/";
-      if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
-      $uploaded = 0;
-
       for ($i = 0; $i < min(count($_FILES["new_images"]["name"]), $allowed); $i++) {
         if (($_FILES["new_images"]["error"][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
         $tmp  = $_FILES["new_images"]["tmp_name"][$i];
-        $name = $_FILES["new_images"]["name"][$i] ?? "img";
         $size = (int)($_FILES["new_images"]["size"][$i] ?? 0);
         if ($size <= 0) continue;
-        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-        if (!in_array($ext, ["jpg","jpeg","png","webp"], true)) continue;
-        $safeFile  = "img_" . time() . "_" . $i . "." . $ext;
-        if (!move_uploaded_file($tmp, $baseDir . $safeFile)) continue;
-        $publicUrl = "Vendor/uploads/products/vendor_{$vendorId}/product_{$productId}/{$safeFile}";
-        pg_query_params($conn, "INSERT INTO product_images (product_id, image_url) VALUES ($1,$2)", [$productId, $publicUrl]);
-        $uploaded++;
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+          CURLOPT_URL            => "https://api.cloudinary.com/v1_1/del8tyjmo/image/upload",
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_POST           => true,
+          CURLOPT_POSTFIELDS     => [
+            "file"          => new CURLFile($tmp),
+            "upload_preset" => "sf_products",
+          ],
+        ]);
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+        if (empty($data["secure_url"])) continue;
+        pg_query_params($conn, "INSERT INTO product_images (product_id, image_url) VALUES ($1,$2)", [$productId, $data["secure_url"]]);
       }
     }
     header("Location: vendor_edit_product.php?id={$productId}&success=" . urlencode("Images uploaded."));
