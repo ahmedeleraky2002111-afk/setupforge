@@ -17,6 +17,7 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> {
   final api = ApiService();
   bool _loading = true;
   Map<String, dynamic> _data = {};
+  String _setupState = "none";
 
   @override
   void initState() {
@@ -26,12 +27,25 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final res = await api.getBusinessOverview();
-    if (mounted)
-      setState(() {
-        _data = res;
-        _loading = false;
-      });
+    final homeRes = await api.getHomeData();
+    final setupState = homeRes["setup_state"]?.toString() ?? "none";
+    if (setupState == "completed") {
+      final res = await api.getBusinessOverview();
+      if (mounted) {
+        setState(() {
+          _setupState = setupState;
+          _data = res;
+          _loading = false;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _setupState = setupState;
+          _loading = false;
+        });
+      }
+    }
   }
 
   String _fmtDate(String? d) {
@@ -64,6 +78,64 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> {
       return const Scaffold(
         backgroundColor: sfBg,
         body: Center(child: CircularProgressIndicator(color: sfBlue)),
+      );
+    }
+
+    if (_setupState != "completed") {
+      return Scaffold(
+        backgroundColor: sfBg,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEFF6FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.store_outlined, color: sfBlue, size: 40),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'No Setup Yet',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: sfText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Start your business setup to get product recommendations, hire staff, and manage installations.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13.5, color: sfMuted, height: 1.5),
+                ),
+                const SizedBox(height: 28),
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/service-select'),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    color: sfBlue,
+                    child: const Text(
+                      'Start Setup',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
