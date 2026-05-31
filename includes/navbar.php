@@ -201,9 +201,7 @@ if ($showCart && !empty($_SESSION["shop_cart"])) {
         <a href="auth/login.php" class="btn btn-light btn-sm px-3 fw-semibold">
           Sign In
         </a>
-        <a href="auth/signup.php" class="btn btn-outline-light btn-sm px-3 fw-semibold">
-          Sign Up
-        </a>
+        <a href="auth/role_select.php" class="btn btn-outline-light btn-sm px-3 fw-semibold">Sign Up</a>
       <?php endif; ?>
 
     </div>
