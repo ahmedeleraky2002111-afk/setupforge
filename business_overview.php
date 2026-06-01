@@ -469,7 +469,7 @@ $moduleLabels = [
     'kitchen'     => 'Kitchen Equipment',
     'furniture'   => 'Dining Area',
     'pos'         => 'POS System',
-    'ac'          => 'AC & Climate',
+    'ac'          => 'Climate and ventilation',
     'electronics' => 'Electronics',
 ];
 $modLabel = $moduleLabels[$modKey] ?? ucfirst($modKey);    ?>
@@ -624,7 +624,7 @@ $modLabel = $moduleLabels[$modKey] ?? ucfirst($modKey);    ?>
           <?php
           $serviceLabels = [
             'electrical' => 'Electrical Installation',
-            'ac'         => 'AC & Climate Control',
+            'ac'         => 'Climate and ventilation',
             'kitchen'    => 'Kitchen Installation',
             'pos'        => 'POS Setup',
             'network'    => 'Network & WiFi',

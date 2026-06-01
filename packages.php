@@ -37,8 +37,7 @@ $labels = [
   "kitchen"     => "Kitchen / Equipment",
   "furniture"   => "Dining Area",
   "pos"         => "POS & Operations",
-  "electronics" => "Electronic Devices",
-  "ac"          => "Ambience & AC"
+  "ac"          => "Climate and ventilation",
 ];
 
 function get_module_weights($restaurantType, $modules) {
@@ -47,28 +46,24 @@ function get_module_weights($restaurantType, $modules) {
       "kitchen"     => 6,
       "pos"         => 3,
       "furniture"   => 2,
-      "electronics" => 1,
       "ac"    => 1
     ],
     "standard_dining" => [
       "kitchen"     => 5,
       "furniture"   => 3,
       "pos"         => 2,
-      "electronics" => 2,
       "ac"    => 2
     ],
     "premium_dining" => [
       "kitchen"     => 4,
       "furniture"   => 5,
       "pos"         => 2,
-      "electronics" => 2,
       "ac"    => 3
     ],
     "cloud_kitchen" => [
       "kitchen"     => 8,
       "pos"         => 4,
       "furniture"   => 0,
-      "electronics" => 0,
       "ac"    => 0
     ]
   ];
@@ -111,14 +106,12 @@ $tier            = derive_tier($budget);
 $posTier         = $tier;
 $kitchenTier     = $tier;
 $furnitureTier   = $tier;
-$electronicsTier = $tier;
 
 $kitchenCap = $alloc["kitchen"] ?? 0;
 $posCap     = $alloc["pos"] ?? 0;
 $furnitureCap   = $alloc["furniture"] ?? 0;
 $infraCap = $alloc["infra"] ?? 0;
 $acCap    = $alloc["ac"] ?? 0;
-$electronicsCap = $alloc["electronics"] ?? 0;
 
 /* ---------------- Fake catalogs (fallback) ---------------- */
 $POS_CATALOG = [
@@ -491,10 +484,12 @@ if (isset($conn) && $conn) {
   ";
   $resAc = @pg_query($conn, $sqlAcCatalog);
   if ($resAc) {
-    $tmpAc = ["ac" => []];
+    $tmpAc = ["ac" => [], "exhaust_fan" => [], "ceiling_fan" => [], "air_curtain" => []];
     $countAc = 0;
     while ($row = pg_fetch_assoc($resAc)) {
-      $tmpAc["ac"][] = [
+      $type = trim((string)($row["product_type"] ?? "ac"));
+      if ($type === "" || !isset($tmpAc[$type])) $type = "ac";
+      $tmpAc[$type][] = [
         "id"                => (string)$row["id"],
         "name"              => $row["product_name"],
         "brand"             => $row["brand"] ?: null,
@@ -969,10 +964,10 @@ function build_distinct_alternatives($selectedProduct, $pool, $limit = 3){
   }));
 
   usort($alts, function($a, $b){
-    $priceCmp = ((int)($a["price"] ?? 0) <=> (int)($b["price"] ?? 0));
-    if ($priceCmp !== 0) return $priceCmp;
-
-    return ((int)($b["stock_quantity"] ?? 0) <=> (int)($a["stock_quantity"] ?? 0));
+    $ra = (float)($a["avg_rating"] ?? 0);
+    $rb = (float)($b["avg_rating"] ?? 0);
+    if ($rb !== $ra) return $rb <=> $ra;
+    return (int)$a["price"] <=> (int)$b["price"];
   });
 
   return array_slice($alts, 0, $limit);
@@ -1081,99 +1076,162 @@ function cart_total($cart){
 }
 
 function build_pos_cart_by_budget($catalog, $size, $cap){
-  $q = pos_quantities_by_size((int)($GLOBALS["indoorSeats"] ?? 0));
-  $termQty = (int)$q["terminals"];
-  if ($termQty <= 0) $termQty = 1;
+  $pref         = $_SESSION["wizard"]["pos_preference"] ?? ["device" => "terminal", "service_tablets" => false];
+  $device       = $pref["device"] ?? "terminal";
+  $serviceTablets = (bool)($pref["service_tablets"] ?? false);
 
-  $unitBudgetMain = max(1, (int)floor(((int)$cap * 0.60) / $termQty));
-  $unitBudgetPeri = max(1, (int)floor(((int)$cap * 0.25) / $termQty));
+  $indoorSeats  = (int)($GLOBALS["indoorSeats"]  ?? 0);
+  $indoorTables = (int)($GLOBALS["indoorTables"] ?? 0);
 
-  $terminal = pick_best_under_unit_budget($catalog, "terminal", $unitBudgetMain);
+  if ($device === "tablet") {
+    $mainQty = max(1, (int)ceil($indoorSeats / 20));
+  } else {
+    $q = pos_quantities_by_size($indoorSeats);
+    $mainQty = max(1, (int)$q["terminals"]);
+  }
+
+  $unitBudgetMain = max(1, (int)floor(((int)$cap * 0.60) / $mainQty));
+  $unitBudgetPeri = max(1, (int)floor(((int)$cap * 0.25) / $mainQty));
+
   $printer  = pick_best_under_unit_budget($catalog, "printer",  $unitBudgetPeri);
   $drawer   = pick_best_under_unit_budget($catalog, "drawer",   $unitBudgetPeri);
-
   $software = pick_best_under_unit_budget($catalog, "software", max(1, (int)floor((int)$cap * 0.15)));
 
-  $cart = ["items"=>[]];
+  $cart = ["items" => []];
 
-  if ($terminal) {
-    $cart["items"]["terminal"] = [
-  "product_name" => $terminal["name"],
-  "brand" => $terminal["brand"] ?? null,
-  "tier" => $GLOBALS["posTier"],
-  "module" => "pos",
-  "category_id" => null,
-  "type"=>"terminal",
-  "product_id"=>$terminal["id"],
-  "name"=>$terminal["name"],
-  "unit"=>(int)$terminal["price"],
-  "qty"=>$termQty,
-  "image_url"=>$terminal["image_url"] ?? null,
-  "vendor_name" => $terminal["vendor_name"] ?? null,
-  "product_group_key" => $terminal["product_group_key"] ?? null,
-  "vendor_user_id"    => $terminal["vendor_user_id"] ?? null,
-  "alternatives" => build_distinct_alternatives(
-  $terminal,
-  $catalog["terminal"] ?? [],
-  3
-),
-];
+  if ($device === "tablet") {
+    $tabletQty = $mainQty;
+    if ($serviceTablets) {
+      $tabletQty += max(1, (int)ceil($indoorTables / 4));
+    }
+    $tb = pick_best_under_unit_budget($catalog, "tablet", $unitBudgetMain);
+    if ($tb) {
+      $cart["items"]["tablet"] = [
+        "product_name"      => $tb["name"],
+        "brand"             => $tb["brand"] ?? null,
+        "tier"              => $GLOBALS["posTier"],
+        "module"            => "pos",
+        "category_id"       => null,
+        "type"              => "tablet",
+        "product_id"        => $tb["id"],
+        "name"              => $tb["name"],
+        "unit"              => (int)$tb["price"],
+        "qty"               => $tabletQty,
+        "image_url"         => $tb["image_url"] ?? null,
+        "vendor_name"       => $tb["vendor_name"] ?? null,
+        "product_group_key" => $tb["product_group_key"] ?? null,
+        "vendor_user_id"    => $tb["vendor_user_id"] ?? null,
+        "avg_rating"        => (float)($tb["avg_rating"] ?? 0),
+        "alternatives"      => build_distinct_alternatives($tb, $catalog["tablet"] ?? [], 3),
+      ];
+    }
+  } else {
+    // Terminal-based ordering
+    $terminal = pick_best_under_unit_budget($catalog, "terminal", $unitBudgetMain);
+    if ($terminal) {
+      $cart["items"]["terminal"] = [
+        "product_name"      => $terminal["name"],
+        "brand"             => $terminal["brand"] ?? null,
+        "tier"              => $GLOBALS["posTier"],
+        "module"            => "pos",
+        "category_id"       => null,
+        "type"              => "terminal",
+        "product_id"        => $terminal["id"],
+        "name"              => $terminal["name"],
+        "unit"              => (int)$terminal["price"],
+        "qty"               => $mainQty,
+        "image_url"         => $terminal["image_url"] ?? null,
+        "vendor_name"       => $terminal["vendor_name"] ?? null,
+        "product_group_key" => $terminal["product_group_key"] ?? null,
+        "vendor_user_id"    => $terminal["vendor_user_id"] ?? null,
+        "avg_rating"        => (float)($terminal["avg_rating"] ?? 0),
+        "alternatives"      => build_distinct_alternatives($terminal, $catalog["terminal"] ?? [], 3),
+      ];
+    }
+    if ($serviceTablets) {
+      $serviceTabletQty = max(1, (int)ceil($indoorTables / 4));
+      $tb = pick_best_under_unit_budget($catalog, "tablet", max(1, (int)floor((int)$cap * 0.10)));
+      if ($tb) {
+        $cart["items"]["tablet"] = [
+          "product_name"      => $tb["name"],
+          "brand"             => $tb["brand"] ?? null,
+          "tier"              => $GLOBALS["posTier"],
+          "module"            => "pos",
+          "category_id"       => null,
+          "type"              => "tablet",
+          "product_id"        => $tb["id"],
+          "name"              => $tb["name"],
+          "unit"              => (int)$tb["price"],
+          "qty"               => $serviceTabletQty,
+          "image_url"         => $tb["image_url"] ?? null,
+          "vendor_name"       => $tb["vendor_name"] ?? null,
+          "product_group_key" => $tb["product_group_key"] ?? null,
+          "vendor_user_id"    => $tb["vendor_user_id"] ?? null,
+          "avg_rating"        => (float)($tb["avg_rating"] ?? 0),
+          "alternatives"      => build_distinct_alternatives($tb, $catalog["tablet"] ?? [], 3),
+        ];
+      }
+    }
   }
+
   if ($printer) {
     $cart["items"]["printer"] = [
-      "product_name" => $printer["name"],
-      "brand" => $printer["brand"] ?? null,
-      "tier" => $GLOBALS["posTier"],
-      "module" => "pos",
-      "category_id" => null,
-      "type"=>"printer","product_id"=>$printer["id"],"name"=>$printer["name"],
-      "unit"=>(int)$printer["price"],"qty"=>$termQty,"image_url"=>$printer["image_url"] ?? null,
-      "vendor_name" => $printer["vendor_name"] ?? null,
+      "product_name"      => $printer["name"],
+      "brand"             => $printer["brand"] ?? null,
+      "tier"              => $GLOBALS["posTier"],
+      "module"            => "pos",
+      "category_id"       => null,
+      "type"              => "printer",
+      "product_id"        => $printer["id"],
+      "name"              => $printer["name"],
+      "unit"              => (int)$printer["price"],
+      "qty"               => $mainQty,
+      "image_url"         => $printer["image_url"] ?? null,
+      "vendor_name"       => $printer["vendor_name"] ?? null,
       "product_group_key" => $printer["product_group_key"] ?? null,
       "vendor_user_id"    => $printer["vendor_user_id"] ?? null,
-      "alternatives" => build_distinct_alternatives(
-  $printer,
-  $catalog["printer"] ?? [],
-  3
-),
+      "avg_rating"        => (float)($printer["avg_rating"] ?? 0),
+      "alternatives"      => build_distinct_alternatives($printer, $catalog["printer"] ?? [], 3),
     ];
   }
   if ($drawer) {
     $cart["items"]["drawer"] = [
-      "product_name" => $drawer["name"],
-      "brand" => $drawer["brand"] ?? null,
-      "tier" => $GLOBALS["posTier"],
-      "module" => "pos",
-      "category_id" => null,
-      "type"=>"drawer","product_id"=>$drawer["id"],"name"=>$drawer["name"],
-      "unit"=>(int)$drawer["price"],"qty"=>$termQty,"image_url"=>$drawer["image_url"] ?? null,
-      "vendor_name" => $drawer["vendor_name"] ?? null,
+      "product_name"      => $drawer["name"],
+      "brand"             => $drawer["brand"] ?? null,
+      "tier"              => $GLOBALS["posTier"],
+      "module"            => "pos",
+      "category_id"       => null,
+      "type"              => "drawer",
+      "product_id"        => $drawer["id"],
+      "name"              => $drawer["name"],
+      "unit"              => (int)$drawer["price"],
+      "qty"               => $mainQty,
+      "image_url"         => $drawer["image_url"] ?? null,
+      "vendor_name"       => $drawer["vendor_name"] ?? null,
       "product_group_key" => $drawer["product_group_key"] ?? null,
       "vendor_user_id"    => $drawer["vendor_user_id"] ?? null,
-      "alternatives" => build_distinct_alternatives(
-  $drawer,
-  $catalog["drawer"] ?? [],
-  3
-),
+      "avg_rating"        => (float)($drawer["avg_rating"] ?? 0),
+      "alternatives"      => build_distinct_alternatives($drawer, $catalog["drawer"] ?? [], 3),
     ];
   }
   if ($software) {
     $cart["items"]["software"] = [
-      "product_name" => $software["name"],
-      "brand" => $software["brand"] ?? null,
-      "tier" => $GLOBALS["posTier"],
-      "module" => "pos",
-      "category_id" => null,
-      "type"=>"software","product_id"=>$software["id"],"name"=>$software["name"],
-      "unit"=>(int)$software["price"],"qty"=>1,"image_url"=>$software["image_url"] ?? null,
-      "vendor_name" => $software["vendor_name"] ?? null,
+      "product_name"      => $software["name"],
+      "brand"             => $software["brand"] ?? null,
+      "tier"              => $GLOBALS["posTier"],
+      "module"            => "pos",
+      "category_id"       => null,
+      "type"              => "software",
+      "product_id"        => $software["id"],
+      "name"              => $software["name"],
+      "unit"              => (int)$software["price"],
+      "qty"               => 1,
+      "image_url"         => $software["image_url"] ?? null,
+      "vendor_name"       => $software["vendor_name"] ?? null,
       "product_group_key" => $software["product_group_key"] ?? null,
       "vendor_user_id"    => $software["vendor_user_id"] ?? null,
-      "alternatives" => build_distinct_alternatives(
-  $software,
-  $catalog["software"] ?? [],
-  3
-),
+      "avg_rating"        => (float)($software["avg_rating"] ?? 0),
+      "alternatives"      => build_distinct_alternatives($software, $catalog["software"] ?? [], 3),
     ];
   }
 
@@ -1183,13 +1241,22 @@ function build_pos_cart_by_budget($catalog, $size, $cap){
     $sc = pick_best_under_unit_budget($catalog, "scanner", (int)floor($remaining * 0.30));
     if ($sc) {
       $cart["items"]["scanner"] = [
-        "type"=>"scanner","product_id"=>$sc["id"],"name"=>$sc["name"],
-        "unit"=>(int)$sc["price"],"qty"=>1,"image_url"=>$sc["image_url"] ?? null, 
-        "alternatives" => build_distinct_alternatives(
-  $sc,
-  $catalog["scanner"] ?? [],
-  3
-),     
+        "product_name"      => $sc["name"],
+        "brand"             => $sc["brand"] ?? null,
+        "tier"              => $GLOBALS["posTier"],
+        "module"            => "pos",
+        "category_id"       => null,
+        "type"              => "scanner",
+        "product_id"        => $sc["id"],
+        "name"              => $sc["name"],
+        "unit"              => (int)$sc["price"],
+        "qty"               => 1,
+        "image_url"         => $sc["image_url"] ?? null,
+        "vendor_name"       => $sc["vendor_name"] ?? null,
+        "product_group_key" => $sc["product_group_key"] ?? null,
+        "vendor_user_id"    => $sc["vendor_user_id"] ?? null,
+        "avg_rating"        => (float)($sc["avg_rating"] ?? 0),
+        "alternatives"      => build_distinct_alternatives($sc, $catalog["scanner"] ?? [], 3),
       ];
       $remaining = $cap - cart_total($cart);
     }
@@ -1199,29 +1266,22 @@ function build_pos_cart_by_budget($catalog, $size, $cap){
     $kds = pick_best_under_unit_budget($catalog, "kds", (int)floor($remaining * 0.60));
     if ($kds) {
       $cart["items"]["kds"] = [
-        "type"=>"kds","product_id"=>$kds["id"],"name"=>$kds["name"],
-        "unit"=>(int)$kds["price"],"qty"=>1,"image_url"=>$kds["image_url"] ?? null,
-      "alternatives" => build_distinct_alternatives(
-  $kds,
-  $catalog["kds"] ?? [],
-  3
-),
-      ];
-      $remaining = $cap - cart_total($cart);
-    }
-  }
-
-  if ($remaining > 0 && isset($catalog["tablet"][0])) {
-    $tb = pick_best_under_unit_budget($catalog, "tablet", (int)floor($remaining * 0.70));
-    if ($tb) {
-      $cart["items"]["tablet"] = [
-        "type"=>"tablet","product_id"=>$tb["id"],"name"=>$tb["name"],
-        "unit"=>(int)$tb["price"],"qty"=>1,"image_url"=>$tb["image_url"] ?? null,
-        "alternatives" => build_distinct_alternatives(
-  $tb,
-  $catalog["tablet"] ?? [],
-  3
-),
+        "product_name"      => $kds["name"],
+        "brand"             => $kds["brand"] ?? null,
+        "tier"              => $GLOBALS["posTier"],
+        "module"            => "pos",
+        "category_id"       => null,
+        "type"              => "kds",
+        "product_id"        => $kds["id"],
+        "name"              => $kds["name"],
+        "unit"              => (int)$kds["price"],
+        "qty"               => 1,
+        "image_url"         => $kds["image_url"] ?? null,
+        "vendor_name"       => $kds["vendor_name"] ?? null,
+        "product_group_key" => $kds["product_group_key"] ?? null,
+        "vendor_user_id"    => $kds["vendor_user_id"] ?? null,
+        "avg_rating"        => (float)($kds["avg_rating"] ?? 0),
+        "alternatives"      => build_distinct_alternatives($kds, $catalog["kds"] ?? [], 3),
       ];
     }
   }
@@ -1267,6 +1327,7 @@ function build_kitchen_cart_by_budget($catalog, $size, $cap){
   "category_id" => null,
   "product_group_key" => $p["product_group_key"] ?? null,
   "vendor_user_id" => $p["vendor_user_id"] ?? null,
+  "avg_rating"     => $p["avg_rating"] ?? 0,
   "alternatives" => build_distinct_alternatives(
   $p,
   $catalog[$type] ?? [],
@@ -1301,6 +1362,7 @@ function build_kitchen_cart_by_budget($catalog, $size, $cap){
   "category_id" => null,
   "product_group_key" => $p["product_group_key"] ?? null,
   "vendor_user_id" => $p["vendor_user_id"] ?? null,
+  "avg_rating"     => $p["avg_rating"] ?? 0,
   "alternatives" => build_distinct_alternatives(
   $p,
   $catalog[$type] ?? [],
@@ -1374,6 +1436,7 @@ function build_furniture_cart_by_budget($catalog, $size, $cap){
         "vendor_user_id"    => $recommended["vendor_user_id"] ?? null,
         "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
         "specs"             => $recommended["specs"] ?? [],
+        "avg_rating"        => $recommended["avg_rating"] ?? 0,
         "alternatives"      => $alts,
       ];
     }
@@ -1403,9 +1466,9 @@ function build_furniture_cart_by_budget($catalog, $size, $cap){
           "module"            => "furniture",
           "category_id"       => $recommended["category_id"] ?? null,
           "product_group_key" => $recommended["product_group_key"] ?? null,
-          "vendor_user_id"    => $recommended["vendor_user_id"] ?? null,
           "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
           "specs"             => $recommended["specs"] ?? [],
+          "avg_rating"        => $recommended["avg_rating"] ?? 0,
           "alternatives"      => build_distinct_alternatives($recommended, $setOptions, 3),
         ];
       }
@@ -1434,8 +1497,9 @@ function build_furniture_cart_by_budget($catalog, $size, $cap){
       "category_id"       => $recommendedTv["category_id"] ?? null,
       "product_group_key" => $recommendedTv["product_group_key"] ?? null,
       "vendor_user_id"    => $recommendedTv["vendor_user_id"] ?? null,
-      "stock_quantity"    => $recommendedTv["stock_quantity"] ?? 0,
+     "stock_quantity"    => $recommendedTv["stock_quantity"] ?? 0,
       "specs"             => $recommendedTv["specs"] ?? [],
+      "avg_rating"        => $recommendedTv["avg_rating"] ?? 0,
       "alternatives"      => build_distinct_alternatives($recommendedTv, $tvOptions, 3),
     ];
   }
@@ -1443,16 +1507,52 @@ function build_furniture_cart_by_budget($catalog, $size, $cap){
   return $cart;
 }
 function build_ac_cart_by_budget($catalog, $areaSqm) {
-    $acData    = ac_hp_from_area($areaSqm);
-    $acUnits   = $acData["units"];
+    $acData     = ac_hp_from_area($areaSqm);
+    $acUnits    = $acData["units"];
     $requiredHp = $acData["hp"];
 
     $cart = ["items" => [], "central_ac" => false];
 
-    // Above 400 m² — suggest central AC
     if ($acUnits === 0) {
         $cart["central_ac"] = true;
         return $cart;
+    }
+
+    // ── Non-AC types (fans, curtains) — add directly if products exist ──
+    foreach (["exhaust_fan", "ceiling_fan", "air_curtain"] as $fanType) {
+        if (!empty($catalog[$fanType])) {
+            $sorted = $catalog[$fanType];
+            usort($sorted, function($a, $b) {
+                $ra = (float)($a["avg_rating"] ?? 0);
+                $rb = (float)($b["avg_rating"] ?? 0);
+                if ($rb !== $ra) return $rb <=> $ra;
+                return (int)$a["price"] <=> (int)$b["price"];
+            });
+            $best = $sorted[0];
+            $alts = array_slice(array_values(array_filter($catalog[$fanType], fn($p) =>
+                (string)$p["id"] !== (string)$best["id"]
+            )), 0, 3);
+            $cart["items"][$fanType] = [
+                "type"              => $fanType,
+                "product_id"        => $best["id"],
+                "name"              => $best["name"],
+                "unit"              => (int)$best["price"],
+                "qty"               => 1,
+                "image_url"         => $best["image_url"] ?? null,
+                "brand"             => $best["brand"] ?? null,
+                "vendor_name"       => $best["vendor_name"] ?? null,
+                "product_name"      => $best["name"],
+                "tier"              => $best["tier"] ?? null,
+                "module"            => "ac",
+                "category_id"       => null,
+                "product_group_key" => $best["product_group_key"] ?? null,
+                "vendor_user_id"    => $best["vendor_user_id"] ?? null,
+                "stock_quantity"    => $best["stock_quantity"] ?? 0,
+                "specs"             => $best["specs"] ?? [],
+                "avg_rating"        => $best["avg_rating"] ?? 0,
+                "alternatives"      => $alts,
+            ];
+        }
     }
 
     if (empty($catalog["ac"])) return $cart;
@@ -1465,13 +1565,23 @@ function build_ac_cart_by_budget($catalog, $areaSqm) {
     });
     $matching = array_values($matching);
 
-    // Sort by price ASC
-    usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
+    // Sort by rating DESC then price ASC
+    usort($matching, function($a, $b) {
+        $ra = (float)($a["avg_rating"] ?? 0);
+        $rb = (float)($b["avg_rating"] ?? 0);
+        if ($rb !== $ra) return $rb <=> $ra;
+        return (int)$a["price"] <=> (int)$b["price"];
+    });
 
     // Fallback to any product if no HP match
     if (empty($matching)) {
         $matching = array_values($catalog["ac"]);
-        usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
+        usort($matching, function($a, $b) {
+            $ra = (float)($a["avg_rating"] ?? 0);
+            $rb = (float)($b["avg_rating"] ?? 0);
+            if ($rb !== $ra) return $rb <=> $ra;
+            return (int)$a["price"] <=> (int)$b["price"];
+        });
     }
 
 if (empty($matching)) {
@@ -1523,6 +1633,7 @@ if (empty($matching)) {
         "stock_quantity"    => $recommended["stock_quantity"] ?? 0,
         "specs"             => $recommended["specs"] ?? [],
         "hp"                => $requiredHp,
+        "avg_rating"        => $recommended["avg_rating"] ?? 0,
         "alternatives"      => $alternatives,
     ];
 
@@ -1533,6 +1644,23 @@ if (empty($matching)) {
 
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+  if (isset($_POST["save_pos_preference"])) {
+    $_SESSION["wizard"]["pos_preference"] = [
+      "device"          => $_POST["pos_device"] ?? "terminal",
+      "service_tablets" => ($_POST["service_tablets"] ?? "no") === "yes",
+    ];
+    unset($_SESSION["wizard"]["pos_cart"]);
+    header("Location: packages.php?module=pos");
+    exit;
+  }
+
+  if (isset($_POST["clear_pos_preference"])) {
+    unset($_SESSION["wizard"]["pos_preference"]);
+    unset($_SESSION["wizard"]["pos_cart"]);
+    header("Location: packages.php?module=pos");
+    exit;
+}
 
   if (isset($_POST["load_add_section_modal"])) {
     header("Content-Type: application/json");
@@ -1665,6 +1793,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   if (isset($_POST["recalc_pos"])) {
     $_SESSION["wizard"]["pos_cart"] = build_pos_cart_by_budget($GLOBALS["POS_CATALOG_ACTIVE"], $GLOBALS["size"], $GLOBALS["posCap"]);
+    if (!isset($_SESSION["wizard"]["hidden_sections"]["pos"])) {
+      $_SESSION["wizard"]["hidden_sections"]["pos"] = [];
+    }
+    if (!in_array("scanner", $_SESSION["wizard"]["hidden_sections"]["pos"], true)) {
+      $_SESSION["wizard"]["hidden_sections"]["pos"][] = "scanner";
+    }
     header("Location: packages.php?module=pos");
     exit;
   }
@@ -2002,7 +2136,29 @@ if ($posCap > 0 && empty($_SESSION["wizard"]["pos_cart"])) {
     $size,
     $posCap
   );
+  if (!isset($_SESSION["wizard"]["hidden_sections"]["pos"])) {
+    $_SESSION["wizard"]["hidden_sections"]["pos"] = [];
+  }
+  if (!in_array("scanner", $_SESSION["wizard"]["hidden_sections"]["pos"], true)) {
+    $_SESSION["wizard"]["hidden_sections"]["pos"][] = "scanner";
+  }
 }
+
+$showPosPopup = false;
+if ($posCap > 0 && !isset($_SESSION["wizard"]["pos_preference"])) {
+  if ($restaurantType === "cloud_kitchen") {
+    $_SESSION["wizard"]["pos_preference"] = ["device" => "terminal", "service_tablets" => false];
+  } else {
+    $showPosPopup = true;
+  }
+}
+$posPref           = $_SESSION["wizard"]["pos_preference"] ?? ["device" => "terminal", "service_tablets" => false];
+$posPrefDevice     = $posPref["device"] ?? "terminal";
+$posPrefTablets    = (bool)($posPref["service_tablets"] ?? false);
+$posPrefDeviceLabel = $posPrefDevice === "tablet" ? "Ordering Tablet" : "POS Terminal";
+$posPrefTabletLabel = $posPrefTablets ? "With service tablets" : "No service tablets";
+$posPrefSwitchLabel = $posPrefDevice === "tablet" ? "Switch to Terminal Ordering" : "Switch to Tablet Ordering";
+$showServiceTabletBtn = in_array($restaurantType, ["standard_dining", "premium_dining"], true);
 
 if ($kitchenCap > 0 && empty($_SESSION["wizard"]["kitchen_cart"])) {
   $_SESSION["wizard"]["kitchen_cart"] = build_kitchen_cart_by_budget(
@@ -2071,6 +2227,14 @@ $_SESSION["carts"]["kitchen"] = $kitchenCart ?? ($_SESSION["carts"]["kitchen"] ?
 $_SESSION["carts"]["furniture"] = $furnitureCart ?? ($_SESSION["carts"]["furniture"] ?? null);
 $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
 
+// Mark setup as completed when user reaches packages
+$packagesUserId = isset($_SESSION["user_id"]) ? (int)$_SESSION["user_id"] : 0;
+if ($packagesUserId && isset($conn) && $conn) {
+    @pg_query_params($conn,
+        "UPDATE businesses SET setup_status = 'completed', updated_at = now() WHERE user_id = \$1 AND setup_status = 'in_progress'",
+        [$packagesUserId]);
+}
+
 ?>
 <!doctype html>
 <html lang="en">
@@ -2124,12 +2288,36 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
               </div>
             </div>
 
+            <?php if (!$showPosPopup): ?>
+            <div style="background:#f0f6ff;border:1px solid rgba(0,76,172,.15);padding:10px 14px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+              <span style="font-size:13px;font-weight:700;color:#111827;flex:1;min-width:180px;">
+                Ordering via <?= htmlspecialchars($posPrefDeviceLabel) ?> &middot; <?= htmlspecialchars($posPrefTabletLabel) ?>
+              </span>
+              <form method="post" class="m-0">
+                <input type="hidden" name="clear_pos_preference" value="1">
+                <button class="btn btn-sm" style="border:1.5px solid #004cac;color:#004cac;font-weight:700;border-radius:2px;padding:4px 12px;background:#fff;">
+                  <?= htmlspecialchars($posPrefSwitchLabel) ?>
+                </button>
+              </form>
+              <?php if ($showServiceTabletBtn): ?>
+              <form method="post" class="m-0">
+                <input type="hidden" name="save_pos_preference" value="1">
+                <input type="hidden" name="pos_device" value="<?= htmlspecialchars($posPrefDevice) ?>">
+                <input type="hidden" name="service_tablets" value="<?= $posPrefTablets ? 'no' : 'yes' ?>">
+                <button class="btn btn-sm" style="border:1.5px solid #004cac;color:#004cac;font-weight:700;border-radius:2px;padding:4px 12px;background:#fff;">
+                  <?= $posPrefTablets ? 'Remove Service Tablets' : 'Add Service Tablets' ?>
+                </button>
+              </form>
+              <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
             <div class="sf-module-toolbar">
               <form method="post" class="m-0">
                 <input type="hidden" name="recalc_pos" value="1">
                 <button class="btn sf-btn-light-main btn-sm">
                   <i class="bi bi-stars"></i>
-                  Recalculate Auto Package
+                  Regenerate Recommendations
                 </button>
               </form>
             </div>
@@ -2151,9 +2339,29 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                 "scale"            => "Weighing Scales",
               ];
               ?>
+              <?php
+              $allPosTypes = ["terminal","printer","drawer","software","scanner","kds","tablet","customer_display","label_printer","scale"];
+              $inCartPosTypes = array_keys($posCart["items"] ?? []);
+              $missingPosTypes = array_diff($allPosTypes, $inCartPosTypes);
+              foreach ($missingPosTypes as $mt) {
+                if (!isset($_SESSION["wizard"]["hidden_sections"]["pos"])) {
+                  $_SESSION["wizard"]["hidden_sections"]["pos"] = [];
+                }
+                if (!in_array($mt, $_SESSION["wizard"]["hidden_sections"]["pos"], true)) {
+                  $_SESSION["wizard"]["hidden_sections"]["pos"][] = $mt;
+                }
+              }
+              $hiddenSections = $_SESSION["wizard"]["hidden_sections"] ?? [];
+              ?>
               <div class="sf-section-pills">
                 <?php foreach($posCart["items"] as $type => $it): ?>
                   <button class="sf-section-pill <?= in_array($type, $hiddenSections['pos'] ?? []) ? '' : 'is-active' ?>"
+                    data-module="pos" data-type="<?= htmlspecialchars($type) ?>">
+                    <?= htmlspecialchars($posSectionLabels[$type] ?? ucfirst($type)) ?>
+                  </button>
+                <?php endforeach; ?>
+                <?php foreach($missingPosTypes as $type): ?>
+                  <button class="sf-section-pill"
                     data-module="pos" data-type="<?= htmlspecialchars($type) ?>">
                     <?= htmlspecialchars($posSectionLabels[$type] ?? ucfirst($type)) ?>
                   </button>
@@ -2209,6 +2417,9 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                           <div class="sf-pkg-card-meta">
                             <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
                             <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
+                            <?php if(!empty($it["avg_rating"])): ?>
+                              <span style="color:#f59e0b;font-weight:700;">★ <?= number_format((float)$it["avg_rating"], 1) ?></span>
+                            <?php endif; ?>
                           </div>
                           <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                         </div>
@@ -2371,6 +2582,9 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                           <div class="sf-pkg-card-meta">
                             <?php if(!empty($alt["brand"])): ?><span><?= htmlspecialchars($alt["brand"]) ?></span><?php endif; ?>
                             <?php if(!empty($alt["vendor_name"])): ?><span><?= htmlspecialchars($alt["vendor_name"]) ?></span><?php endif; ?>
+                            <?php if(!empty($alt["avg_rating"])): ?>
+                              <span style="color:#f59e0b;font-weight:700;">★ <?= number_format((float)$alt["avg_rating"], 1) ?></span>
+                            <?php endif; ?>
                           </div>
                           <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                         </div>
@@ -2405,6 +2619,33 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                 <?php endif; ?>
                 <?php endforeach; ?>
               </div><!-- /.sf-pkg-sections -->
+              <?php foreach($missingPosTypes as $type): ?>
+              <?php if(!in_array($type, $hiddenSections['pos'] ?? [])): ?>
+              <div class="sf-pkg-sections" style="margin-top:0;">
+              <div class="sf-pkg-section" data-module="pos" data-type="<?= htmlspecialchars($type) ?>">
+                <div class="sf-pkg-section-head">
+                  <h4 class="sf-pkg-section-title">
+                    <?= htmlspecialchars($posSectionLabels[$type] ?? ucfirst($type)) ?>
+                  </h4>
+                  <span class="sf-pkg-section-count" style="color:#9ca3af;">No products added yet</span>
+                </div>
+                <div class="sf-pkg-slider-wrap">
+                  <div class="sf-pkg-slider">
+                    <article class="sf-pkg-card sf-pkg-card--add sf-add-product-card" data-module="pos"
+                      data-type="<?= htmlspecialchars($type) ?>"
+                      data-bs-toggle="modal" data-bs-target="#addSectionModal"
+                      style="cursor:pointer;" title="Add a product">
+                      <div class="sf-pkg-card-add-inner">
+                        <i class="bi bi-plus-circle" style="font-size:2rem;color:#004cac;"></i>
+                        <span style="margin-top:8px;font-size:.85rem;color:#004cac;font-weight:600;">Add</span>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+              </div>
+              <?php endif; ?>
+              <?php endforeach; ?>
             <?php endif; ?>
           </div>
 
@@ -2429,7 +2670,7 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                 <input type="hidden" name="recalc_kitchen" value="1">
                 <button class="btn sf-btn-light-main btn-sm">
                   <i class="bi bi-stars"></i>
-                  Recalculate Auto Package
+                  Regenerate Recommendations
                 </button>
               </form>
             </div>
@@ -2464,9 +2705,29 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                 "ice_machine"   => "Ice Machines",
               ];
               ?>
+              <?php
+              $allKitchenTypes = ["oven","fryer","microwave","fridge","freezer","blender","grill","mixer","coffee","stove","food_warmer","bain_marie","dishwasher","slicer","exhaust_hood","prep_table","sink","shelving","food_processor","rice_cooker","meat_grinder","ice_machine"];
+              $inCartKitchenTypes = array_keys($kitchenCart["items"] ?? []);
+              $missingKitchenTypes = array_diff($allKitchenTypes, $inCartKitchenTypes);
+              foreach ($missingKitchenTypes as $mt) {
+                if (!isset($_SESSION["wizard"]["hidden_sections"]["kitchen"])) {
+                  $_SESSION["wizard"]["hidden_sections"]["kitchen"] = [];
+                }
+                if (!in_array($mt, $_SESSION["wizard"]["hidden_sections"]["kitchen"], true)) {
+                  $_SESSION["wizard"]["hidden_sections"]["kitchen"][] = $mt;
+                }
+              }
+              $hiddenSections = $_SESSION["wizard"]["hidden_sections"] ?? [];
+              ?>
               <div class="sf-section-pills">
                 <?php foreach($kitchenCart["items"] as $type => $it): ?>
                   <button class="sf-section-pill <?= in_array($type, $hiddenSections['kitchen'] ?? []) ? '' : 'is-active' ?>"
+                    data-module="kitchen" data-type="<?= htmlspecialchars($type) ?>">
+                    <?= htmlspecialchars($kitchenSectionLabels[$type] ?? ucfirst($type)) ?>
+                  </button>
+                <?php endforeach; ?>
+                <?php foreach($missingKitchenTypes as $type): ?>
+                  <button class="sf-section-pill"
                     data-module="kitchen" data-type="<?= htmlspecialchars($type) ?>">
                     <?= htmlspecialchars($kitchenSectionLabels[$type] ?? ucfirst($type)) ?>
                   </button>
@@ -2522,6 +2783,9 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                           <div class="sf-pkg-card-meta">
                             <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
                             <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
+                            <?php if(!empty($it["avg_rating"])): ?>
+                              <span style="color:#f59e0b;font-weight:700;">★ <?= number_format((float)$it["avg_rating"], 1) ?></span>
+                            <?php endif; ?>
                           </div>
                           <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                         </div>
@@ -2684,6 +2948,9 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                           <div class="sf-pkg-card-meta">
                             <?php if(!empty($alt["brand"])): ?><span><?= htmlspecialchars($alt["brand"]) ?></span><?php endif; ?>
                             <?php if(!empty($alt["vendor_name"])): ?><span><?= htmlspecialchars($alt["vendor_name"]) ?></span><?php endif; ?>
+                            <?php if(!empty($alt["avg_rating"])): ?>
+                              <span style="color:#f59e0b;font-weight:700;">★ <?= number_format((float)$alt["avg_rating"], 1) ?></span>
+                            <?php endif; ?>
                           </div>
                           <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                         </div>
@@ -2718,6 +2985,33 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                 <?php endif; ?>
                 <?php endforeach; ?>
               </div><!-- /.sf-pkg-sections -->
+              <?php foreach($missingKitchenTypes as $type): ?>
+              <?php if(!in_array($type, $hiddenSections['kitchen'] ?? [])): ?>
+              <div class="sf-pkg-sections" style="margin-top:0;">
+              <div class="sf-pkg-section" data-module="kitchen" data-type="<?= htmlspecialchars($type) ?>">
+                <div class="sf-pkg-section-head">
+                  <h4 class="sf-pkg-section-title">
+                    <?= htmlspecialchars($kitchenSectionLabels[$type] ?? ucfirst($type)) ?>
+                  </h4>
+                  <span class="sf-pkg-section-count" style="color:#9ca3af;">No products added yet</span>
+                </div>
+                <div class="sf-pkg-slider-wrap">
+                  <div class="sf-pkg-slider">
+                    <article class="sf-pkg-card sf-pkg-card--add sf-add-product-card" data-module="kitchen"
+                      data-type="<?= htmlspecialchars($type) ?>"
+                      data-bs-toggle="modal" data-bs-target="#addSectionModal"
+                      style="cursor:pointer;" title="Add a product">
+                      <div class="sf-pkg-card-add-inner">
+                        <i class="bi bi-plus-circle" style="font-size:2rem;color:#004cac;"></i>
+                        <span style="margin-top:8px;font-size:.85rem;color:#004cac;font-weight:600;">Add</span>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+              </div>
+              <?php endif; ?>
+              <?php endforeach; ?>
             <?php endif; ?>
           </div>
 
@@ -2742,7 +3036,7 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
         <input type="hidden" name="recalc_furniture" value="1">
         <button class="btn sf-btn-light-main btn-sm">
           <i class="bi bi-stars"></i>
-          Recalculate Auto Package
+          Regenerate Recommendations
         </button>
       </form>
     </div>
@@ -2776,9 +3070,29 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
         "hostess_stand"     => "Hostess Stand",
       ];
       ?>
+      <?php
+      $allFurnitureTypes = ["sofa","chair","table","light","bar_stool","outdoor_furniture","reception_desk","shelving","speaker","sound_system","curtain","wall_decor","menu_stand","hostess_stand"];
+      $inCartFurnitureTypes = array_keys($furnitureCart["items"] ?? []);
+      $missingFurnitureTypes = array_diff($allFurnitureTypes, $inCartFurnitureTypes);
+      foreach ($missingFurnitureTypes as $mt) {
+        if (!isset($_SESSION["wizard"]["hidden_sections"]["furniture"])) {
+          $_SESSION["wizard"]["hidden_sections"]["furniture"] = [];
+        }
+        if (!in_array($mt, $_SESSION["wizard"]["hidden_sections"]["furniture"], true)) {
+          $_SESSION["wizard"]["hidden_sections"]["furniture"][] = $mt;
+        }
+      }
+      $hiddenSections = $_SESSION["wizard"]["hidden_sections"] ?? [];
+      ?>
       <div class="sf-section-pills">
         <?php foreach($furnitureCart["items"] as $type => $it): ?>
           <button class="sf-section-pill <?= in_array($type, $hiddenSections['furniture'] ?? []) ? '' : 'is-active' ?>"
+            data-module="furniture" data-type="<?= htmlspecialchars($type) ?>">
+            <?= htmlspecialchars($furnitureSectionLabels[$type] ?? ucfirst($type)) ?>
+          </button>
+        <?php endforeach; ?>
+        <?php foreach($missingFurnitureTypes as $type): ?>
+          <button class="sf-section-pill"
             data-module="furniture" data-type="<?= htmlspecialchars($type) ?>">
             <?= htmlspecialchars($furnitureSectionLabels[$type] ?? ucfirst($type)) ?>
           </button>
@@ -2834,6 +3148,9 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                   <div class="sf-pkg-card-meta">
                     <?php if(!empty($it["brand"])): ?><span><?= htmlspecialchars($it["brand"]) ?></span><?php endif; ?>
                     <?php if(!empty($it["vendor_name"])): ?><span><?= htmlspecialchars($it["vendor_name"]) ?></span><?php endif; ?>
+                    <?php if(!empty($it["avg_rating"])): ?>
+                      <span style="color:#f59e0b;font-weight:700;">★ <?= number_format((float)$it["avg_rating"], 1) ?></span>
+                    <?php endif; ?>
                   </div>
                   <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
                 </div>
@@ -2963,6 +3280,9 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                   <div class="sf-pkg-card-meta">
                     <?php if(!empty($alt["brand"])): ?><span><?= htmlspecialchars($alt["brand"]) ?></span><?php endif; ?>
                     <?php if(!empty($alt["vendor_name"])): ?><span><?= htmlspecialchars($alt["vendor_name"]) ?></span><?php endif; ?>
+                    <?php if(!empty($alt["avg_rating"])): ?>
+                      <span style="color:#f59e0b;font-weight:700;">★ <?= number_format((float)$alt["avg_rating"], 1) ?></span>
+                    <?php endif; ?>
                   </div>
                   <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                 </div>
@@ -2997,6 +3317,33 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
         <?php endif; ?>
         <?php endforeach; ?>
       </div><!-- /.sf-pkg-sections -->
+      <?php foreach($missingFurnitureTypes as $type): ?>
+      <?php if(!in_array($type, $hiddenSections['furniture'] ?? [])): ?>
+      <div class="sf-pkg-sections" style="margin-top:0;">
+      <div class="sf-pkg-section" data-module="furniture" data-type="<?= htmlspecialchars($type) ?>">
+        <div class="sf-pkg-section-head">
+          <h4 class="sf-pkg-section-title">
+            <?= htmlspecialchars($furnitureSectionLabels[$type] ?? ucfirst($type)) ?>
+          </h4>
+          <span class="sf-pkg-section-count" style="color:#9ca3af;">No products added yet</span>
+        </div>
+        <div class="sf-pkg-slider-wrap">
+          <div class="sf-pkg-slider">
+            <article class="sf-pkg-card sf-pkg-card--add sf-add-product-card" data-module="furniture"
+              data-type="<?= htmlspecialchars($type) ?>"
+              data-bs-toggle="modal" data-bs-target="#addSectionModal"
+              style="cursor:pointer;" title="Add a product">
+              <div class="sf-pkg-card-add-inner">
+                <i class="bi bi-plus-circle" style="font-size:2rem;color:#004cac;"></i>
+                <span style="margin-top:8px;font-size:.85rem;color:#004cac;font-weight:600;">Add</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+      </div>
+      <?php endif; ?>
+      <?php endforeach; ?>
     <?php endif; ?>
   </div>
 
@@ -3007,7 +3354,7 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
 
     <div class="sf-pkg-progress-wrap">
       <div class="sf-pkg-progress-row">
-        <span class="sf-pkg-progress-label">Ambience &amp; AC</span>
+        <span class="sf-pkg-progress-label">Climate and ventilation</span>
         <span class="sf-pkg-progress-used"><?= egp($acTotal) ?> / <?= egp($acCap) ?></span>
         <span class="sf-pkg-progress-remaining <?= $acOver > 0 ? 'is-over' : '' ?>">
           <?php if($acOver > 0): ?><?= egp($acOver) ?> over cap<?php else: ?><?= egp($acRemaining) ?> remaining<?php endif; ?>
@@ -3049,7 +3396,7 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
       <form method="post" class="m-0">
         <input type="hidden" name="recalc_ac" value="1">
         <button class="btn sf-btn-light-main btn-sm">
-          <i class="bi bi-stars"></i> Recalculate Auto Package
+          <i class="bi bi-stars"></i> Regenerate Recommendations
         </button>
       </form>
     </div>
@@ -3129,6 +3476,9 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                     ?>
                     <?php if ($displayHp): ?>
                       <span style="color:#004cac;font-weight:700;"><?= htmlspecialchars($displayHp) ?> HP</span>
+                    <?php endif; ?>
+                    <?php if (!empty($it["avg_rating"])): ?>
+                      <span style="color:#f59e0b;font-weight:700;">★ <?= number_format((float)$it["avg_rating"], 1) ?></span>
                     <?php endif; ?>
                   </div>
                   <div class="sf-pkg-card-price"><?= egp($it["unit"]) ?></div>
@@ -3259,6 +3609,9 @@ $_SESSION["carts"]["ac"] = $acCart ?? ($_SESSION["carts"]["ac"] ?? null);
                   <div class="sf-pkg-card-meta">
                     <?php if(!empty($alt["brand"])): ?><span><?= htmlspecialchars($alt["brand"]) ?></span><?php endif; ?>
                     <?php if(!empty($alt["vendor_name"])): ?><span><?= htmlspecialchars($alt["vendor_name"]) ?></span><?php endif; ?>
+                    <?php if(!empty($alt["avg_rating"])): ?>
+                      <span style="color:#f59e0b;font-weight:700;">★ <?= number_format((float)$alt["avg_rating"], 1) ?></span>
+                    <?php endif; ?>
                   </div>
                   <div class="sf-pkg-card-price"><?= egp($alt["price"]) ?></div>
                 </div>
@@ -3685,5 +4038,142 @@ document.querySelectorAll('.sf-fav-btn').forEach(function(btn){
   });
 });
 </script>
+<?php
+$popupTerminal = null;
+$popupTablet = null;
+if ($showPosPopup && isset($conn) && $conn) {
+    $resT = @pg_query_params($conn,
+        "SELECT p.product_name, p.price,
+         (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+         FROM products p
+         WHERE p.module = 'pos' AND p.product_type = 'terminal' AND LOWER(p.tier) = LOWER(\$1)
+         ORDER BY p.avg_rating DESC, p.price DESC LIMIT 1",
+        [$posTier]);
+    if ($resT) $popupTerminal = pg_fetch_assoc($resT);
+
+    $resTb = @pg_query_params($conn,
+        "SELECT p.product_name, p.price,
+         (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+         FROM products p
+         WHERE p.module = 'pos' AND p.product_type = 'tablet' AND LOWER(p.tier) = LOWER(\$1)
+         ORDER BY p.avg_rating DESC, p.price DESC LIMIT 1",
+        [$posTier]);
+    if ($resTb) $popupTablet = pg_fetch_assoc($resTb);
+}
+?>
+<?php if ($showPosPopup): ?>
+<div id="sf-pos-popup" style="position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:16px;">
+  <div style="background:#fff;width:100%;max-width:520px;padding:32px 28px 28px;position:relative;">
+    <h2 style="font-size:17px;font-weight:900;color:#111827;margin:0 0 6px;">POS Setup Preference</h2>
+    <p style="font-size:13px;color:#6b7280;margin:0 0 24px;">Choose how orders will be placed in your restaurant.</p>
+
+    <form method="post" id="sf-pos-pref-form">
+      <input type="hidden" name="save_pos_preference" value="1">
+
+      <!-- Question 1: Device -->
+      <p style="font-size:12px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;">How will orders be placed?</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;">
+        <label class="sf-pos-opt" for="pos_terminal" style="cursor:pointer;">
+          <input type="radio" name="pos_device" id="pos_terminal" value="terminal" checked style="display:none;">
+          <div class="sf-pos-opt-card" data-for="pos_terminal" style="border:2px solid #004cac;padding:18px 12px;text-align:center;transition:all .15s;">
+            <?php if ($popupTerminal && !empty($popupTerminal['image_url'])): ?>
+              <img src="<?= htmlspecialchars($popupTerminal['image_url']) ?>" alt="" style="width:100%;height:90px;object-fit:contain;margin-bottom:6px;">
+            <?php else: ?>
+              <i class="bi bi-display" style="font-size:28px;color:#004cac;display:block;margin-bottom:8px;"></i>
+            <?php endif; ?>
+            <div style="font-size:13.5px;font-weight:800;color:#111827;">POS Terminal</div>
+            <?php if ($popupTerminal): ?>
+              <div style="font-size:11px;color:#6b7280;margin-top:2px;"><?= htmlspecialchars($popupTerminal['product_name']) ?></div>
+              <div style="font-size:12px;font-weight:700;color:#004cac;margin-top:2px;"><?= egp($popupTerminal['price']) ?></div>
+            <?php else: ?>
+              <div style="font-size:11.5px;color:#6b7280;margin-top:3px;">Cashier-operated counter ordering</div>
+            <?php endif; ?>
+          </div>
+        </label>
+        <label class="sf-pos-opt" for="pos_tablet" style="cursor:pointer;">
+          <input type="radio" name="pos_device" id="pos_tablet" value="tablet" style="display:none;">
+          <div class="sf-pos-opt-card" data-for="pos_tablet" style="border:2px solid #e5e7eb;padding:18px 12px;text-align:center;transition:all .15s;">
+            <?php if ($popupTablet && !empty($popupTablet['image_url'])): ?>
+              <img src="<?= htmlspecialchars($popupTablet['image_url']) ?>" alt="" style="width:100%;height:90px;object-fit:contain;margin-bottom:6px;">
+            <?php else: ?>
+              <i class="bi bi-tablet" style="font-size:28px;color:#6b7280;display:block;margin-bottom:8px;"></i>
+            <?php endif; ?>
+            <div style="font-size:13.5px;font-weight:800;color:#111827;">Ordering Tablet</div>
+            <?php if ($popupTablet): ?>
+              <div style="font-size:11px;color:#6b7280;margin-top:2px;"><?= htmlspecialchars($popupTablet['product_name']) ?></div>
+              <div style="font-size:12px;font-weight:700;color:#004cac;margin-top:2px;"><?= egp($popupTablet['price']) ?></div>
+            <?php else: ?>
+              <div style="font-size:11.5px;color:#6b7280;margin-top:3px;">Touch-based ordering device</div>
+            <?php endif; ?>
+          </div>
+        </label>
+      </div>
+
+      <?php if (in_array($restaurantType, ["standard_dining", "premium_dining"], true)): ?>
+      <!-- Question 2: Service tablets -->
+      <p style="font-size:12px;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;">Do you want service tablets for waitstaff?</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;">
+        <label class="sf-pos-opt" for="svc_tab_no" style="cursor:pointer;">
+          <input type="radio" name="service_tablets" id="svc_tab_no" value="no" checked style="display:none;">
+          <div class="sf-pos-opt-card" data-for="svc_tab_no" style="border:2px solid #004cac;padding:14px 12px;text-align:center;transition:all .15s;">
+            <div style="font-size:13.5px;font-weight:800;color:#111827;">No</div>
+            <div style="font-size:11.5px;color:#6b7280;margin-top:3px;">Skip service tablets</div>
+          </div>
+        </label>
+        <label class="sf-pos-opt" for="svc_tab_yes" style="cursor:pointer;">
+          <input type="radio" name="service_tablets" id="svc_tab_yes" value="yes" style="display:none;">
+          <div class="sf-pos-opt-card" data-for="svc_tab_yes" style="border:2px solid #e5e7eb;padding:14px 12px;text-align:center;transition:all .15s;">
+            <div style="font-size:13.5px;font-weight:800;color:#111827;">Yes</div>
+            <div style="font-size:11.5px;color:#6b7280;margin-top:3px;">Add tablets for waitstaff</div>
+          </div>
+        </label>
+      </div>
+      <?php else: ?>
+      <input type="hidden" name="service_tablets" value="no">
+      <?php endif; ?>
+
+      <button type="submit" style="width:100%;padding:14px;background:#004cac;color:#fff;font-weight:800;font-size:15px;border:none;border-radius:0;cursor:pointer;">
+        Build My POS Setup
+      </button>
+    </form>
+  </div>
+</div>
+
+<style>
+.sf-pos-opt-card:hover { border-color: #004cac !important; }
+</style>
+<script>
+(function(){
+  var radios = document.querySelectorAll('#sf-pos-pref-form input[type="radio"]');
+  function syncCards(){
+    radios.forEach(function(r){
+      var card = document.querySelector('.sf-pos-opt-card[data-for="' + r.id + '"]');
+      if (!card) return;
+      if (r.checked) {
+        card.style.borderColor = '#004cac';
+        var icon = card.querySelector('i');
+        if (icon) icon.style.color = '#004cac';
+      } else {
+        card.style.borderColor = '#e5e7eb';
+        var icon = card.querySelector('i');
+        if (icon) icon.style.color = '#6b7280';
+      }
+    });
+  }
+  radios.forEach(function(r){
+    r.addEventListener('change', syncCards);
+    var card = document.querySelector('.sf-pos-opt-card[data-for="' + r.id + '"]');
+    if (card) {
+      card.addEventListener('click', function(){
+        r.checked = true;
+        syncCards();
+      });
+    }
+  });
+  syncCards();
+})();
+</script>
+<?php endif; ?>
+
 </body>
 </html>

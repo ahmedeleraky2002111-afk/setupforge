@@ -469,6 +469,8 @@ body.sf-home-page .sf-navbar .dropdown-toggle::after{
 
 .sf-btn-arrow:hover .sf-btn-icon{
   transform: translateX(4px);
+  background: white !important;  
+  color: #004cac !important;
 }
 
 /* BROWSE PRODUCTS BUTTON */
@@ -1084,8 +1086,8 @@ body.sf-home-page .sf-navbar .dropdown-toggle::after{
 }
 
 .sf-footer-logo{
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   background: #ffffff;
   display: flex;
@@ -1094,9 +1096,9 @@ body.sf-home-page .sf-navbar .dropdown-toggle::after{
 }
 
 .sf-footer-logo img{
-  height: 110px;
+  height: 70px;
   width: auto;
-  object-fit: contain;
+  object-fit: fill;
 }
 
 .sf-footer-title{
@@ -2144,9 +2146,9 @@ border-radius: 0;
 
 .sf-btn-light-main{
   background:#fff;
-  border:1px solid rgba(0,0,0,.10);
-  color:var(--sf-text);
-  border-radius:14px;
+  border:1px solid #004cac;
+  color:var(--sf-primary);
+  border-radius:3px;
   padding:10px 14px;
   font-weight:700;
   display:inline-flex;
@@ -2155,7 +2157,9 @@ border-radius: 0;
 }
 
 .sf-btn-light-main:hover{
-  background:#f8fafc;
+  background:#004cac;
+  color:#fff;
+  border-color:#004cac;
 }
 
 .sf-packages-layout{
@@ -2402,7 +2406,7 @@ border-radius: 0;
 
 .sf-module-toolbar{
   display:flex;
-  justify-content:flex-start;
+  justify-content:center;
   margin-bottom:8px;
 }
 
@@ -5590,13 +5594,13 @@ font-weight: 550 !important;
 }
 
 .sf-pkg-tab:hover{
-  color: var(--sf-secondary);
-  background: rgba(0,153,148,.06);
+  color: var(--sf-primary);
+  background: rgba(0,76,172,.06);
 }
 
 .sf-pkg-tab.is-active{
-  color: var(--sf-secondary);
-  border-color: rgba(0,153,148,.30);
+  color: var(--sf-primary);
+  border-color: rgba(0,76,172,.30);
   border-bottom-color: var(--sf-bg);
   background: #fff;
 }
@@ -6450,11 +6454,11 @@ font-weight: 550 !important;
   background: var(--sf-secondary);
   color: #fff;
   font-size: .68rem;
-  font-weight: 800;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .05em;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 2px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
@@ -7051,7 +7055,7 @@ div#sfWwTrack {
   padding: 6px 14px;
   font-size: 0.8rem;
   font-weight: 500;
-  border-radius: 3px;
+  border-radius: 2px;
   border: 1.5px solid #004cac;
   background: #fff;
   color: #004cac;
@@ -7122,7 +7126,7 @@ div#sfWwTrack {
   right: 8px;
   width: 28px;
   height: 28px;
-  border-radius: 5px;
+  border-radius: 2px;
   border: 1px solid #e53e3e;
   background: #fff;
   color: #e53e3e;

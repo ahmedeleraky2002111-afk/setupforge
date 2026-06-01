@@ -51,8 +51,7 @@ if ($showCart && !empty($_SESSION["shop_cart"])) {
 
           if (!isset($_SESSION["user_id"])) {
             // Guest — only show if wizard is in progress
-            if (!empty($_SESSION["wizard"]) && !empty($_SESSION["wizard"]["business_type"])) {
-              $showSetupBtn  = true;
+if (!empty($_SESSION["wizard"]) && !empty($_SESSION["wizard"]["business_name"])) {              $showSetupBtn  = true;
               $setupBtnLabel = "My Setup";
               $setupBtnHref  = "setup.php";
             }
