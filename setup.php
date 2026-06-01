@@ -248,24 +248,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $_SESSION["wizard"]["services"] = $savedServices;
     
     if ($userId) {
+        $bname = trim($_POST["business_name"] ?? "");
+        // Upsert: ensure row exists with business name
+        $checkRow = @pg_query_params($conn, "SELECT user_id FROM businesses WHERE user_id = \$1", [$userId]);
+        if ($checkRow && pg_num_rows($checkRow) > 0) {
+            @pg_query_params($conn,
+                "UPDATE businesses SET business_name = \$1, setup_step = 1, setup_status = 'in_progress', updated_at = now() WHERE user_id = \$2",
+                [$bname, $userId]);
+        } else {
+            @pg_query_params($conn,
+                "INSERT INTO businesses (user_id, business_name, setup_step, setup_status, status, updated_at) VALUES (\$1, \$2, 1, 'in_progress', 'pending', now())",
+                [$userId, $bname]);
+        }
         save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 1);
-
-        // Force save business name directly
-        pg_query_params($conn,
-            "UPDATE businesses SET business_name = \$1 WHERE user_id = \$2",
-            [trim($_POST["business_name"] ?? ""), $userId]
-        );
-
         // Convert customer to business if needed
         pg_query_params($conn,
-            "UPDATE users SET user_type = 'business' WHERE id = $1 AND user_type = 'customer'",
-            [$userId]
-        );
+            "UPDATE users SET user_type = 'business' WHERE id = \$1 AND user_type = 'customer'",
+            [$userId]);
         $_SESSION["user_type"] = "business";
     }
-    
     redirect_step(1);
-}
+  }
 
   if ($currentStep === 1) {
     $selectedBusiness = $_POST["business_type"] ?? null;

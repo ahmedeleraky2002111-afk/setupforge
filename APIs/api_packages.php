@@ -157,7 +157,7 @@ try {
         "kitchen"  => "Kitchen / Equipment",
         "pos"      => "POS & Tech",
         "furniture"=> "Dining Area",
-        "ac"       => "AC & Ambience",
+        "ac"       => "Climate and ventilation",
     ];
 
     foreach ($alloc as $module => $cap) {

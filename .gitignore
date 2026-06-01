@@ -1,6 +1,7 @@
 gconfig.php
-itignore# Database connection - NEVER push this
-
+# Database connection - NEVER push this
+db.php
+config.php
 # Environment and config files - NEVER push these
 .env
 .env.local
@@ -37,3 +38,6 @@ storage/
 # Cache
 cache/
 tmp/
+
+step7_debug.txt
+wizard_debug.txt

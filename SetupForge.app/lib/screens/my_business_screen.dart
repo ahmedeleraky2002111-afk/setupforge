@@ -97,7 +97,11 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> {
                     color: Color(0xFFEFF6FF),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.store_outlined, color: sfBlue, size: 40),
+                  child: const Icon(
+                    Icons.store_outlined,
+                    color: sfBlue,
+                    size: 40,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -538,7 +542,7 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> {
       'kitchen': 'Kitchen Equipment',
       'furniture': 'Dining Area',
       'pos': 'POS System',
-      'ac': 'AC & Climate',
+      'ac': 'Climate and ventilation',
       'electronics': 'Electronics',
     };
     final moduleColors = {
@@ -777,7 +781,7 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> {
         .map((s) {
           const labels = {
             'electrical': 'Electrical',
-            'ac': 'AC & Climate',
+            'ac': 'Climate and ventilation',
             'kitchen': 'Kitchen Install',
             'pos': 'POS Setup',
             'network': 'Network & WiFi',

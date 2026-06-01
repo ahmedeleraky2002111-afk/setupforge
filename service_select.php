@@ -18,17 +18,24 @@ if ($userId) {
 $preselect = $_GET['preselect'] ?? '';
 $validServices = ['equipment', 'staff', 'installation', 'finishing', 'advertising', 'full_setup'];
 if ($preselect && in_array($preselect, $validServices)) {
-    $_SESSION['wizard']['services'] = [$preselect];
-    // installation needs equipment, push to full setup
-    if ($preselect === 'installation') {
-    $_SESSION['wizard']['services'] = ['installation'];
-}
-    if ($preselect === 'full_setup') {
-        $_SESSION['wizard']['services'] = ['equipment', 'staff', 'installation', 'finishing', 'advertising'];
+    $hasWizardInProgress = !empty($_SESSION['wizard']['business_name']);
+    $loggedInWithProgress = false;
+    if (isset($_SESSION['user_id']) && $conn) {
+        $chk = @pg_query_params($conn,
+            "SELECT setup_step FROM businesses WHERE user_id = \$1 AND setup_status = 'in_progress' AND setup_step > 0 LIMIT 1",
+            [(int)$_SESSION['user_id']]);
+        $loggedInWithProgress = ($chk && pg_num_rows($chk) > 0);
+    }
+    if (!$hasWizardInProgress && !$loggedInWithProgress) {
+        if ($preselect === 'full_setup') {
+            $_SESSION['wizard']['services'] = ['equipment', 'staff', 'installation', 'finishing', 'advertising'];
+        } else {
+            $_SESSION['wizard']['services'] = [$preselect];
+        }
         header("Location: setup.php?step=0");
         exit;
     }
-    header("Location: setup.php?step=0");
+    header("Location: setup.php");
     exit;
 }
 

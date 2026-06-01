@@ -246,7 +246,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
       "kitchen": "Kitchen",
       "pos": "POS & Tech",
       "furniture": "Dining Area",
-      "ac": "AC",
+      "ac": "Climate and ventilation",
     };
 
     return Scaffold(

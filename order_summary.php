@@ -104,7 +104,7 @@ $moduleLabels = [
   "pos"         => "POS system",
   "kitchen"     => "Kitchen",
   "furniture"   => "Furniture & dining",
-  "ac"          => "AC & ambience",
+  "ac"          => "Climate and ventilation",
   "electronics" => "Electronics",
   "infra"       => "Infrastructure",
 ];
@@ -312,7 +312,7 @@ foreach($allRows as $r){
     </div>
 
     <a href="packages.php" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary);border-radius:8px;padding:8px;font-size:13px;text-decoration:none;">
-      ← Back to packages
+      ← Back to equipment
     </a>
 
   </div>
