@@ -42,11 +42,13 @@ class _LaborHomeScreenState extends State<LaborHomeScreen> {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return 'Just now';
     if (diff.inHours < 1) return '${diff.inMinutes} min ago';
-    if (diff.inDays < 1)
+    if (diff.inDays < 1) {
       return '${diff.inHours} hour${diff.inHours > 1 ? 's' : ''} ago';
+    }
     if (diff.inDays < 2) return 'Yesterday';
-    if (diff.inDays < 30)
+    if (diff.inDays < 30) {
       return '${diff.inDays} day${diff.inDays > 1 ? 's' : ''} ago';
+    }
     return '${dt.day} ${_monthName(dt.month)} ${dt.year}';
   }
 

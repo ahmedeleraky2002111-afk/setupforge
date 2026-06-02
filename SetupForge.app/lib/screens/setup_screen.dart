@@ -32,7 +32,7 @@ class _SetupScreenState extends State<SetupScreen> {
   int _floorCount = 1;
   int _budget = 0;
   List<String> _installationServices = [];
-  Map<String, int> _staffCounts = {
+  final Map<String, int> _staffCounts = {
     'waiter': 0,
     'chef': 0,
     'cashier': 0,
@@ -651,7 +651,7 @@ class _SetupScreenState extends State<SetupScreen> {
                         ),
                         Switch(
                           value: _floorCount > 1,
-                          activeColor: sfBlue,
+                          activeThumbColor: sfBlue,
                           onChanged: (v) =>
                               setState(() => _floorCount = v ? 2 : 1),
                         ),
@@ -669,8 +669,9 @@ class _SetupScreenState extends State<SetupScreen> {
                           Row(
                             children: [
                               _stepBtn(Icons.remove, () {
-                                if (_floorCount > 2)
+                                if (_floorCount > 2) {
                                   setState(() => _floorCount--);
+                                }
                               }),
                               Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -686,8 +687,9 @@ class _SetupScreenState extends State<SetupScreen> {
                                 ),
                               ),
                               _stepBtn(Icons.add, () {
-                                if (_floorCount < 10)
+                                if (_floorCount < 10) {
                                   setState(() => _floorCount++);
+                                }
                               }),
                             ],
                           ),

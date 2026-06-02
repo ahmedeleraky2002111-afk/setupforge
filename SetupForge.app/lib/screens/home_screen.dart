@@ -27,11 +27,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final res = await api.getHomeData();
-    if (mounted)
+    if (mounted) {
       setState(() {
         _data = res;
         _loading = false;
       });
+    }
   }
 
   void _handleHeroBtn(String route) {

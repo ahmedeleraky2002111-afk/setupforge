@@ -122,7 +122,7 @@ class _CartScreenState extends State<CartScreen> {
                 ? Image.network(
                     imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, _, _) =>
                         const Icon(Icons.inventory_2_outlined, color: sfMuted),
                   )
                 : const Icon(Icons.inventory_2_outlined, color: sfMuted),

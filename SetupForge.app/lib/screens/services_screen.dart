@@ -442,9 +442,7 @@ class _ServicesScreenState extends State<ServicesScreen>
                       if (applicants.isEmpty)
                         _kanbanEmpty('No applicants yet')
                       else
-                        ...applicants
-                            .map((a) => _applicantCard(a, false))
-                            .toList(),
+                        ...applicants.map((a) => _applicantCard(a, false)),
                     ],
                   ),
                 ),
@@ -463,7 +461,7 @@ class _ServicesScreenState extends State<ServicesScreen>
                       if (hired.isEmpty)
                         _kanbanEmpty('Empty')
                       else
-                        ...hired.map((a) => _applicantCard(a, true)).toList(),
+                        ...hired.map((a) => _applicantCard(a, true)),
                     ],
                   ),
                 ),
@@ -1527,7 +1525,7 @@ class _ServicesScreenState extends State<ServicesScreen>
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: compType,
+                initialValue: compType,
                 decoration: const InputDecoration(
                   labelText: 'Per',
                   border: OutlineInputBorder(borderRadius: BorderRadius.zero),
@@ -1691,8 +1689,9 @@ class _ServicesScreenState extends State<ServicesScreen>
                     firstDate: DateTime.now(),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     setModalState(() => selectedDate = picked);
+                  }
                 },
                 child: Container(
                   width: double.infinity,

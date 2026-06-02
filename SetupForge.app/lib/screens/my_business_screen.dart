@@ -97,7 +97,11 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> {
                     color: Color(0xFFEFF6FF),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.store_outlined, color: sfBlue, size: 40),
+                  child: const Icon(
+                    Icons.store_outlined,
+                    color: sfBlue,
+                    size: 40,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -614,7 +618,7 @@ class _MyBusinessScreenState extends State<MyBusinessScreen> {
                 ? Image.network(
                     imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.inventory_2_outlined,
                       color: sfMuted,
                       size: 24,

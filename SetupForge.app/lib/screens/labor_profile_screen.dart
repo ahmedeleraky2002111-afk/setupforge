@@ -28,11 +28,12 @@ class _LaborProfileScreenState extends State<LaborProfileScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final res = await api.getLaborProfile();
-    if (mounted)
+    if (mounted) {
       setState(() {
         _data = res;
         _loading = false;
       });
+    }
   }
 
   Future<void> _logout() async {

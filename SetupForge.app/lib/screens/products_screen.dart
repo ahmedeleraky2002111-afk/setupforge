@@ -455,7 +455,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           imageUrl,
                           fit: BoxFit.cover,
                           width: double.infinity,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, _, _) => const Icon(
                             Icons.inventory_2_outlined,
                             color: sfMuted,
                             size: 40,
