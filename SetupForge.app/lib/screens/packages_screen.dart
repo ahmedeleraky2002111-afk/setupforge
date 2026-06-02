@@ -103,16 +103,6 @@ class _PackagesScreenState extends State<PackagesScreen> {
     );
   }
 
-  Future<void> _replaceProduct(String type, String productId) async {
-    await api.packagesAction(
-      action: "replace_product",
-      module: _activeModule,
-      type: type,
-      productId: productId,
-    );
-    await _load();
-  }
-
   Future<void> _addProduct(String type, Map<String, dynamic> product) async {
     await api.packagesAction(
       action: "add_product",
@@ -224,7 +214,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
               style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
             ),
             Text(
-              '$tier Tier · ${_formatEgp(_data["budget"] as int? ?? 0)} budget',
+              '$tier Tier · ${_formatEgp((_data["budget"] as num?)?.toInt() ?? 0)} budget',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.8),
                 fontSize: 12,
@@ -248,8 +238,8 @@ class _PackagesScreenState extends State<PackagesScreen> {
                 children: modules.map((m) {
                   final isActive = m == _activeModule;
                   final cart = carts[m] as Map<String, dynamic>?;
-                  final total = (cart?["total"] as int?) ?? 0;
-                  final cap = (cart?["cap"] as int?) ?? 0;
+                  final total = (cart?["total"] as num?)?.toInt() ?? 0;
+                  final cap = (cart?["cap"] as num?)?.toInt() ?? 0;
                   final over = total > cap && cap > 0;
 
                   return GestureDetector(
@@ -362,7 +352,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
       if (item["is_notice"] == true) continue;
       total += _itemTotal(item);
     }
-    final cap = (cart["cap"] as int?) ?? 0;
+    final cap = (cart["cap"] as num?)?.toInt() ?? 0;
     final over = cap > 0 && total > cap;
     final pct = cap > 0 ? (total / cap).clamp(0.0, 1.0) : 0.0;
 
@@ -541,7 +531,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
               ),
             ),
             SizedBox(
-              height: 160,
+              height: 180,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
@@ -834,13 +824,13 @@ class _PackagesScreenState extends State<PackagesScreen> {
   // ── Small alternative card ──
   Widget _altCard({required Map<String, dynamic> alt, required String type}) {
     final name = alt["name"]?.toString() ?? "—";
-    final price = (alt["price"] ?? alt["unit"]);
+    final price = (alt["price"] ?? alt["unit"] ?? 0);
     final priceInt = price is int ? price : int.tryParse(price.toString()) ?? 0;
     final imageUrl = alt["image_url"]?.toString();
     final productId = alt["id"]?.toString();
 
     return GestureDetector(
-      onTap: () => _showReplaceDialog(type, alt),
+      onTap: () => _addProduct(type, alt),
       child: Container(
         width: 110,
         margin: const EdgeInsets.only(right: 8),
@@ -910,7 +900,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
               padding: const EdgeInsets.symmetric(vertical: 5),
               color: sfBlue,
               child: const Text(
-                'Select',
+                'Add',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
@@ -921,44 +911,6 @@ class _PackagesScreenState extends State<PackagesScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showReplaceDialog(String type, Map<String, dynamic> alt) {
-    final name = alt["name"]?.toString() ?? "this product";
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: const RoundedRectangleBorder(),
-        title: const Text(
-          'Replace Product',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-        ),
-        content: Text('Replace the recommended item with "$name"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: sfMuted)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _replaceProduct(type, alt["id"].toString());
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: sfBlue,
-              shape: const RoundedRectangleBorder(),
-            ),
-            child: const Text(
-              'Replace',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1311,7 +1263,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                     itemCount: _products.length,
                     itemBuilder: (ctx, i) {
                       final p = _products[i];
-                      final price = p["price"] as int? ?? 0;
+                      final price = (p["price"] as num?)?.toInt() ?? 0;
                       final rating = (p["avg_rating"] as num?)?.toDouble();
                       final imageUrl = p["image_url"]?.toString();
 
