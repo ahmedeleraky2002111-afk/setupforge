@@ -60,17 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
 }
 
 
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "schedule_installation") {
-    $req_id_post   = (int)($_POST["request_id"] ?? 0);
-    $schedule_date = trim($_POST["scheduled_date"] ?? "");
-    if ($req_id_post > 0 && $schedule_date !== "") {
-        pg_query_params($conn,
-            "UPDATE installation_requests SET scheduled_date = $1 WHERE request_id = $2 AND user_id = $3",
-            [$schedule_date, $req_id_post, $business_id]);
-    }
-    header("Location: service_jobs.php?tab=installation");
-    exit();
-}
+
 
 // NEW - replace with:
 $acUnits = 1;
@@ -508,7 +498,6 @@ function formatInstallationServices($raw) {
   </div>
 
   <div class="container sf-hc-body">
-
     <!-- LABOR PANEL -->
     <div class="sf-hc-panel <?= $showLabor ? 'is-active' : '' ?>" id="panel-labor">
       <?php if (empty($laborRoles)): ?>
@@ -929,20 +918,19 @@ $priceLabel   = "Est. Installation Cost";
     <button type="submit" class="sf-ins-btn-accept" style="width:100%;">Accept Quote</button>
   </form>
   <?php endif; ?>
-  <?php if ($quoteAccepted): ?>
+<?php if ($quoteAccepted): ?>
     <?php $scheduledDate = $req["scheduled_date"] ?? null; ?>
     <?php if ($scheduledDate): ?>
-      <div style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;background:#004cac;color:#fff;font-size:.82rem;font-weight:700;border-radius:0;border:none;">
+      <div style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;background:#d1fae5;color:#15803d;font-size:.82rem;font-weight:700;border-radius:0;border:1px solid rgba(34,197,94,.2);">
         <i class="bi bi-calendar-check-fill"></i>
-        <?= date('M j, Y', strtotime($scheduledDate)) ?>
+        Site visit: <?= date('M j, Y', strtotime($scheduledDate)) ?>
       </div>
     <?php else: ?>
-      <button onclick="openScheduleModal(<?= $req_id ?>, '<?= htmlspecialchars($minScheduleDate) ?>')"
-        class="sf-ins-btn-accept">
-        <i class="bi bi-calendar3 me-1"></i>Schedule
-      </button>
+      <div style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;background:#fef9c3;color:#854d0e;font-size:.82rem;font-weight:700;border-radius:0;border:1px solid rgba(234,179,8,.2);">
+        <i class="bi bi-clock"></i> Awaiting site visit
+      </div>
     <?php endif; ?>
-  <?php endif; ?>
+<?php endif; ?>
 </div>
               </div>
               <?php endforeach; ?>
@@ -1013,7 +1001,7 @@ $priceLabel   = "Est. Installation Cost";
           <div class="sf-ins-service-block">
             <div class="sf-ins-service-label">
               <i class="bi bi-brush" style="color:#004cac"></i>
-              <span class="sf-ins-service-title">تشطيبات</span>
+              <span class="sf-ins-service-title">Finishing</span>
               <span class="sf-ins-status-badge sf-ins-status-<?= htmlspecialchars($fStatus) ?>">
                 <?= ucfirst($fStatus) ?>
               </span>
@@ -1228,30 +1216,7 @@ $priceLabel   = "Est. Installation Cost";
     <?php endif; ?>
 
   </div>
-  <!-- Schedule Modal -->
-<div id="sf-schedule-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:5px;width:min(400px,95vw);padding:28px;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.18);">
-    <button onclick="closeScheduleModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:1.3rem;color:#6b7280;cursor:pointer;">
-      <i class="bi bi-x-lg"></i>
-    </button>
-    <div style="font-size:1.05rem;font-weight:800;color:#111827;margin-bottom:6px;">Schedule Installation</div>
-    <div id="schedule-modal-note" style="font-size:.78rem;color:#9ca3af;margin-bottom:20px;"></div>
-    <form method="POST">
-<input type="hidden" name="action" value="schedule_installation" id="schedule-modal-action">
-      <input type="hidden" name="request_id" id="schedule-modal-req-id">
-      <div style="margin-bottom:16px;">
-        <label style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Installation Date</label>
-        <input type="date" name="scheduled_date" id="schedule-modal-date"
-          required
-          style="width:100%;padding:10px 12px;border:1.5px solid #c7d9f7;border-radius:5px;font-size:.9rem;font-weight:600;color:#111827;outline:none;">
-      </div>
-      <button type="submit"
-        style="width:100%;padding:12px;background:#004cac;color:#fff;border:none;border-radius:5px;font-weight:700;font-size:.92rem;cursor:pointer;">
-        <i class="bi bi-check2-circle me-1"></i>Confirm Date
-      </button>
-    </form>
-  </div>
-</div>
+
   <!-- Salary Modal -->
 <div id="sf-salary-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;width:min(400px,95vw);padding:28px;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.18);">
@@ -1397,19 +1362,7 @@ function switchRole(rKey, btn) {
   const panel = document.getElementById('role-' + btoa(unescape(encodeURIComponent(rKey))));
   if (panel) panel.classList.add('is-active');
 }
-function openScheduleModal(reqId, minDate, type) {
-  document.getElementById('schedule-modal-req-id').value = reqId;
-  document.getElementById('schedule-modal-action').value = type === 'finishing' ? 'schedule_finishing' : 'schedule_installation';
-  document.getElementById('schedule-modal-date').min = minDate;
-  document.getElementById('schedule-modal-note').textContent = minDate
-    ? 'Must be after estimated delivery: ' + new Date(minDate).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})
-    : 'No delivery date set yet. You can still schedule.';
-  document.getElementById('sf-schedule-modal').style.display = 'flex';
-}
 
-function closeScheduleModal() {
-  document.getElementById('sf-schedule-modal').style.display = 'none';
-}
 </script>
 <!-- Applicant Modal -->
 <div id="sf-applicant-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
