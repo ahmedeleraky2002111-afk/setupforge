@@ -161,17 +161,17 @@ try {
 
     // Helper: fetch products by module+tier
     function fetch_products($conn, $module, $tier) {
-        $res = pg_query_params($conn, "
-            SELECT p.id, p.product_name, p.product_type, p.price, p.avg_rating,
-                   p.brand, p.vendor_user_id, p.product_group_key, p.stock_quantity,
-                   p.specs, u.name AS vendor_name,
-                   (SELECT pi.image_url FROM product_images pi
-                    WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
-            FROM products p
-            LEFT JOIN users u ON u.id = p.vendor_user_id
-            WHERE p.module = \$1 AND LOWER(p.tier) = LOWER(\$2)
-            ORDER BY p.avg_rating DESC NULLS LAST, p.price ASC
-        ", [$module, $tier]);
+    $res = pg_query_params($conn, "
+        SELECT p.id, p.product_name, p.product_type, p.price, p.avg_rating,
+               p.brand, p.vendor_user_id, p.product_group_key, p.stock_quantity,
+               p.specs, u.name AS vendor_name,        -- ← these were missing
+               (SELECT pi.image_url FROM product_images pi
+                WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
+        FROM products p
+        LEFT JOIN users u ON u.id = p.vendor_user_id
+        WHERE p.module = \$1 AND LOWER(p.tier) = LOWER(\$2)
+        ORDER BY p.avg_rating DESC NULLS LAST, p.price ASC
+    ", [$module, $tier]);
 
         $out = [];
         if ($res) {
