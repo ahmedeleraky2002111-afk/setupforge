@@ -45,12 +45,14 @@ try {
     $orderItems = [];
     $orderTotal = 0;
 
-    foreach ($appCarts as $module => $sections) {
-        foreach ($sections as $section => $item) {
+    foreach ($appCarts as $module => $cart) {
+        $items = $cart['items'] ?? [];
+        foreach ($items as $item) {
             if (empty($item['product_id'])) continue;
             $productId = (int)$item['product_id'];
-            $qty       = (int)($item['quantity'] ?? 1);
-            $price     = (float)($item['unit_price'] ?? 0);
+            $qty       = (int)($item['qty'] ?? 1);
+            $price     = (float)($item['unit'] ?? 0);
+            if ($qty <= 0 || $price <= 0) continue;
             $orderItems[] = [
                 'product_id' => $productId,
                 'quantity'   => $qty,
