@@ -17,7 +17,7 @@ try {
 
     $token = trim(substr($auth, 7));
     $userRes = pg_query_params($conn,
-        "SELECT id, name, phone, city, country, street FROM users WHERE api_token = $1 LIMIT 1",
+        "SELECT id, name, email, phone, city, country, street FROM users WHERE api_token = $1 LIMIT 1",
         [$token]);
 
     if (!$userRes || pg_num_rows($userRes) === 0) {
@@ -94,12 +94,33 @@ try {
 
     pg_query($conn, "COMMIT");
 
-    echo json_encode([
-        "ok"       => true,
-        "order_id" => $order_id,
-        "total"    => $grandTotal,
-        "message"  => "Order placed successfully",
-    ]);
+    $paymentMethod = trim($input["payment_method"] ?? "cash");
+
+    if ($paymentMethod === "card") {
+        $PAYMOB_API_KEY = "ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRFMU1UUTVOeXdpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5lRDd6eVZVb2hNLW02QXU5NDg0NTBJd1lwS0J1QjFFR2U4c3kyc0tpXzAyb0lWWDFRaTdNZDBZZTNwTjB6TkFyZHRsZVk5Qmx3cklSQ2FocjFfM0Fsdw==";
+        $PAYMOB_IFRAME_ID = "1030719";
+        $PAYMOB_INT_ID = 5609912;
+
+        $authRes = json_decode(file_get_contents("https://accept.paymob.com/api/auth/tokens", false,
+            stream_context_create(["http" => ["method" => "POST", "header" => "Content-Type: application/json", "content" => json_encode(["api_key" => $PAYMOB_API_KEY])]])), true);
+        $authToken = $authRes["token"] ?? null;
+        if (!$authToken) { echo json_encode(["ok" => false, "error" => "Paymob auth failed"]); exit; }
+
+        $pmOrderRes = json_decode(file_get_contents("https://accept.paymob.com/api/ecommerce/orders", false,
+            stream_context_create(["http" => ["method" => "POST", "header" => "Content-Type: application/json", "content" => json_encode(["auth_token" => $authToken, "delivery_needed" => false, "amount_cents" => (int)round($grandTotal * 100), "currency" => "EGP", "merchant_order_id" => $order_id, "items" => []])]])), true);
+        $pmOrderId = $pmOrderRes["id"] ?? null;
+        if (!$pmOrderId) { echo json_encode(["ok" => false, "error" => "Paymob order failed"]); exit; }
+
+        $pmKeyRes = json_decode(file_get_contents("https://accept.paymob.com/api/acceptance/payment_keys", false,
+            stream_context_create(["http" => ["method" => "POST", "header" => "Content-Type: application/json", "content" => json_encode(["auth_token" => $authToken, "amount_cents" => (int)round($grandTotal * 100), "expiration" => 3600, "order_id" => $pmOrderId, "currency" => "EGP", "integration_id" => $PAYMOB_INT_ID, "billing_data" => ["first_name" => $deliveryName, "last_name" => ".", "email" => $user["email"] ?? "na@na.com", "phone_number" => $deliveryPhone, "apartment" => "NA", "floor" => "NA", "street" => $deliveryLocation, "building" => "NA", "shipping_method" => "NA", "postal_code" => "NA", "city" => "NA", "country" => "EG", "state" => "NA"]])]])), true);
+        $pmKey = $pmKeyRes["token"] ?? null;
+        if (!$pmKey) { echo json_encode(["ok" => false, "error" => "Paymob key failed"]); exit; }
+
+        $iframeUrl = "https://accept.paymob.com/api/acceptance/iframes/{$PAYMOB_IFRAME_ID}?payment_token={$pmKey}";
+        echo json_encode(["ok" => true, "order_id" => $order_id, "total" => $grandTotal, "iframe_url" => $iframeUrl]);
+    } else {
+        echo json_encode(["ok" => true, "order_id" => $order_id, "total" => $grandTotal, "message" => "Order placed successfully"]);
+    }
 
 } catch (Throwable $e) {
     pg_query($conn, "ROLLBACK");
