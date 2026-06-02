@@ -130,9 +130,17 @@ class _SetupScreenState extends State<SetupScreen> {
     "floor_count": _floorCount,
     "budget": _budget,
     "services": _services,
+    "modules": _deriveModules(),
     "installation_services": _installationServices,
     ..._staffCounts.map((k, v) => MapEntry("${k}_count", v)),
   };
+
+  List<String> _deriveModules() {
+    if (!_hasEquipment) return [];
+    final rt = _restaurantType.isNotEmpty ? _restaurantType : 'standard_dining';
+    if (rt == 'cloud_kitchen') return ['kitchen', 'pos'];
+    return ['kitchen', 'pos', 'furniture', 'ac'];
+  }
 
   Future<void> _saveStep() async {
     setState(() => _saving = true);
