@@ -63,12 +63,12 @@ error_log("shop_order: user_id=$user_id grandTotal=$grandTotal items=" . count($
     pg_query($conn, "BEGIN");
 
     $orderRes = pg_query_params($conn, "
-        INSERT INTO orders (
-            business_user_id, order_type, order_total, payment_status,
-            status, delivery_location, order_date
-        ) VALUES ($1, 'shop', $2, 'pending', 'pending', $3, NOW())
-        RETURNING id
-    ", [$user_id, $grandTotal, $deliveryLocation]);
+    INSERT INTO orders (
+        customer_user_id, order_type, order_total, payment_status,
+        status, delivery_location, order_date
+    ) VALUES ($1, 'shop', $2, 'pending', 'pending', $3, NOW())
+    RETURNING id
+", [$user_id, $grandTotal, $deliveryLocation]);
 
     if (!$orderRes || pg_num_rows($orderRes) === 0) {
         pg_query($conn, "ROLLBACK");
