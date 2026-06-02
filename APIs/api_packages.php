@@ -36,7 +36,74 @@ try {
     }
 
     $biz = pg_fetch_assoc($bizRes);
+    // Use saved app_carts if they exist — don't overwrite user changes
+$staffingData = json_decode($biz["staffing_data"] ?? "{}", true) ?? [];
+$savedCarts   = $staffingData["app_carts"] ?? null;
 
+if (!empty($savedCarts)) {
+    $grandTotal = 0;
+    foreach ($savedCarts as &$cart) {
+        $t = 0;
+        foreach ($cart["items"] as $item) {
+            if ($item["is_notice"] ?? false) continue;
+            $t += (int)$item["qty"] * (int)$item["unit"];
+        }
+        $cart["total"] = $t;
+        $grandTotal += $t;
+    }
+    unset($cart);
+    $tier = (function($b) {
+        if ($b < 600000)  return "Starter";
+        if ($b < 2000000) return "Balanced";
+        return "Premium";
+    })((int)($biz["budget_egp"] ?? 0));
+    echo json_encode([
+        "ok" => true, "tier" => $tier,
+        "budget" => (int)($biz["budget_egp"] ?? 0),
+        "grand_total" => $grandTotal,
+        "modules" => array_keys($savedCarts),
+        "carts" => $savedCarts,
+        "area_sqm" => (int)($biz["area_sqm"] ?? 50),
+    ]);
+    exit;
+}
+// ── Use saved app_carts if they exist (don't overwrite user changes) ──
+$staffingData = json_decode($biz["staffing_data"] ?? "{}", true) ?? [];
+$savedCarts   = $staffingData["app_carts"] ?? null;
+
+if (!empty($savedCarts)) {
+    // Recalculate totals from saved carts
+    $grandTotal = 0;
+    foreach ($savedCarts as &$cart) {
+        $t = 0;
+        foreach ($cart["items"] as $item) {
+            if ($item["is_notice"] ?? false) continue;
+            $t += (int)$item["qty"] * (int)$item["unit"];
+        }
+        $cart["total"] = $t;
+        $grandTotal += $t;
+    }
+    unset($cart);
+
+    $staffingRaw = json_decode($biz["staffing_data"] ?? "{}", true) ?? [];
+    $tier = (function($b) {
+        if ($b < 600000)  return "Starter";
+        if ($b < 2000000) return "Balanced";
+        return "Premium";
+    })((int)($biz["budget_egp"] ?? 0));
+
+    echo json_encode([
+        "ok"          => true,
+        "tier"        => $tier,
+        "budget"      => (int)($biz["budget_egp"] ?? 0),
+        "grand_total" => $grandTotal,
+        "modules"     => array_keys($savedCarts),
+        "carts"       => $savedCarts,
+        "area_sqm"    => (int)($biz["area_sqm"] ?? 50),
+    ]);
+    exit;
+}
+// ── End saved carts check — fall through to regenerate ──
     $budget        = (int)($biz["budget_egp"] ?? 0);
     $restaurantType = $biz["restaurant_type"] ?? "standard_dining";
     $areaSqm       = (int)($biz["area_sqm"] ?? 50);

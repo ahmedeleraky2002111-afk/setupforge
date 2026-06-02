@@ -1,6 +1,5 @@
 <?php
-
-  // home.php
+// home.php
 session_start();
 
 require_once "db.php";
@@ -43,12 +42,18 @@ require_once "db.php";
           if ($bizRes && pg_num_rows($bizRes) > 0) {
               $biz = pg_fetch_assoc($bizRes);
               if (($biz['setup_status'] ?? '') === 'completed') {
-      $setupBtnText = "Resume Setup";
-      $setupBtnLink = "packages.php";
-  } elseif (($biz['setup_status'] ?? '') === 'in_progress' && (int)($biz['setup_step'] ?? 0) > 0) {
-      $setupBtnText = "Resume Setup";
-      $setupBtnLink = "setup.php";
-  }
+                  $setupBtnText = "Resume Setup";
+                  $setupBtnLink = "packages.php";
+              } elseif (($biz['setup_status'] ?? '') === 'in_progress' && (int)($biz['setup_step'] ?? 0) > 0) {
+                  $setupBtnText = "Resume Setup";
+                  $setupBtnLink = "setup.php";
+              } elseif (!empty($_SESSION["wizard"]["budget"])) {
+                  $setupBtnText = "Resume Setup";
+                  $setupBtnLink = "packages.php";
+              } elseif (!empty($_SESSION["wizard"]["business_name"])) {
+                  $setupBtnText = "Resume Setup";
+                  $setupBtnLink = "setup.php";
+              }
           }
       }
   }

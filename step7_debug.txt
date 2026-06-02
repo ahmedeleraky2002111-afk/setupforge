@@ -9,3 +9,5 @@ userId=259 hasEquipment=true hasStaff=true services=["equipment","staff","instal
 userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
 userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
 userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
+userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
+userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]

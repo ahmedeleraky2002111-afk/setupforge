@@ -74,7 +74,7 @@ class SetupSuccessScreen extends StatelessWidget {
                   context,
                   '/app-shell',
                   (route) => false,
-                  arguments: {'initialIndex': 3},
+                  arguments: {'initialIndex': 3, 'forceRefresh': true},
                 ),
                 child: Container(
                   width: double.infinity,

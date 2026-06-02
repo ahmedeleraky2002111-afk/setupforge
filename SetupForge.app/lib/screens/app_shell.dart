@@ -19,6 +19,8 @@ class _AppShellState extends State<AppShell> {
   String _setupState = "none"; // none, in_progress, completed
   final api = ApiService();
 
+  bool _stateLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -26,11 +28,22 @@ class _AppShellState extends State<AppShell> {
     _loadSetupState();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_stateLoaded) return; // ← this line must be there
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+    if (args?['forceRefresh'] == true) {
+      _loadSetupState();
+    }
+  }
+
   Future<void> _loadSetupState() async {
     final res = await api.getHomeData();
     if (mounted) {
       setState(() {
         _setupState = res["setup_state"]?.toString() ?? "none";
+        _stateLoaded = true;
       });
     }
   }
@@ -39,7 +52,11 @@ class _AppShellState extends State<AppShell> {
     const HomeScreen(),
     const MyBusinessScreen(),
     const ProductsScreen(),
-    _setupState == "completed"
+    !_stateLoaded
+        ? const Center(
+            child: CircularProgressIndicator(color: Color(0xFF004CAC)),
+          )
+        : _setupState == "completed"
         ? const ServicesScreen()
         : ServicesInfoScreen(setupState: _setupState),
   ];

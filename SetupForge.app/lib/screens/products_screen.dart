@@ -363,7 +363,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               crossAxisCount: 2,
                               crossAxisSpacing: 10,
                               mainAxisSpacing: 10,
-                              childAspectRatio: 0.62,
+                              childAspectRatio: 0.58,
                             ),
                         itemCount: _products.length,
                         itemBuilder: (ctx, i) => _productCard(_products[i]),
@@ -431,8 +431,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final pid = p["id"] as int;
     final inCart = _cartIds.contains(pid);
     final outOfStock = (p["stock"] ?? 0) == 0;
-    final price = (p["price"] as double?)?.toStringAsFixed(0) ?? "0";
-    final rating = p["avg_rating"] as double?;
+    final price = (p["price"] as num?)?.toInt().toString() ?? "0";
+    final rating = (p["avg_rating"] as num?)?.toDouble();
     final imageUrl = p["image_url"]?.toString();
 
     return Container(
