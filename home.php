@@ -1,9 +1,9 @@
-  <?php
+<?php
 
   // home.php
-  session_start();
+session_start();
 
-  require_once "db.php";
+require_once "db.php";
 
   /*
   |--------------------------------------------------------------------------
