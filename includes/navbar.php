@@ -57,7 +57,9 @@ if (!empty($_SESSION["wizard"]) && !empty($_SESSION["wizard"]["business_name"]))
             }
           } else {
             $navUserId  = (int)$_SESSION["user_id"];
-            $navConn    = $conn ?? null;
+if (empty($conn)) {
+require_once __DIR__ . "/../db.php";}
+$navConn = $conn ?? null;
 
             // Check for completed paid setup order
             $navPaidRes = $navConn ? @pg_query_params($navConn,
@@ -81,18 +83,27 @@ if (!empty($_SESSION["wizard"]) && !empty($_SESSION["wizard"]["business_name"]))
                 $navStep   = (int)($navBiz["setup_step"] ?? 0);
 
                 if ($navStatus === "completed") {
-                  // Wizard done, at packages, not yet paid
                   $showSetupBtn  = true;
                   $setupBtnLabel = "My Setup";
                   $setupBtnHref  = "packages.php";
                 } elseif ($navStatus === "in_progress" && $navStep > 0) {
-                  // Mid-wizard
+                  $showSetupBtn  = true;
+                  $setupBtnLabel = "My Setup";
+                  $setupBtnHref  = "setup.php";
+                } elseif (!empty($_SESSION["wizard"]["budget"])) {
+                  $showSetupBtn  = true;
+                  $setupBtnLabel = "My Setup";
+                  $setupBtnHref  = "packages.php";
+                } elseif (!empty($_SESSION["wizard"]["business_name"])) {
                   $showSetupBtn  = true;
                   $setupBtnLabel = "My Setup";
                   $setupBtnHref  = "setup.php";
                 }
-              } elseif (!empty($_SESSION["wizard"]) && !empty($_SESSION["wizard"]["business_type"])) {
-                // Logged in but no businesses row yet, wizard in session
+              } elseif (!empty($_SESSION["wizard"]["budget"])) {
+                $showSetupBtn  = true;
+                $setupBtnLabel = "My Setup";
+                $setupBtnHref  = "packages.php";
+              } elseif (!empty($_SESSION["wizard"]["business_name"])) {
                 $showSetupBtn  = true;
                 $setupBtnLabel = "My Setup";
                 $setupBtnHref  = "setup.php";

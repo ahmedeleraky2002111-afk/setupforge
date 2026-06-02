@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'dart:convert';
 
 class PackagesScreen extends StatefulWidget {
   const PackagesScreen({super.key});
@@ -64,22 +63,26 @@ class _PackagesScreenState extends State<PackagesScreen> {
     return Map<String, dynamic>.from(c);
   }
 
-  int get _activeTotal {
-    return _activeItems.fold(0, (sum, item) {
-      if (item["is_notice"] == true) return sum;
-      return sum + (item["qty"] as int? ?? 0) * (item["unit"] as int? ?? 0);
-    });
-  }
-
   int get _grandTotal {
     int total = 0;
     for (final m in _localItems.keys) {
       for (final item in _localItems[m]!) {
         if (item["is_notice"] == true) continue;
-        total += (item["qty"] as int? ?? 0) * (item["unit"] as int? ?? 0);
+        final unit = item["unit"];
+        final qty = item["qty"];
+        total +=
+            ((qty is int ? qty : int.tryParse(qty.toString()) ?? 0)) *
+            ((unit is int ? unit : int.tryParse(unit.toString()) ?? 0));
       }
     }
     return total;
+  }
+
+  int _itemTotal(Map<String, dynamic> item) {
+    final unit = item["unit"];
+    final qty = item["qty"];
+    return ((qty is int ? qty : int.tryParse(qty.toString()) ?? 0)) *
+        ((unit is int ? unit : int.tryParse(unit.toString()) ?? 0));
   }
 
   Future<void> _updateQty(String type, int newQty) async {
@@ -111,31 +114,13 @@ class _PackagesScreenState extends State<PackagesScreen> {
   }
 
   Future<void> _addProduct(String type, Map<String, dynamic> product) async {
-    setState(() {
-      final items = _localItems[_activeModule]!;
-      // Check if type already exists
-      final existing = items.where((i) => i["type"] == type).toList();
-      if (existing.isEmpty) {
-        items.add({
-          "type": type,
-          "product_id": product["id"],
-          "name": product["name"],
-          "unit": product["price"],
-          "qty": 1,
-          "image_url": product["image_url"],
-          "brand": product["brand"],
-          "vendor_name": product["vendor_name"],
-          "avg_rating": product["avg_rating"],
-          "alternatives": [],
-        });
-      }
-    });
     await api.packagesAction(
       action: "add_product",
       module: _activeModule,
       type: type,
       productId: product["id"].toString(),
     );
+    await _load();
   }
 
   void _showAddProductSheet(String type) {
@@ -157,38 +142,15 @@ class _PackagesScreenState extends State<PackagesScreen> {
   }
 
   Future<void> _confirmSetup() async {
-    setState(() => _confirming = true);
-    try {
-      final res = await api.placeSetupOrder();
-      if (!mounted) return;
-      if (res["ok"] == true) {
-        Navigator.pushNamed(
-          context,
-          '/setup-payment',
-          arguments: {
-            'iframe_url': res["iframe_url"].toString(),
-            'order_id': res["order_id"] as int,
-          },
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(res["error"]?.toString() ?? "Failed to place order"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Something went wrong. Please try again."),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _confirming = false);
-    }
+    Navigator.pushNamed(
+      context,
+      '/order-summary',
+      arguments: {
+        'data': _data,
+        'localItems': _localItems,
+        'grandTotal': _grandTotal,
+      },
+    );
   }
 
   @override
@@ -246,7 +208,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
       "kitchen": "Kitchen",
       "pos": "POS & Tech",
       "furniture": "Dining Area",
-      "ac": "Climate and ventilation",
+      "ac": "Climate",
     };
 
     return Scaffold(
@@ -276,7 +238,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
       ),
       body: Column(
         children: [
-          // Module tabs
+          // ── Module tabs ──
           Container(
             color: sfBlue,
             child: SingleChildScrollView(
@@ -288,7 +250,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
                   final cart = carts[m] as Map<String, dynamic>?;
                   final total = (cart?["total"] as int?) ?? 0;
                   final cap = (cart?["cap"] as int?) ?? 0;
-                  final over = total > cap;
+                  final over = total > cap && cap > 0;
 
                   return GestureDetector(
                     onTap: () => setState(() => _activeModule = m),
@@ -338,7 +300,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
             ),
           ),
 
-          // Content
+          // ── Content ──
           Expanded(
             child: RefreshIndicator(
               color: sfBlue,
@@ -347,22 +309,17 @@ class _PackagesScreenState extends State<PackagesScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   children: [
-                    // Budget progress bar
                     if (_activeCart != null) _budgetBar(_activeCart!),
-
-                    // AC notice
                     if (_activeModule == "ac" &&
                         _activeItems.any((i) => i["is_notice"] == true))
                       _acNotice(),
-
-                    // Sections
                     if (_activeItems
                         .where((i) => i["is_notice"] != true)
                         .isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(40),
+                      const Padding(
+                        padding: EdgeInsets.all(40),
                         child: Column(
-                          children: const [
+                          children: [
                             Icon(
                               Icons.inventory_2_outlined,
                               color: sfMuted,
@@ -384,41 +341,6 @@ class _PackagesScreenState extends State<PackagesScreen> {
                       ..._activeItems
                           .where((i) => i["is_notice"] != true)
                           .map((item) => _sectionCard(item)),
-
-                    // Add new section button
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: GestureDetector(
-                        onTap: () => _showAddProductSheet(''),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(
-                              color: sfBlue,
-                              style: BorderStyle.solid,
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_rounded, color: sfBlue, size: 18),
-                              SizedBox(width: 6),
-                              Text(
-                                'Add Product',
-                                style: TextStyle(
-                                  color: sfBlue,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -426,7 +348,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
             ),
           ),
 
-          // Bottom bar
+          // ── Bottom bar ──
           _bottomBar(),
         ],
       ),
@@ -434,9 +356,14 @@ class _PackagesScreenState extends State<PackagesScreen> {
   }
 
   Widget _budgetBar(Map<String, dynamic> cart) {
-    final total = (cart["total"] as int?) ?? 0;
+    // Recalculate total from local items (reflects qty changes)
+    int total = 0;
+    for (final item in _activeItems) {
+      if (item["is_notice"] == true) continue;
+      total += _itemTotal(item);
+    }
     final cap = (cart["cap"] as int?) ?? 0;
-    final over = total > cap;
+    final over = cap > 0 && total > cap;
     final pct = cap > 0 ? (total / cap).clamp(0.0, 1.0) : 0.0;
 
     return Container(
@@ -498,15 +425,11 @@ class _PackagesScreenState extends State<PackagesScreen> {
         color: const Color(0xFFFFFBEB),
         border: Border.all(color: const Color(0xFFFCD34D)),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Color(0xFFF59E0B),
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
+          Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 20),
+          SizedBox(width: 10),
+          Expanded(
             child: Text(
               'Your space requires a central AC system. Contact an HVAC company for proper assessment.',
               style: TextStyle(
@@ -523,11 +446,13 @@ class _PackagesScreenState extends State<PackagesScreen> {
 
   Widget _sectionCard(Map<String, dynamic> item) {
     final type = item["type"] as String? ?? "";
-    final qty = item["qty"] as int? ?? 1;
-    final unit = item["unit"] as int? ?? 0;
+    final qty = item["qty"] is int
+        ? item["qty"] as int
+        : int.tryParse(item["qty"].toString()) ?? 1;
+    final unit = item["unit"] is int
+        ? item["unit"] as int
+        : int.tryParse(item["unit"].toString()) ?? 0;
     final alts = List<Map<String, dynamic>>.from(item["alternatives"] ?? []);
-    final imageUrl = item["image_url"]?.toString();
-    final rating = (item["avg_rating"] as num?)?.toDouble();
 
     const sectionLabels = {
       "terminal": "POS Terminals",
@@ -536,6 +461,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
       "software": "POS Software",
       "scanner": "Barcode Scanners",
       "kds": "Kitchen Display",
+      "tablet": "Ordering Tablets",
       "oven": "Ovens",
       "fryer": "Fryers",
       "microwave": "Microwaves",
@@ -545,14 +471,17 @@ class _PackagesScreenState extends State<PackagesScreen> {
       "grill": "Grills",
       "mixer": "Mixers",
       "coffee": "Coffee Machines",
-      "dining_set_2": "2-Seater Dining Sets",
-      "dining_set_4": "4-Seater Dining Sets",
-      "dining_set_6": "6-Seater Dining Sets",
-      "dining_set_8": "8-Seater Dining Sets",
-      "dining_set_10": "10-Seater Dining Sets",
-      "dining_set_12": "12-Seater Dining Sets",
+      "dining_set_2": "2-Seat Dining Sets",
+      "dining_set_4": "4-Seat Dining Sets",
+      "dining_set_6": "6-Seat Dining Sets",
+      "dining_set_8": "8-Seat Dining Sets",
+      "dining_set_10": "10-Seat Dining Sets",
+      "dining_set_12": "12-Seat Dining Sets",
       "tv": "TVs",
       "ac": "AC Units",
+      "exhaust_fan": "Exhaust Fans",
+      "ceiling_fan": "Ceiling Fans",
+      "air_curtain": "Air Curtains",
     };
 
     final label =
@@ -574,14 +503,14 @@ class _PackagesScreenState extends State<PackagesScreen> {
         children: [
           // Section header
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     label,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: sfText,
                     ),
@@ -595,74 +524,104 @@ class _PackagesScreenState extends State<PackagesScreen> {
             ),
           ),
 
-          const SizedBox(height: 10),
+          // Recommended card (full width, prominent)
+          _recCard(item: item, qty: qty, unit: unit, type: type),
 
-          // Horizontal cards slider
-          SizedBox(
-            height: 220,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-              children: [
-                // Recommended card
-                _productCard(
-                  item: item,
-                  isRecommended: true,
-                  onQtyChange: (delta) {
-                    final newQty = (qty + delta).clamp(0, 99);
-                    _updateQty(type, newQty);
-                  },
-                  onReplace: null,
+          // Alternatives row
+          if (alts.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 10, 14, 6),
+              child: Text(
+                'Alternatives',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: sfMuted,
                 ),
-                // Alternative cards
-                ...alts.map(
-                  (alt) => _productCard(
-                    item: alt,
-                    isRecommended: false,
-                    onQtyChange: null,
-                    onReplace: () =>
-                        _replaceProduct(type, alt["id"].toString()),
-                  ),
-                ),
-                // Add card
-                GestureDetector(
-                  onTap: () => _showAddProductSheet(type),
-                  child: Container(
-                    width: 120,
-                    margin: const EdgeInsets.only(left: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      border: Border.all(
-                        color: sfBlue,
-                        style: BorderStyle.solid,
+              ),
+            ),
+            SizedBox(
+              height: 160,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+                children: [
+                  ...alts.map((alt) => _altCard(alt: alt, type: type)),
+                  // Add card
+                  GestureDetector(
+                    onTap: () => _showAddProductSheet(type),
+                    child: Container(
+                      width: 90,
+                      margin: const EdgeInsets.only(left: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        border: Border.all(color: sfBlue),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_circle_outline,
+                            color: sfBlue,
+                            size: 22,
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Add\nOther',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: sfBlue,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_circle_outline, color: sfBlue, size: 28),
-                        SizedBox(height: 8),
-                        Text(
-                          'Add',
-                          style: TextStyle(
-                            color: sfBlue,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ] else ...[
+            // No alts — just show add button inline
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+              child: GestureDetector(
+                onTap: () => _showAddProductSheet(type),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    border: Border.all(color: sfBlue),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, color: sfBlue, size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        'Add Alternative',
+                        style: TextStyle(
+                          color: sfBlue,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-
-          const SizedBox(height: 12),
+          ],
 
           // Line total
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -686,158 +645,316 @@ class _PackagesScreenState extends State<PackagesScreen> {
     );
   }
 
-  Widget _productCard({
+  // ── Full-width recommended card ──
+  Widget _recCard({
     required Map<String, dynamic> item,
-    required bool isRecommended,
-    required void Function(int)? onQtyChange,
-    required VoidCallback? onReplace,
+    required int qty,
+    required int unit,
+    required String type,
   }) {
     final name = item["name"]?.toString() ?? "—";
-    final price = (item["unit"] ?? item["price"]) as int? ?? 0;
-    final qty = item["qty"] as int? ?? 1;
     final imageUrl = item["image_url"]?.toString();
     final brand = item["brand"]?.toString() ?? "";
     final rating = (item["avg_rating"] as num?)?.toDouble();
+    final productId = item["product_id"]?.toString();
 
     return Container(
-      width: 150,
-      margin: EdgeInsets.only(right: isRecommended ? 10 : 10),
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 0),
       decoration: BoxDecoration(
-        color: isRecommended ? const Color(0xFFEFF6FF) : Colors.white,
-        border: Border.all(
-          color: isRecommended ? sfBlue : const Color(0xFFE5E7EB),
-          width: isRecommended ? 2 : 1,
-        ),
+        color: const Color(0xFFEFF6FF),
+        border: Border.all(color: sfBlue, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Recommended badge
-          if (isRecommended)
+          // Badge
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            color: sfBlue,
+            child: const Text(
+              '✓ Recommended',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image
+              GestureDetector(
+                onTap: productId != null
+                    ? () => Navigator.pushNamed(
+                        context,
+                        '/product-detail',
+                        arguments: {'product_id': productId},
+                      )
+                    : null,
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  color: Colors.white,
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Center(
+                            child: Icon(
+                              Icons.inventory_2_outlined,
+                              color: sfMuted,
+                              size: 32,
+                            ),
+                          ),
+                        )
+                      : const Center(
+                          child: Icon(
+                            Icons.inventory_2_outlined,
+                            color: sfMuted,
+                            size: 32,
+                          ),
+                        ),
+                ),
+              ),
+              // Info
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: sfText,
+                          height: 1.3,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (brand.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          brand,
+                          style: const TextStyle(fontSize: 11, color: sfMuted),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Text(
+                        _formatEgp(unit),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: sfBlue,
+                        ),
+                      ),
+                      if (rating != null)
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 12,
+                              color: Color(0xFFF59E0B),
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              rating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: sfMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: 8),
+                      // Qty controls
+                      Row(
+                        children: [
+                          _qtyBtn(
+                            Icons.remove,
+                            qty > 0 ? () => _updateQty(type, qty - 1) : null,
+                          ),
+                          Container(
+                            width: 36,
+                            alignment: Alignment.center,
+                            child: Text(
+                              '$qty',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: sfText,
+                              ),
+                            ),
+                          ),
+                          _qtyBtn(Icons.add, () => _updateQty(type, qty + 1)),
+                          const Spacer(),
+                          if (productId != null)
+                            GestureDetector(
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                '/product-detail',
+                                arguments: {'product_id': productId},
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: sfBlue),
+                                ),
+                                child: const Text(
+                                  'Details',
+                                  style: TextStyle(
+                                    color: sfBlue,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Small alternative card ──
+  Widget _altCard({required Map<String, dynamic> alt, required String type}) {
+    final name = alt["name"]?.toString() ?? "—";
+    final price = (alt["price"] ?? alt["unit"]);
+    final priceInt = price is int ? price : int.tryParse(price.toString()) ?? 0;
+    final imageUrl = alt["image_url"]?.toString();
+    final productId = alt["id"]?.toString();
+
+    return GestureDetector(
+      onTap: () => _showReplaceDialog(type, alt),
+      child: Container(
+        width: 110,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            Container(
+              height: 70,
+              width: double.infinity,
+              color: const Color(0xFFF9FAFB),
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Center(
+                        child: Icon(
+                          Icons.inventory_2_outlined,
+                          color: sfMuted,
+                          size: 20,
+                        ),
+                      ),
+                    )
+                  : const Center(
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        color: sfMuted,
+                        size: 20,
+                      ),
+                    ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: sfText,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatEgp(priceInt),
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                        color: sfBlue,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 3),
+              padding: const EdgeInsets.symmetric(vertical: 5),
               color: sfBlue,
               child: const Text(
-                'Recommended',
+                'Select',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 9.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // Image
-          Container(
-            height: 80,
-            color: const Color(0xFFF9FAFB),
-            child: imageUrl != null && imageUrl.isNotEmpty
-                ? Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.inventory_2_outlined, color: sfMuted),
-                  )
-                : const Center(
-                    child: Icon(
-                      Icons.inventory_2_outlined,
-                      color: sfMuted,
-                      size: 28,
-                    ),
-                  ),
+  void _showReplaceDialog(String type, Map<String, dynamic> alt) {
+    final name = alt["name"]?.toString() ?? "this product";
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: const RoundedRectangleBorder(),
+        title: const Text(
+          'Replace Product',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+        content: Text('Replace the recommended item with "$name"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: sfMuted)),
           ),
-
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: sfText,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (brand.isNotEmpty)
-                    Text(
-                      brand,
-                      style: const TextStyle(fontSize: 10, color: sfMuted),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  const Spacer(),
-                  Text(
-                    _formatEgp(price),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: sfBlue,
-                    ),
-                  ),
-                  if (rating != null)
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 10,
-                          color: Color(0xFFF59E0B),
-                        ),
-                        Text(
-                          rating.toStringAsFixed(1),
-                          style: const TextStyle(fontSize: 10, color: sfMuted),
-                        ),
-                      ],
-                    ),
-                  const SizedBox(height: 4),
-                  // Action button
-                  if (isRecommended && onQtyChange != null)
-                    Row(
-                      children: [
-                        _qtyBtn(
-                          Icons.remove,
-                          qty > 0 ? () => onQtyChange(-1) : null,
-                        ),
-                        Expanded(
-                          child: Text(
-                            '$qty',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: sfText,
-                            ),
-                          ),
-                        ),
-                        _qtyBtn(Icons.add, () => onQtyChange(1)),
-                      ],
-                    )
-                  else if (!isRecommended && onReplace != null)
-                    GestureDetector(
-                      onTap: onReplace,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        color: sfBlue,
-                        child: const Text(
-                          'Select',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _replaceProduct(type, alt["id"].toString());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: sfBlue,
+              shape: const RoundedRectangleBorder(),
+            ),
+            child: const Text(
+              'Replace',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -850,14 +967,14 @@ class _PackagesScreenState extends State<PackagesScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 26,
-        height: 26,
+        width: 30,
+        height: 30,
         decoration: BoxDecoration(
           color: onTap != null ? sfBlue : const Color(0xFFF3F4F6),
         ),
         child: Icon(
           icon,
-          size: 13,
+          size: 14,
           color: onTap != null ? Colors.white : const Color(0xFFD1D5DB),
         ),
       ),
@@ -865,7 +982,9 @@ class _PackagesScreenState extends State<PackagesScreen> {
   }
 
   Widget _bottomBar() {
-    final hasItems = _localItems.values.any((items) => items.isNotEmpty);
+    final hasItems = _localItems.values.any(
+      (items) => items.any((i) => i["is_notice"] != true),
+    );
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -884,6 +1003,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
                 'Grand Total',
@@ -940,7 +1060,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
       '${n.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')} EGP';
 }
 
-// ─── ADD PRODUCT BOTTOM SHEET ────────────────────────────────────────────────
+// ─── ADD PRODUCT BOTTOM SHEET ─────────────────────────────────────────────────
 
 class _AddProductSheet extends StatefulWidget {
   final ApiService api;
@@ -961,14 +1081,12 @@ class _AddProductSheet extends StatefulWidget {
 
 class _AddProductSheetState extends State<_AddProductSheet> {
   static const Color sfBlue = Color(0xFF004CAC);
-  static const Color sfBg = Color(0xFFF5F7FB);
   static const Color sfText = Color(0xFF111827);
   static const Color sfMuted = Color(0xFF6B7280);
 
   final _searchC = TextEditingController();
   final _minC = TextEditingController();
   final _maxC = TextEditingController();
-
   bool _loading = false;
   List<Map<String, dynamic>> _products = [];
 
@@ -1002,7 +1120,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
     });
   }
 
-  String _formatEgp(int n) =>
+  String _fmt(int n) =>
       '${n.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},')} EGP';
 
   @override
@@ -1014,7 +1132,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
       expand: false,
       builder: (ctx, scroll) => Column(
         children: [
-          // Handle
           Container(
             width: 40,
             height: 4,
@@ -1024,8 +1141,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-
-          // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
@@ -1047,13 +1162,10 @@ class _AddProductSheetState extends State<_AddProductSheet> {
               ],
             ),
           ),
-
-          // Search + filters
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Column(
               children: [
-                // Search
                 TextField(
                   controller: _searchC,
                   onSubmitted: (_) => _search(),
@@ -1094,7 +1206,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Price filters
                 Row(
                   children: [
                     Expanded(
@@ -1183,10 +1294,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
               ],
             ),
           ),
-
           const Divider(height: 1),
-
-          // Product list
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: sfBlue))
@@ -1216,17 +1324,14 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                         ),
                         child: Row(
                           children: [
-                            // Image
                             Container(
-                              width: 56,
-                              height: 56,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFF3F4F6),
-                              ),
+                              width: 64,
+                              height: 64,
+                              color: const Color(0xFFF3F4F6),
                               child: imageUrl != null && imageUrl.isNotEmpty
                                   ? Image.network(
                                       imageUrl,
-                                      fit: BoxFit.cover,
+                                      fit: BoxFit.contain,
                                       errorBuilder: (_, __, ___) => const Icon(
                                         Icons.inventory_2_outlined,
                                         color: sfMuted,
@@ -1240,7 +1345,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                                     ),
                             ),
                             const SizedBox(width: 12),
-                            // Info
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1266,7 +1370,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                                   Row(
                                     children: [
                                       Text(
-                                        _formatEgp(price),
+                                        _fmt(price),
                                         style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w900,
@@ -1311,7 +1415,6 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            // Add button
                             GestureDetector(
                               onTap: () => widget.onAdd(p),
                               child: Container(

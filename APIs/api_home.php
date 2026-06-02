@@ -80,13 +80,15 @@ if ($hasPaidOrder) {
     $setupState = "completed";
 } else {
     if ($bizRes && pg_num_rows($bizRes) > 0) {
-        $biz = pg_fetch_assoc($bizRes);
-        pg_result_seek($bizRes, 0); // reset pointer
-        $setupStatus = $biz["setup_status"] ?? "";
+    pg_result_seek($bizRes, 0);
+    $biz = pg_fetch_assoc($bizRes);
+    $setupStatus = $biz["setup_status"] ?? "";
         $setupStep   = (int)($biz["setup_step"] ?? 0);
-        if ($setupStatus === "completed" || $setupStep > 0) {
-            $setupState = "in_progress";
-        }
+        if ($setupStatus === "completed") {
+    $setupState = "completed";
+} elseif ($setupStep > 0) {
+    $setupState = "in_progress";
+}
     }
 }
 

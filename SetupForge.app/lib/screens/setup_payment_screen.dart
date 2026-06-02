@@ -20,7 +20,7 @@ class SetupPaymentScreen extends StatefulWidget {
 class _SetupPaymentScreenState extends State<SetupPaymentScreen> {
   late final WebViewController _controller;
   bool _loading = true;
-
+  bool _handled = false;
   @override
   void initState() {
     super.initState();
@@ -28,12 +28,17 @@ class _SetupPaymentScreenState extends State<SetupPaymentScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onNavigationRequest: (request) {
+            _checkUrl(request.url);
+            if (_handled) return NavigationDecision.prevent;
+            return NavigationDecision.navigate;
+          },
           onPageStarted: (url) {
-            setState(() => _loading = true);
             _checkUrl(url);
+            if (!_handled) setState(() => _loading = true);
           },
           onPageFinished: (url) {
-            setState(() => _loading = false);
+            if (!_handled) setState(() => _loading = false);
             _checkUrl(url);
           },
         ),
@@ -42,21 +47,23 @@ class _SetupPaymentScreenState extends State<SetupPaymentScreen> {
   }
 
   void _checkUrl(String url) {
-    // Paymob redirects to your response URL after payment
-    // success contains success=true, failure contains success=false
+    if (_handled) return;
     if (url.contains('paymob_response') ||
         url.contains('success.php') ||
         url.contains('payment_failed')) {
       if (url.contains('success=true') || url.contains('success.php')) {
         // Payment successful
-        Navigator.pushReplacementNamed(
+        _handled = true;
+        Navigator.pushNamedAndRemoveUntil(
           context,
-          '/setup-success',
-          arguments: {'order_id': widget.orderId},
+          '/app-shell',
+          (route) => false,
+          arguments: {'forceRefresh': true, 'initialIndex': 3},
         );
       } else if (url.contains('success=false') ||
           url.contains('payment_failed')) {
         // Payment failed
+        _handled = true;
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -81,7 +88,11 @@ class _SetupPaymentScreenState extends State<SetupPaymentScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/app-shell',
+            (route) => false,
+          ),
         ),
         elevation: 0,
       ),
