@@ -36,77 +36,77 @@ try {
     }
 
     $biz = pg_fetch_assoc($bizRes);
-    // Use saved app_carts if they exist — don't overwrite user changes
-$staffingData = json_decode($biz["staffing_data"] ?? "{}", true) ?? [];
-$savedCarts   = $staffingData["app_carts"] ?? null;
+    $staffingData = json_decode($biz["staffing_data"] ?? "{}", true) ?? [];
+    $savedCarts   = $staffingData["app_carts"] ?? null;
 
-if (!empty($savedCarts)) {
-    $grandTotal = 0;
-    foreach ($savedCarts as &$cart) {
-    $t = 0;
-    foreach ($cart["items"] as $item) {
-        if ($item["is_notice"] ?? false) continue;
-        $t += (int)$item["qty"] * (int)$item["unit"];
-    }
-    $cart["total"] = $t;
-    $grandTotal += $t;
-    // cap must exist — if missing recalculate will be needed
-    if (!isset($cart["cap"]) || (int)$cart["cap"] === 0) {
-        $cart["cap"] = $t; // fallback: cap = total so no over/under shown
-    }
-}
-    unset($cart);
-    $tier = (function($b) {
-        if ($b < 600000)  return "Starter";
-        if ($b < 2000000) return "Balanced";
-        return "Premium";
-    })((int)($biz["budget_egp"] ?? 0));
-    echo json_encode([
-        "ok" => true, "tier" => $tier,
-        "budget" => (int)($biz["budget_egp"] ?? 0),
-        "grand_total" => $grandTotal,
-        "modules" => array_keys($savedCarts),
-        "carts" => $savedCarts,
-        "area_sqm" => (int)($biz["area_sqm"] ?? 50),
-    ]);
-    exit;
-}
-// ── Use saved app_carts if they exist (don't overwrite user changes) ──
-$staffingData = json_decode($biz["staffing_data"] ?? "{}", true) ?? [];
-$savedCarts   = $staffingData["app_carts"] ?? null;
-
-if (!empty($savedCarts)) {
-    // Recalculate totals from saved carts
-    $grandTotal = 0;
-    foreach ($savedCarts as &$cart) {
-        $t = 0;
-        foreach ($cart["items"] as $item) {
-            if ($item["is_notice"] ?? false) continue;
-            $t += (int)$item["qty"] * (int)$item["unit"];
+    if (!empty($savedCarts)) {
+        $budget2 = (int)($biz["budget_egp"] ?? 0);
+        $rt2 = $biz["restaurant_type"] ?? "standard_dining";
+        $allW2 = [
+            "fast_food"       => ["kitchen"=>6,"pos"=>3,"furniture"=>2,"ac"=>1],
+            "standard_dining" => ["kitchen"=>5,"furniture"=>3,"pos"=>2,"ac"=>2],
+            "premium_dining"  => ["kitchen"=>4,"furniture"=>5,"pos"=>2,"ac"=>3],
+            "cloud_kitchen"   => ["kitchen"=>8,"pos"=>4,"furniture"=>0,"ac"=>0],
+        ];
+        $w2 = $allW2[$rt2] ?? $allW2["standard_dining"];
+        $modRaw2 = trim($biz["modules"] ?? "", "{}");
+        $mods2 = $modRaw2 ? explode(",", $modRaw2) : ["kitchen","pos","furniture","ac"];
+        $selW2 = [];
+        foreach ($mods2 as $mm) {
+            if (isset($w2[$mm]) && $w2[$mm] > 0) $selW2[$mm] = $w2[$mm];
         }
-        $cart["total"] = $t;
-        $grandTotal += $t;
+        $totW2 = array_sum($selW2);
+        $alloc2 = []; $sum2 = 0;
+        if ($totW2 > 0) {
+            $keys2 = array_keys($selW2); $lastK2 = end($keys2);
+            foreach ($selW2 as $mm => $ww) {
+                $amt = (int)round($budget2 * ($ww / $totW2));
+                if ($mm === $lastK2) $amt = $budget2 - $sum2;
+                $alloc2[$mm] = $amt;
+                $sum2 += $amt;
+            }
+        } else {
+            $count2 = count($selW2);
+            foreach ($selW2 as $mm => $ww) {
+                $alloc2[$mm] = $count2 > 0 ? (int)floor($budget2 / $count2) : 0;
+            }
+        }
+
+        $grandTotal = 0;
+        foreach ($savedCarts as $module => &$cart) {
+            $cap2 = $alloc2[$module] ?? 0;
+            $t = 0;
+            foreach (($cart["items"] ?? []) as $item) {
+                if ($item["is_notice"] ?? false) continue;
+                $t += (int)($item["qty"] ?? 0) * (int)($item["unit"] ?? 0);
+            }
+            $cart["cap"] = $cap2;
+            $cart["total"] = $t;
+            $cart["remaining"] = max(0, $cap2 - $t);
+            $cart["over"] = max(0, $t - $cap2);
+            $grandTotal += $t;
+        }
+        unset($cart);
+
+        foreach ($savedCarts as $module => $cart) {
+            if (empty($cart["items"]) && $module !== "ac") {
+                unset($savedCarts[$module]);
+            }
+        }
+
+        $tier2 = $budget2 < 600000 ? "Starter" : ($budget2 < 2000000 ? "Balanced" : "Premium");
+
+        echo json_encode([
+            "ok"          => true,
+            "tier"        => $tier2,
+            "budget"      => $budget2,
+            "grand_total" => $grandTotal,
+            "modules"     => array_keys($savedCarts),
+            "carts"       => $savedCarts,
+            "area_sqm"    => (int)($biz["area_sqm"] ?? 50),
+        ]);
+        exit;
     }
-    unset($cart);
-
-    $staffingRaw = json_decode($biz["staffing_data"] ?? "{}", true) ?? [];
-    $tier = (function($b) {
-        if ($b < 600000)  return "Starter";
-        if ($b < 2000000) return "Balanced";
-        return "Premium";
-    })((int)($biz["budget_egp"] ?? 0));
-
-    echo json_encode([
-        "ok"          => true,
-        "tier"        => $tier,
-        "budget"      => (int)($biz["budget_egp"] ?? 0),
-        "grand_total" => $grandTotal,
-        "modules"     => array_keys($savedCarts),
-        "carts"       => $savedCarts,
-        "area_sqm"    => (int)($biz["area_sqm"] ?? 50),
-    ]);
-    exit;
-}
 // ── End saved carts check — fall through to regenerate ──
     $budget        = (int)($biz["budget_egp"] ?? 0);
     $restaurantType = $biz["restaurant_type"] ?? "standard_dining";
