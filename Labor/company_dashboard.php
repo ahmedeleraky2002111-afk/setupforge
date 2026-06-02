@@ -34,6 +34,26 @@ $company_services = array_map('trim', explode(',', $company_services_raw));
 $isAdvertisingOnly = $company_services_raw === 'advertising' || $company_services === ['advertising'];
 $isFinishingCompany = in_array('finishing', $company_services);
 
+/* HANDLE SITE VISIT SCHEDULING */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "set_site_visit") {
+    $req_id   = (int)($_POST["request_id"] ?? 0);
+    $req_type = $_POST["req_type"] ?? "installation";
+    $date     = trim($_POST["visit_date"] ?? "");
+    if ($req_id > 0 && $date !== "") {
+        if ($req_type === "finishing") {
+            pg_query_params($conn,
+                "UPDATE finishing_requests SET scheduled_date = $1 WHERE request_id = $2",
+                [$date, $req_id]);
+        } else {
+            pg_query_params($conn,
+                "UPDATE installation_requests SET scheduled_date = $1 WHERE request_id = $2",
+                [$date, $req_id]);
+        }
+    }
+    header("Location: company_dashboard.php");
+    exit();
+}
+
 /* HANDLE QUOTE SUBMISSION */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["submit_quote"])) {
     $req_id = (int)$_POST["request_id"];
@@ -108,7 +128,7 @@ $newRequestsRes = pg_query_params($conn,
 /* MY QUOTES */
 $myQuotesRes = pg_query_params($conn,
     "SELECT q.quote_id, q.request_id, q.price, q.message, q.website_link, q.status, q.created_at,
-            r.services, u.name AS business_name, u.city
+            r.services, r.scheduled_date, u.name AS business_name, u.city
      FROM installation_quotes q
      JOIN installation_requests r ON r.request_id = q.request_id
      JOIN users u ON u.id = r.user_id
@@ -322,16 +342,17 @@ function timeAgo($datetime) {
             <span class="sub">Quotes you have submitted for finishing requests</span>
         </div>
         <?php
-        $myFinishingQuotesRes = pg_query_params($conn, "
-            SELECT fq.quote_id, fq.request_id, fq.price, fq.message, fq.status, fq.created_at,
-                   fr.area_sqm, fr.finishing_types,
-                   u.name AS business_name, u.city
-            FROM finishing_quotes fq
-            JOIN finishing_requests fr ON fr.request_id = fq.request_id
-            JOIN users u ON u.id = fr.user_id
-            WHERE fq.company_id = $1
-            ORDER BY fq.created_at DESC
-        ", [$company_id]);
+$myFinishingQuotesRes = pg_query_params($conn,
+    "SELECT fq.quote_id, fq.request_id, fq.price, fq.message, fq.status, fq.created_at,
+            fr.area_sqm, fr.finishing_types, fr.scheduled_date,
+            u.name AS business_name, u.city
+     FROM finishing_quotes fq
+     JOIN finishing_requests fr ON fr.request_id = fq.request_id
+     JOIN users u ON u.id = fr.user_id
+     WHERE fq.company_id = $1
+     ORDER BY fq.created_at DESC",
+    [$company_id]
+);
         ?>
         <?php if ($myFinishingQuotesRes && pg_num_rows($myFinishingQuotesRes) > 0): ?>
             <div class="table-wrap">
@@ -355,7 +376,22 @@ function timeAgo($datetime) {
                                 <?= ucfirst($fq["status"]) ?>
                             </span>
                         </td>
-                        <td><?= timeAgo($fq["created_at"]) ?></td>
+                        <td>
+    <?php if ($fq["status"] === "accepted"): ?>
+        <?php if (!empty($fq["scheduled_date"])): ?>
+            <span style="font-size:.78rem;font-weight:700;color:#15803d;background:#d1fae5;padding:3px 10px;border-radius:999px;">
+                <i class="bi bi-calendar-check me-1"></i><?= date('M j, Y', strtotime($fq["scheduled_date"])) ?>
+            </span>
+        <?php else: ?>
+            <button onclick="openVisitModal(<?= $fq['request_id'] ?>, 'finishing')"
+                style="padding:5px 12px;background:#004cac;color:#fff;border:none;border-radius:0;font-size:.78rem;font-weight:700;cursor:pointer;">
+                <i class="bi bi-calendar3 me-1"></i> Set Site Visit
+            </button>
+        <?php endif; ?>
+    <?php else: ?>
+        <?= timeAgo($fq["created_at"]) ?>
+    <?php endif; ?>
+</td>
                     </tr>
                     <?php endwhile; ?>
                 </table>
@@ -493,21 +529,36 @@ if ($svcKey === 'pos') {
                         <th>Service</th>
                         <th>Price</th>
                         <th>Status</th>
-                        <th>Date</th>
+                        <th>Site Visit</th>
                     </tr>
-                    <?php while ($q = pg_fetch_assoc($myQuotesRes)): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($q["business_name"]) ?></td>
-                        <td><?= htmlspecialchars($q["city"]) ?></td>
-                        <td><?= htmlspecialchars(formatServices($q["services"])) ?></td>
-                        <td><?= number_format((float)$q["price"], 0) ?> EGP</td>
-                        <td>
-                            <span class="status-badge badge-<?= $q['status'] ?>">
-                                <?= ucfirst($q["status"]) ?>
-                            </span>
-                        </td>
-                        <td><?= timeAgo($q["created_at"]) ?></td>
-                    </tr>
+                 <?php while ($q = pg_fetch_assoc($myQuotesRes)): ?>
+<tr>
+    <td><?= htmlspecialchars($q["business_name"]) ?></td>
+    <td><?= htmlspecialchars($q["city"]) ?></td>
+    <td><?= htmlspecialchars(formatServices($q["services"])) ?></td>
+    <td><?= number_format((float)$q["price"], 0) ?> EGP</td>
+    <td>
+        <span class="status-badge badge-<?= $q['status'] ?>">
+            <?= ucfirst($q["status"]) ?>
+        </span>
+    </td>
+    <td>
+        <?php if ($q["status"] === "accepted"): ?>
+            <?php if (!empty($q["scheduled_date"])): ?>
+                <span style="font-size:.78rem;font-weight:700;color:#15803d;background:#d1fae5;padding:3px 10px;border-radius:999px;">
+                    <i class="bi bi-calendar-check me-1"></i><?= date('M j, Y', strtotime($q["scheduled_date"])) ?>
+                </span>
+            <?php else: ?>
+                <button onclick="openVisitModal(<?= $q['request_id'] ?>, 'installation')"
+                    style="padding:5px 12px;background:#004cac;color:#fff;border:none;border-radius:0;font-size:.78rem;font-weight:700;cursor:pointer;">
+                    <i class="bi bi-calendar3 me-1"></i> Set Site Visit
+                </button>
+            <?php endif; ?>
+        <?php else: ?>
+            <?= timeAgo($q["created_at"]) ?>
+        <?php endif; ?>
+    </td>
+</tr>
                     <?php endwhile; ?>
                 </table>
             </div>
@@ -542,6 +593,42 @@ function toggleForm(id) {
 function toggleFinishingForm(id) {
     const form = document.getElementById('fform-' + id);
     form.classList.toggle('open');
+}
+</script>
+<!-- Site Visit Modal -->
+<div id="sf-visit-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:0;width:min(380px,95vw);padding:28px;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.18);">
+    <button onclick="closeVisitModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:1.3rem;color:#6b7280;cursor:pointer;">
+      <i class="bi bi-x-lg"></i>
+    </button>
+    <div style="font-size:1.05rem;font-weight:800;color:#111827;margin-bottom:4px;">Schedule Site Visit</div>
+    <div style="font-size:.78rem;color:#9ca3af;margin-bottom:20px;">Pick a date to visit the business and assess the space.</div>
+    <form method="POST">
+      <input type="hidden" name="action" value="set_site_visit">
+      <input type="hidden" name="request_id" id="visit-modal-req-id">
+      <input type="hidden" name="req_type" id="visit-modal-req-type">
+      <div style="margin-bottom:16px;">
+        <label style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Visit Date</label>
+        <input type="date" name="visit_date" id="visit-modal-date" required
+          min="<?= date('Y-m-d') ?>"
+          style="width:100%;padding:10px 12px;border:1.5px solid #c7d9f7;border-radius:0;font-size:.9rem;font-weight:600;color:#111827;outline:none;">
+      </div>
+      <button type="submit"
+        style="width:100%;padding:12px;background:#004cac;color:#fff;border:none;border-radius:0;font-weight:700;font-size:.92rem;cursor:pointer;">
+        <i class="bi bi-check2-circle me-1"></i> Confirm Date
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+function openVisitModal(reqId, reqType) {
+    document.getElementById('visit-modal-req-id').value = reqId;
+    document.getElementById('visit-modal-req-type').value = reqType;
+    document.getElementById('sf-visit-modal').style.display = 'flex';
+}
+function closeVisitModal() {
+    document.getElementById('sf-visit-modal').style.display = 'none';
 }
 </script>
 </body>

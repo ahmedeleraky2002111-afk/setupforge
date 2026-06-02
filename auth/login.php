@@ -181,10 +181,10 @@ body{
   grid-template-columns: 1.05fr .95fr;
   background:rgba(255,255,255,.75);
   border:1px solid rgba(255,255,255,.65);
-  border-radius:30px;
+  border-radius:8px;
   overflow:hidden;
   box-shadow:var(--sf-shadow);
-  backdrop-filter:blur(8px);
+  backdrop-filter:blur(4px);
 }
 
 .sf-auth-brand{
@@ -196,7 +196,7 @@ body{
   justify-content:space-between;
   color:#fff;
   background:
-    linear-gradient(rgba(5, 70, 174, 0.1), rgba(0, 0, 0, 0.1)),
+    linear-gradient(rgba(189, 194, 202, 0.1), rgba(0, 0, 0, 0.1)),
     url('../assets/images/login.jpg') center center / cover no-repeat;
 }
 
@@ -205,7 +205,7 @@ body{
   position:absolute;
   inset:0;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0,28,63,.5) 55%, rgba(181, 181, 181, 0.28) 100%);
+    linear-gradient(180deg, rgba(85, 85, 85, 0.82) 0%, rgba(38, 38, 38, 0.5) 55%, rgb(62, 62, 62) 100%);
   pointer-events:none;
 }
 
@@ -213,9 +213,7 @@ body{
   content:"";
   position:absolute;
   inset:0;
-  background:
-    radial-gradient(circle at 18% 20%, rgba(255,255,255,.14), transparent 22%),
-    radial-gradient(circle at 82% 80%, rgba(255,255,255,.10), transparent 26%);
+  
   pointer-events:none;
 }
 
@@ -329,7 +327,7 @@ body{
 
 .sf-input{
   height:56px;
-  border-radius:16px;
+  border-radius:5px;
   border:1px solid rgba(15,23,42,.10);
   background:#f9fbfd;
   padding:12px 16px;
@@ -367,24 +365,27 @@ body{
 }
 
 .sf-auth-btn{
-  width:100%;
+  width:95%;
   border:none;
-  border-radius:16px;
+  border-radius:0px;
   height:56px;
   font-weight:800;
   font-size:1rem;
   letter-spacing:.2px;
-  color:#fff;
-  background:linear-gradient(90deg, var(--sf-primary), #0b63d1);
-  box-shadow:0 12px 26px rgba(0,76,172,.22);
-  transition:.22s ease;
+  color:#fff !important;
+  background:linear-gradient(90deg, var(--sf-primary), #0a63d1);
+  box-shadow:0 14px 28px rgba(0,76,172,.18);
+  transition:.2s ease;
+  display: block;
+  margin: 0 auto;
 }
 
 .sf-auth-btn:hover{
+  color:#004cac !important;
+  background:#fff;
+  border:2px solid #004cac;
   transform:translateY(-1px);
-  background:linear-gradient(90deg, var(--sf-accent), #00b0aa);
-  box-shadow:0 16px 30px rgba(0,153,148,.22);
-  color:#fff;
+  box-shadow:0 18px 34px rgba(0,76,172,.18);
 }
 
 .sf-auth-footer{

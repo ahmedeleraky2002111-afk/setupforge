@@ -546,7 +546,9 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 
-<body>
+<body data-wiz-step="<?= $step ?>">
+
+
 
 <?php include "includes/navbar.php"; ?>
 
@@ -572,11 +574,16 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     $active = ($step === $s);
     $done   = ($step > $s);
 ?>
-      <div class="sf-wiz-step <?= $done ? 'is-done' : ($active ? 'is-active' : '') ?>">
-        <div class="sf-wiz-line"></div>
-        <span class="sf-wiz-num">0<?= $i+1 ?></span>
-        <span class="sf-wiz-label"><?= $allSteps[$s] ?></span>
-      </div>
+<?php
+  $isClickable = $done; // only completed steps are clickable
+  $tag = $isClickable ? 'a' : 'div';
+  $href = $isClickable ? ' href="setup.php?step=' . $s . '"' : '';
+?>
+<<?= $tag ?><?= $href ?> class="sf-wiz-step <?= $done ? 'is-done' : ($active ? 'is-active' : '') ?><?= $isClickable ? ' is-clickable' : '' ?>">
+  <div class="sf-wiz-line"></div>
+  <span class="sf-wiz-num">0<?= $i+1 ?></span>
+  <span class="sf-wiz-label"><?= $allSteps[$s] ?></span>
+</<?= $tag ?>>
       <?php endforeach; ?>
     </div>
 
@@ -787,8 +794,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <?php elseif ($step === 3): ?>
 
 <div class="sf-step3-wrap">
-  <h1 class="sf-name-title" style="text-align:left; margin-bottom:8px;">How many tables do you have?</h1>
-  <p class="sf-name-sub" style="text-align:left; margin-bottom:28px;">Indoor and outdoor seating helps us size your furniture and equipment.</p>
+  <h1 class="sf-name-title"style="text-align:center; margin-bottom:8px;">How many tables do you have?</h1>
+  <p class="sf-name-sub" style="text-align:center; margin-bottom:28px;">Indoor and outdoor seating helps us size your furniture and equipment.</p>
 
   <form method="post" class="sf-step3-form">
     <input type="hidden" name="step" value="3">
@@ -869,8 +876,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <?php elseif ($step === 4): ?>
 
 <div class="sf-step3-wrap">
-  <h1 class="sf-name-title" style="text-align:left; margin-bottom:8px;">What's your restaurant's area?</h1>
-  <p class="sf-name-sub" style="text-align:left; margin-bottom:28px;">Indoor area helps us calculate how many AC units you need.</p>
+  <h1 class="sf-name-title" style="text-align:center; margin-bottom:8px;">What's your restaurant's area?</h1>
+  <p class="sf-name-sub" style="text-align:center; margin-bottom:28px;">Indoor area helps us calculate how many AC units you need.</p>
 
   <form method="post" class="sf-step3-form">
     <input type="hidden" name="step" value="4">
@@ -1234,5 +1241,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 </main>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="assets/site.js"></script>
+<script src="assets/tutorial.js"></script>
+<script src="assets/setup-anim.js"></script>
+
 </body>
 </html>
