@@ -414,6 +414,7 @@ class ApiService {
     required String deliveryPhone,
     required String deliveryLocation,
     String orderNotes = '',
+    String paymentMethod = 'cash',
   }) async {
     final token = await getToken();
     if (token == null) return {"ok": false, "error": "Login required"};
@@ -431,6 +432,7 @@ class ApiService {
               "delivery_phone": deliveryPhone,
               "delivery_location": deliveryLocation,
               "order_notes": orderNotes,
+              "payment_method": paymentMethod,
             }),
           )
           .timeout(const Duration(seconds: 15));

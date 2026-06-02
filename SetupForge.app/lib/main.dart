@@ -88,6 +88,7 @@ class SetupForgeApp extends StatelessWidget {
             return SetupPaymentScreen(
               iframeUrl: args['iframe_url'],
               orderId: args['order_id'],
+              flow: args['flow']?.toString() ?? 'setup',
             );
           },
           '/setup-success': (_) => const SetupSuccessScreen(),

@@ -102,10 +102,28 @@ session_start();
     return "Premium";
   }
 
-  $tier            = derive_tier($budget);
+$tier            = derive_tier($budget);
   $posTier         = $tier;
   $kitchenTier     = $tier;
   $furnitureTier   = $tier;
+
+  function pick_furniture_style($restaurantType, $tier) {
+    if ($restaurantType === 'fast_food') {
+      return $tier === 'Premium' ? 'industrial_metal' : 'rustic_wood';
+    }
+    if ($restaurantType === 'premium_dining') {
+      return in_array($tier, ['Balanced','Premium']) ? 'chesterfield' : 'scandinavian';
+    }
+    // standard_dining + cloud_kitchen
+    if ($tier === 'Starter') return 'rustic_wood';
+    if ($tier === 'Balanced') return 'scandinavian';
+    return 'chesterfield';
+  }
+
+  $furnitureStyle = $_SESSION["wizard"]["furniture_style"] 
+    ?? pick_furniture_style($restaurantType, $tier);
+  $_SESSION["wizard"]["furniture_style"] = $furnitureStyle;
+  $GLOBALS["furnitureStyle"] = $furnitureStyle;
 
   $kitchenCap = $alloc["kitchen"] ?? 0;
   $posCap     = $alloc["pos"] ?? 0;
@@ -414,7 +432,8 @@ session_start();
     p.category_id,
     p.vendor_user_id,
     p.product_group_key,
-    p.created_at,
+   p.created_at,
+    p.style_key,
     u.name AS vendor_name,
     c.name AS category_name,
     (
@@ -457,6 +476,7 @@ session_start();
     "stock_quantity"    => isset($row["stock_quantity"]) ? (int)$row["stock_quantity"] : 0,
     "specs"             => !empty($row["specs"]) ? json_decode($row["specs"], true) : [],
     "avg_rating"        => isset($row["avg_rating"]) ? (float)$row["avg_rating"] : 0,
+    "style_key"         => $row["style_key"] ?? null,
   ];
         $count++;
       }
@@ -1401,12 +1421,15 @@ session_start();
         $qty = max(1, (int)round($indoorTables * $ratio));
         if ($qty <= 0) continue;
 
-        // Find best product matching this seat_count
-        $matching = array_filter($catalog["dining_set"] ?? [], function($p) use ($seatCount, $tier) {
+// Find best product matching this seat_count
+        $pickedStyle = $GLOBALS["furnitureStyle"] ?? null;
+        $matching = array_filter($catalog["dining_set"] ?? [], function($p) use ($seatCount, $tier, $pickedStyle) {
           $specs = is_array($p["specs"]) ? $p["specs"] : [];
-          return (int)($specs["seat_count"] ?? 0) === (int)$seatCount
-            && strcasecmp((string)($p["tier"] ?? ""), (string)$tier) === 0
-            && (int)($p["stock_quantity"] ?? 0) > 0;
+          if ((int)($specs["seat_count"] ?? 0) !== (int)$seatCount) return false;
+          if (strcasecmp((string)($p["tier"] ?? ""), (string)$tier) !== 0) return false;
+          if ((int)($p["stock_quantity"] ?? 0) <= 0) return false;
+          if ($pickedStyle !== null && !empty($p["style_key"]) && $p["style_key"] !== $pickedStyle) return false;
+          return true;
         });
 
         if (empty($matching)) continue; // skip silently — product not in DB yet
@@ -1414,7 +1437,13 @@ session_start();
         usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
         $recommended = array_values($matching)[0];
 
-        $alts = array_slice(array_values(array_filter($matching, fn($p) =>
+        $altsPool = array_values(array_filter($catalog["dining_set"] ?? [], function($p) use ($seatCount, $tier) {
+          $specs = is_array($p["specs"]) ? $p["specs"] : [];
+          return (int)($specs["seat_count"] ?? 0) === (int)$seatCount
+              && strcasecmp((string)($p["tier"] ?? ""), (string)$tier) === 0
+              && (int)($p["stock_quantity"] ?? 0) > 0;
+        }));
+        $alts = array_slice(array_values(array_filter($altsPool, fn($p) =>
           (string)$p["id"] !== (string)$recommended["id"]
         )), 0, 3);
 
@@ -2148,9 +2177,11 @@ session_start();
     unset($_SESSION["wizard"]["kitchen_cart"]);
     $_SESSION["wizard"]["kitchen_cart_tier"] = $kitchenTier;
   }
-  if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier) {
+if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier
+    || ($_SESSION["wizard"]["furniture_cart_style"] ?? null) !== $furnitureStyle) {
     unset($_SESSION["wizard"]["furniture_cart"]);
     $_SESSION["wizard"]["furniture_cart_tier"] = $furnitureTier;
+    $_SESSION["wizard"]["furniture_cart_style"] = $furnitureStyle;
   }
   // Temp: clear stale carts built before avg_rating — remove after testing
   // One-time migration: clear carts built before avg_rating was added
