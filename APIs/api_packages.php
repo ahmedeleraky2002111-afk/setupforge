@@ -43,14 +43,18 @@ $savedCarts   = $staffingData["app_carts"] ?? null;
 if (!empty($savedCarts)) {
     $grandTotal = 0;
     foreach ($savedCarts as &$cart) {
-        $t = 0;
-        foreach ($cart["items"] as $item) {
-            if ($item["is_notice"] ?? false) continue;
-            $t += (int)$item["qty"] * (int)$item["unit"];
-        }
-        $cart["total"] = $t;
-        $grandTotal += $t;
+    $t = 0;
+    foreach ($cart["items"] as $item) {
+        if ($item["is_notice"] ?? false) continue;
+        $t += (int)$item["qty"] * (int)$item["unit"];
     }
+    $cart["total"] = $t;
+    $grandTotal += $t;
+    // cap must exist — if missing recalculate will be needed
+    if (!isset($cart["cap"]) || (int)$cart["cap"] === 0) {
+        $cart["cap"] = $t; // fallback: cap = total so no over/under shown
+    }
+}
     unset($cart);
     $tier = (function($b) {
         if ($b < 600000)  return "Starter";
