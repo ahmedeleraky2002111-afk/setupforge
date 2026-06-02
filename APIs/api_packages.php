@@ -366,6 +366,18 @@ try {
 
     $grandTotal = array_sum(array_map(fn($c) => $c["total"], $carts));
 
+    // Persist generated carts to app_carts so api_place_setup_order can read them
+    $cartsJson = json_encode($carts);
+    pg_query_params($conn,
+        "UPDATE businesses SET staffing_data = jsonb_set(
+            COALESCE(staffing_data, '{}'),
+            '{app_carts}',
+            \$1::jsonb,
+            true
+        ) WHERE user_id = \$2",
+        [$cartsJson, $user_id]
+    );
+
     echo json_encode([
         "ok"          => true,
         "tier"        => $tier,
