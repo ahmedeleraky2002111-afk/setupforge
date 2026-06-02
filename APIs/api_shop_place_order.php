@@ -59,7 +59,7 @@ try {
         $grandTotal += $qty * $price;
         $items[] = $r;
     }
-
+error_log("shop_order: user_id=$user_id grandTotal=$grandTotal items=" . count($items));
     pg_query($conn, "BEGIN");
 
     $orderRes = pg_query_params($conn, "
@@ -72,6 +72,7 @@ try {
 
     if (!$orderRes || pg_num_rows($orderRes) === 0) {
         pg_query($conn, "ROLLBACK");
+            error_log("shop_order INSERT failed: " . pg_last_error($conn));
         echo json_encode(["ok" => false, "error" => "Failed to create order"]);
         exit;
     }
