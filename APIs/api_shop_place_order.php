@@ -59,20 +59,28 @@ try {
         $grandTotal += $qty * $price;
         $items[] = $r;
     }
-error_log("shop_order: user_id=$user_id grandTotal=$grandTotal items=" . count($items));
+
+    // Ensure business row exists for shop orders
+    $bizCheck = pg_query_params($conn,
+        "SELECT user_id FROM businesses WHERE user_id = $1", [$user_id]);
+    if (!$bizCheck || pg_num_rows($bizCheck) === 0) {
+        pg_query_params($conn,
+            "INSERT INTO businesses (user_id, setup_status, status) VALUES ($1, 'none', 'pending')",
+            [$user_id]);
+    }
+
     pg_query($conn, "BEGIN");
 
     $orderRes = pg_query_params($conn, "
-    INSERT INTO orders (
-        customer_user_id, order_type, order_total, payment_status,
-        status, delivery_location, order_date
-    ) VALUES ($1, 'shop', $2, 'pending', 'pending', $3, NOW())
-    RETURNING id
-", [$user_id, $grandTotal, $deliveryLocation]);
+        INSERT INTO orders (
+            business_user_id, order_type, order_total, payment_status,
+            status, delivery_location, order_date
+        ) VALUES ($1, 'shop', $2, 'pending', 'pending', $3, NOW())
+        RETURNING id
+    ", [$user_id, $grandTotal, $deliveryLocation]);
 
     if (!$orderRes || pg_num_rows($orderRes) === 0) {
         pg_query($conn, "ROLLBACK");
-            error_log("shop_order INSERT failed: " . pg_last_error($conn));
         echo json_encode(["ok" => false, "error" => "Failed to create order"]);
         exit;
     }
@@ -113,12 +121,12 @@ error_log("shop_order: user_id=$user_id grandTotal=$grandTotal items=" . count($
         if (!$authToken) { echo json_encode(["ok" => false, "error" => "Paymob auth failed"]); exit; }
 
         $pmOrderRes = paymob_post("https://accept.paymob.com/api/ecommerce/orders", [
-            "auth_token"       => $authToken,
-            "delivery_needed"  => false,
-            "amount_cents"     => (int)round($grandTotal * 100),
-            "currency"         => "EGP",
-            "merchant_order_id"=> $order_id . "_" . time(),
-            "items"            => []
+            "auth_token"        => $authToken,
+            "delivery_needed"   => false,
+            "amount_cents"      => (int)round($grandTotal * 100),
+            "currency"          => "EGP",
+            "merchant_order_id" => $order_id . "_" . time(),
+            "items"             => []
         ]);
         $pmOrderId = $pmOrderRes["id"] ?? null;
         if (!$pmOrderId) { echo json_encode(["ok" => false, "error" => "Paymob order failed"]); exit; }
@@ -135,11 +143,11 @@ error_log("shop_order: user_id=$user_id grandTotal=$grandTotal items=" . count($
                 "last_name"       => ".",
                 "email"           => $user["email"] ?? "na@na.com",
                 "phone_number"    => $deliveryPhone,
-                "apartment"       => "NA", "floor" => "NA",
+                "apartment"       => "NA", "floor"           => "NA",
                 "street"          => $deliveryLocation,
                 "building"        => "NA", "shipping_method" => "NA",
-                "postal_code"     => "NA", "city" => "NA",
-                "country"         => "EG", "state" => "NA"
+                "postal_code"     => "NA", "city"            => "NA",
+                "country"         => "EG", "state"           => "NA"
             ]
         ]);
         $pmKey = $pmKeyRes["token"] ?? null;
