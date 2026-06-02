@@ -88,24 +88,28 @@ try {
         }
         unset($cart);
 
+        $missingModules = [];
         foreach ($savedCarts as $module => $cart) {
             if (empty($cart["items"]) && $module !== "ac") {
                 unset($savedCarts[$module]);
+                $missingModules[] = $module;
             }
         }
 
-        $tier2 = $budget2 < 600000 ? "Starter" : ($budget2 < 2000000 ? "Balanced" : "Premium");
-
-        echo json_encode([
-            "ok"          => true,
-            "tier"        => $tier2,
-            "budget"      => $budget2,
-            "grand_total" => $grandTotal,
-            "modules"     => array_keys($savedCarts),
-            "carts"       => $savedCarts,
-            "area_sqm"    => (int)($biz["area_sqm"] ?? 50),
-        ]);
-        exit;
+        if (empty($missingModules)) {
+            $tier2 = $budget2 < 600000 ? "Starter" : ($budget2 < 2000000 ? "Balanced" : "Premium");
+            echo json_encode([
+                "ok"          => true,
+                "tier"        => $tier2,
+                "budget"      => $budget2,
+                "grand_total" => $grandTotal,
+                "modules"     => array_keys($savedCarts),
+                "carts"       => $savedCarts,
+                "area_sqm"    => (int)($biz["area_sqm"] ?? 50),
+            ]);
+            exit;
+        }
+        // else fall through to regenerate missing modules and merge with saved carts
     }
 // ── End saved carts check — fall through to regenerate ──
     $budget        = (int)($biz["budget_egp"] ?? 0);
@@ -436,6 +440,14 @@ try {
     }
 
     $grandTotal = array_sum(array_map(fn($c) => $c["total"], $carts));
+
+    // Merge saved carts into regenerated carts
+    if (!empty($savedCarts)) {
+        foreach ($savedCarts as $module => $cart) {
+            $carts[$module] = $cart;
+        }
+        $grandTotal = array_sum(array_map(fn($c) => $c["total"], $carts));
+    }
 
     // Persist generated carts to app_carts so api_place_setup_order can read them
     $cartsJson = json_encode($carts);
