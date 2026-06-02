@@ -25,19 +25,23 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map?;
-      if (args == null) return;
-      setState(() {
-        _data = Map<String, dynamic>.from(args['data'] ?? {});
-        _localItems = Map<String, List<Map<String, dynamic>>>.from(
-          (args['localItems'] as Map? ?? {}).map(
-            (k, v) => MapEntry(k as String,
-                List<Map<String, dynamic>>.from(v as List)),
-          ),
-        );
-        _grandTotal = args['grandTotal'] as int? ?? 0;
-      });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+    if (args == null) return;
+    if (_data.isNotEmpty) return; // already loaded
+    setState(() {
+      _data = Map<String, dynamic>.from(args['data'] ?? {});
+      _localItems = Map<String, List<Map<String, dynamic>>>.from(
+        (args['localItems'] as Map? ?? {}).map(
+          (k, v) => MapEntry(k as String,
+              List<Map<String, dynamic>>.from(v as List)),
+        ),
+      );
+      _grandTotal = args['grandTotal'] as int? ?? 0;
     });
   }
 
@@ -91,7 +95,7 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
   Widget build(BuildContext context) {
     final modules = List<String>.from(_data["modules"] ?? []);
     final tier = _data["tier"]?.toString() ?? "";
-    final budget = _data["budget"] as int? ?? 0;
+    final budget = (_data["budget"] as num?)?.toInt() ?? 0;
 
     const moduleLabels = {
       "kitchen": "Kitchen",
