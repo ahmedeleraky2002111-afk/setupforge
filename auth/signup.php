@@ -215,7 +215,7 @@ pg_query_params($conn,
       max-width: 555px;
       background: rgba(255,255,255,.92);
       border: 1px solid rgba(255,255,255,.7);
-      border-radius: 28px;
+      border-radius: 8px;
       box-shadow: var(--sf-shadow);
       overflow: hidden;
       backdrop-filter: blur(10px);
@@ -267,7 +267,7 @@ pg_query_params($conn,
     }
 
     .sf-auth-body .form-control{
-      border-radius: 16px;
+      border-radius: 8px;
       padding: 13px 15px;
       border: 1px solid rgba(15,23,42,.10);
       background:#fbfcfe;

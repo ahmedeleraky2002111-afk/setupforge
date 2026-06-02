@@ -1,73 +1,37 @@
 <?php
 session_start();
-require_once "db.php";
+$module = $_POST["module"] ?? "";
+$type   = $_POST["type"] ?? "";
+$hidden = $_POST["hidden"] ?? "1";
+$allowed = ["pos", "kitchen", "furniture", "ac"];
+if (!in_array($module, $allowed, true) || !$type) exit;
 
-header("Content-Type: application/json");
-
-if (!isset($_SESSION["user_id"])) {
-    echo json_encode(["ok" => false, "error" => "not logged in"]);
-    exit;
-}
-
-$module = trim((string)($_POST["module"] ?? ""));
-$type   = trim((string)($_POST["type"]   ?? ""));
-$hidden = ($_POST["hidden"] ?? "0") === "1";
-
-$allowed_modules = ["pos", "kitchen", "furniture", "ac"];
-if (!in_array($module, $allowed_modules, true) || $type === "") {
-    echo json_encode(["ok" => false, "error" => "invalid params"]);
-    exit;
-}
-
-$userId = (int)$_SESSION["user_id"];
-
-// Get current hidden_sections for this user's latest order
-$res = pg_query_params($conn,
-    "SELECT id, hidden_sections FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 1",
-    [$userId]
-);
-
-if (!$res || pg_num_rows($res) === 0) {
-    echo json_encode(["ok" => false, "error" => "no order found"]);
-    exit;
-}
-
-$row      = pg_fetch_assoc($res);
-$orderId  = (int)$row["id"];
-$current  = json_decode($row["hidden_sections"] ?: "{}", true) ?: [];
-
-// Ensure module key exists
-if (!isset($current[$module]) || !is_array($current[$module])) {
-    $current[$module] = [];
-}
-
-if ($hidden) {
-    // Add to hidden list (no duplicates)
-    if (!in_array($type, $current[$module], true)) {
-        $current[$module][] = $type;
-    }
+if ($hidden === "1") {
+  // User toggled OFF — add to hidden_sections, remove from shown_sections
+  if (!isset($_SESSION["wizard"]["hidden_sections"][$module])) {
+    $_SESSION["wizard"]["hidden_sections"][$module] = [];
+  }
+  if (!in_array($type, $_SESSION["wizard"]["hidden_sections"][$module], true)) {
+    $_SESSION["wizard"]["hidden_sections"][$module][] = $type;
+  }
+  // Remove from shown_sections
+  if (isset($_SESSION["wizard"]["shown_sections"][$module])) {
+    $_SESSION["wizard"]["shown_sections"][$module] = array_values(
+      array_filter($_SESSION["wizard"]["shown_sections"][$module], fn($t) => $t !== $type)
+    );
+  }
 } else {
-    // Remove from hidden list
-    $current[$module] = array_values(array_filter(
-        $current[$module],
-        fn($t) => $t !== $type
-    ));
+  // User toggled ON — remove from hidden_sections, add to shown_sections
+  if (isset($_SESSION["wizard"]["hidden_sections"][$module])) {
+    $_SESSION["wizard"]["hidden_sections"][$module] = array_values(
+      array_filter($_SESSION["wizard"]["hidden_sections"][$module], fn($t) => $t !== $type)
+    );
+  }
+  if (!isset($_SESSION["wizard"]["shown_sections"][$module])) {
+    $_SESSION["wizard"]["shown_sections"][$module] = [];
+  }
+  if (!in_array($type, $_SESSION["wizard"]["shown_sections"][$module], true)) {
+    $_SESSION["wizard"]["shown_sections"][$module][] = $type;
+  }
 }
-
-$json = json_encode($current);
-
-$upd = pg_query_params($conn,
-    "UPDATE orders SET hidden_sections = $1 WHERE id = $2",
-    [$json, $orderId]
-);
-
-if (!$upd) {
-    echo json_encode(["ok" => false, "error" => "db update failed"]);
-    exit;
-}
-
-// Also keep in session so page doesn't need a reload to reflect
-$_SESSION["wizard"]["hidden_sections"] = $current;
-
-echo json_encode(["ok" => true, "hidden_sections" => $current]);
-exit;
+echo json_encode(["ok" => true]);

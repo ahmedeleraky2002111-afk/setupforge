@@ -1578,7 +1578,7 @@ border-radius: 0;
 
 .sf-service-card,
 .sf-bid-card{
-  border-radius: 22px;
+  border-radius: 5px !important;
   overflow: hidden;
   background: #fff;
   transition: transform .15s ease, box-shadow .15s ease;
@@ -4037,7 +4037,7 @@ padding-top: 99px; /* control top spacing */
   padding:0 24px;
   border:none;
   border-radius:0px;
-margin-top: 20px;
+  margin-top: 20px;
   background:#004cac; /* ✅ your brand color */
   color:#fff;
 
@@ -4050,8 +4050,9 @@ margin-top: 20px;
 .sf-name-btn:hover{
   transform:translateY(-1px);
   opacity:.96;
-    background:var(--sf-secondary); /* darker blue */
-
+  background: white; /* darker blue */
+  color : #004cac; /* text turns blue on hover */
+  border: 2px solid #004cac; /* add border on hover */
 }
 
 .sf-name-visual{
@@ -4244,9 +4245,9 @@ font-weight: 550 !important;
   position: relative;
   width: 100%;
   height: 170px;
-  border-radius: 18px;
+  border-radius: 5px;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,.10);
+  border: 0px solid rgba(0,0,0,.10);
   background: #111;
   box-shadow: 0 10px 22px rgba(0,0,0,.05);
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
@@ -4334,7 +4335,7 @@ font-weight: 550 !important;
   justify-content: center;
   background: #ffffff;
   color: var(--sf-primary);
-  border: 1px solid rgba(0,76,172,.18);
+  border: 0px solid rgba(0,76,172,.18);
   opacity: 0;
   transform: scale(.9);
   transition: all .18s ease;
@@ -4414,9 +4415,9 @@ font-weight: 550 !important;
 .sf-restaurant-card-shell{
   position: relative;
   height: 170px;
-  border-radius: 16px;
+  border-radius: 5px;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,.10);
+  border: 0px solid rgba(0,0,0,.10);
   background: #000;
   box-shadow: 0 10px 22px rgba(0,0,0,.05);
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
@@ -4550,8 +4551,8 @@ font-weight: 550 !important;
 }
 
 .sf-btn-back:hover{
-  background: #d4d1d1;
-  color: #111;
+  background: #004cac;
+  color: #ffffff;
   transform: translateY(-1px);
 }
 
@@ -4562,8 +4563,10 @@ font-weight: 550 !important;
 }
 
 .sf-btn-next:hover{
-  background:#009994;
+  background:#ffffff;
+  color:#004cac;
   transform: translateY(-1px);
+  border: 2px solid #004cac;
 }
 
 
@@ -4609,7 +4612,7 @@ font-weight: 550 !important;
 .sf-service-card{
   background: #fff;
   border: 1px solid rgba(0,0,0,.08);
-  border-radius: 16px;
+  border-radius: 5px !important;
   padding: 16px;
 }
 
@@ -4655,6 +4658,14 @@ font-weight: 550 !important;
 
 .hidden{
   display: none;
+}
+.sf-wiz-step.is-clickable {
+  cursor: pointer;
+  text-decoration: none;
+}
+.sf-wiz-step.is-clickable:hover .sf-wiz-label,
+.sf-wiz-step.is-clickable:hover .sf-wiz-num {
+  color: #004cac;
 }
 
 /* =========================
@@ -5420,7 +5431,7 @@ font-weight: 550 !important;
   align-items: flex-start;
   gap: 6px;
   padding: 24px 22px;
-  border-radius: 18px;
+  border-radius: 5px;
   border: 2px solid rgba(0,76,172,.12);
   background: #fff;
   cursor: pointer;
@@ -8315,4 +8326,259 @@ div#sfWwTrack {
 }
 .sf-role-wrap {
   padding-top: 40px;
+}
+/* =============================================================
+   TUTORIAL SYSTEM  —  sf-tut-*
+   Append to assets/style.css
+============================================================= */
+
+/* Google Fonts import for Cormorant Garamond */
+
+
+/* Overlay — transparent, just blocks clicks outside */
+#sf-tut-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 9000;
+  pointer-events: none;
+}
+
+/* Spotlight — dims everything outside the element */
+#sf-tut-spotlight {
+  display: none;
+  position: absolute;
+  z-index: 9001;
+  border-radius: 4px;
+  border: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+  /* smooth spotlight movement */
+  transition:
+    top    0.42s cubic-bezier(0.16, 1, 0.3, 1),
+    left   0.42s cubic-bezier(0.16, 1, 0.3, 1),
+    width  0.42s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tooltip card */
+#sf-tut-tooltip {
+  display: none;
+  position: absolute;
+  z-index: 9100;
+  width: 300px;
+  background: #ffffff;
+  border-radius: 2px;
+  border: none;
+  padding: 20px 22px 18px;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.20),
+    0 8px 24px rgba(0, 0, 0, 0.10);
+  pointer-events: all;
+  /* movement animation only */
+  transition:
+    top  0.42s cubic-bezier(0.16, 1, 0.3, 1),
+    left 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Triangle arrow ─────────────────────────────────────── */
+
+/* Arrow LEFT — tooltip is to the RIGHT of element, arrow points left */
+#sf-tut-tooltip[data-arrow="left"]::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 20px solid transparent;
+  border-bottom: 20px solid transparent;
+  border-right: 20px solid #ffffff;
+}
+
+/* Arrow RIGHT — tooltip is to the LEFT of element, arrow points right */
+#sf-tut-tooltip[data-arrow="right"]::before {
+  content: '';
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 20px solid transparent;
+  border-bottom: 20px solid transparent;
+  border-left: 20px solid #ffffff;
+}
+
+/* Arrow UP — tooltip is BELOW element, arrow points up */
+#sf-tut-tooltip[data-arrow="up"]::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 20px solid transparent;
+  border-right: 20px solid transparent;
+  border-bottom: 20px solid #ffffff;
+}
+
+/* Arrow DOWN — tooltip is ABOVE element, arrow points down */
+#sf-tut-tooltip[data-arrow="down"]::before {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 20px solid transparent;
+  border-right: 20px solid transparent;
+  border-top: 20px solid #ffffff;
+}
+
+/* ── Top row: counter + skip ────────────────────────────── */
+.sf-tut-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sf-tut-counter {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+.sf-tut-skip-all {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: #9ca3af;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: color 0.15s ease;
+}
+
+.sf-tut-skip-all:hover {
+  color: #374151;
+}
+
+/* ── Step title — elegant serif ─────────────────────────── */
+.sf-tut-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+}
+
+/* ── Body text ──────────────────────────────────────────── */
+.sf-tut-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: #6b7280;
+  line-height: 1.7;
+  margin: 0 0 18px;
+}
+
+/* ── Action buttons ─────────────────────────────────────── */
+.sf-tut-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sf-tut-btn-prev {
+  background: none;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 0;
+  padding: 7px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.sf-tut-btn-prev:hover {
+  border-color: #004cac;
+  color: #004cac;
+}
+
+.sf-tut-btn-next {
+  margin-left: auto;
+  background: #004cac;
+  border: none;
+  border-radius: 0;
+  padding: 8px 22px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: background 0.15s ease;
+}
+
+.sf-tut-btn-next:hover {
+  background: #003b86;
+}
+
+/* ── Mobile ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  #sf-tut-tooltip {
+    width: calc(100vw - 32px);
+    left: 16px !important;
+  }
+}
+
+
+
+
+
+/* =============================================================
+   SETUP WIZARD — Step Entry Animations
+   Append to assets/style.css
+   Classes: sf-anim-* 
+   These only control opacity + transform, nothing else
+============================================================= */
+
+/* Base hidden state — all animatable elements start here */
+.sf-anim-item {
+  opacity: 0;
+  transform: translateY(22px);
+}
+
+/* Visible state — JS adds this class to trigger animation */
+.sf-anim-item.sf-anim-in {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity  0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Individual card stagger — used for grid items */
+.sf-anim-item.sf-anim-in.sf-anim-card {
+  transition:
+    opacity  0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
