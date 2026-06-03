@@ -1,7 +1,6 @@
 <?php
 session_start();
-unset($_SESSION["wizard"]["hidden_sections"]);
-unset($_SESSION["wizard"]["kitchen_cart"]); 
+
   if (!isset($_SESSION["user_id"])) {
     header("Location: auth/signup.php?next=" . urlencode("packages.php"));
     exit;
@@ -450,11 +449,10 @@ $tier            = derive_tier($budget);
   LEFT JOIN users u ON u.id = p.vendor_user_id
   LEFT JOIN categories c ON c.id = p.category_id
   WHERE p.module = 'furniture'
-    AND LOWER(p.tier) = LOWER($1)
   ORDER BY p.priority ASC, p.price ASC;
   ";
 
-    $resF = @pg_query_params($conn, $sqlFurnitureCatalog, [$furnitureTier]);
+  $resF = @pg_query($conn, $sqlFurnitureCatalog);
     if ($resF) {
       $tmp = $FURNITURE_CATALOG_ACTIVE;
       $count = 0;
@@ -1413,17 +1411,30 @@ $extra = [];
 
 // Find best product matching this seat_count
         $pickedStyle = $GLOBALS["furnitureStyle"] ?? null;
-        $matching = array_filter($catalog["dining_set_" . $seatCount] ?? [], function($p) use ($seatCount, $tier, $pickedStyle) {
+        $pool = $catalog["dining_set_" . $seatCount] ?? [];
 
-          $specs = is_array($p["specs"]) ? $p["specs"] : [];
-          if ((int)($specs["seat_count"] ?? 0) !== (int)$seatCount) return false;
-          if (strcasecmp((string)($p["tier"] ?? ""), (string)$tier) !== 0) return false;
-          if ((int)($p["stock_quantity"] ?? 0) <= 0) return false;
-          if ($pickedStyle !== null && !empty($p["style_key"]) && $p["style_key"] !== $pickedStyle) return false;
-          return true;
-        });
+// Pass 1: exact style + exact tier
+$matching = array_filter($pool, function($p) use ($seatCount, $tier, $pickedStyle) {
+    $specs = is_array($p["specs"]) ? $p["specs"] : [];
+    if ((int)($specs["seat_count"] ?? 0) !== (int)$seatCount) return false;
+    if (strcasecmp((string)($p["tier"] ?? ""), (string)$tier) !== 0) return false;
+    if ((int)($p["stock_quantity"] ?? 0) <= 0) return false;
+    if ($pickedStyle !== null && !empty($p["style_key"]) && $p["style_key"] !== $pickedStyle) return false;
+    return true;
+});
 
-        if (empty($matching)) continue; // skip silently — product not in DB yet
+// Pass 2: same style, any tier
+if (empty($matching)) {
+    $matching = array_filter($pool, function($p) use ($seatCount, $pickedStyle) {
+        $specs = is_array($p["specs"]) ? $p["specs"] : [];
+        if ((int)($specs["seat_count"] ?? 0) !== (int)$seatCount) return false;
+        if ((int)($p["stock_quantity"] ?? 0) <= 0) return false;
+        if ($pickedStyle !== null && !empty($p["style_key"]) && $p["style_key"] !== $pickedStyle) return false;
+        return true;
+    });
+}
+
+if (empty($matching)) continue;// skip silently — product not in DB yet
 
         usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
         $recommended = array_values($matching)[0];
