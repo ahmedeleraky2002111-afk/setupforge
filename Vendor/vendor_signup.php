@@ -254,7 +254,531 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
-      </head>
+      
+  <style>
+    /* =========================================================
+       Vendor signup split layout - matches labor signup look
+       This only changes layout/design. Form fields and PHP logic unchanged.
+    ========================================================= */
+    body{
+      margin:0;
+      background:#fff !important;
+      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:#111827;
+    }
+
+    .v-signup-shell{
+      min-height:100vh;
+      display:flex;
+      background:#fff;
+    }
+
+    .v-signup-side{
+      width:360px;
+      flex:0 0 360px;
+      min-height:100vh;
+      background:#004cac;
+      color:#fff;
+      position:sticky;
+      top:0;
+      align-self:flex-start;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+
+    .v-signup-side-inner{
+      min-height:100vh;
+      padding:52px 32px 28px;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .v-signup-brand{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:72px;
+      color:#fff;
+      text-decoration:none;
+    }
+
+    .v-signup-brand-mark{
+      width:65px;
+      height:65px;
+      border-radius:50%;
+      background:#ffffff;
+      border:0;
+      box-shadow:0 8px 18px rgba(0,0,0,.14);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      flex-shrink:0;
+    }
+
+    .v-signup-brand-mark img{
+      width:65px;
+      height:65px;
+      object-fit:contain;
+      opacity:1;
+      display:block;
+    }
+
+    .v-signup-brand-text{
+      font-size:18px;
+      font-weight:800;
+      letter-spacing:-.02em;
+      color:#fff;
+    }
+
+    .v-signup-kicker{
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.68);
+      margin-bottom:16px;
+    }
+
+    .v-signup-side-title{
+      margin:0 0 14px;
+      max-width:305px;
+      color:#fff;
+      font-size:26px;
+      line-height:1.16;
+      font-weight:850;
+      letter-spacing:-.04em;
+    }
+
+    .v-signup-side-text{
+      margin:0;
+      max-width:300px;
+      color:rgba(255,255,255,.57);
+      font-size:14px;
+      line-height:1.7;
+      font-weight:500;
+    }
+
+    .v-signup-benefits{
+      list-style:none;
+      padding:0;
+      margin:34px 0 0;
+      display:flex;
+      flex-direction:column;
+      gap:15px;
+    }
+
+    .v-signup-benefits li{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:rgba(255,255,255,.76);
+      font-size:14px;
+      line-height:1.3;
+      font-weight:500;
+    }
+
+    .v-signup-check{
+      width:14px;
+      height:14px;
+      border-radius:999px;
+      background:#ffffff;
+      color:#004cac;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:10px;
+      font-weight:900;
+      flex-shrink:0;
+    }
+
+    .v-signup-side-footer{
+      margin-top:auto;
+      color:rgba(255,255,255,.58);
+      font-size:13px;
+      font-weight:500;
+    }
+
+    .v-signup-side-footer a{
+      color:#fff;
+      font-weight:800;
+      text-decoration:none;
+    }
+
+    .v-signup-side-footer a:hover{
+      text-decoration:underline;
+    }
+
+    .v-signup-main{
+      flex:1;
+      min-width:0;
+      background:#fff;
+      display:flex;
+      justify-content:center;
+      padding:58px 40px 70px;
+    }
+
+    .v-signup-main .v-wrap{
+      width:100%;
+      max-width:660px;
+      margin:0;
+      padding:0;
+    }
+
+    .v-signup-main .v-topbar{
+      position:static;
+      margin:0 0 34px;
+      padding:0;
+      display:block;
+      background:transparent;
+      border:0;
+      box-shadow:none;
+      backdrop-filter:none;
+    }
+
+    .v-signup-main .v-topbar h1{
+      margin:0 0 6px;
+      font-size:26px;
+      line-height:1.15;
+      font-weight:850;
+      letter-spacing:-.03em;
+      color:#111827;
+    }
+
+    .v-signup-main .v-subtitle{
+      margin:0;
+      font-size:14px;
+      color:#6b7280;
+      font-weight:500;
+    }
+
+    .v-signup-main .v-topbar .v-links{
+      display:none;
+    }
+
+    .v-signup-main .v-section{
+      margin:0;
+      padding:0;
+      border:0;
+      border-radius:0;
+      box-shadow:none;
+      background:#fff;
+    }
+
+    .v-signup-main .v-section::before,
+    .v-signup-main .v-card::before,
+    .v-signup-main .v-add-card::before{
+      display:none !important;
+      content:none !important;
+      background:none !important;
+    }
+
+    .v-signup-main .v-section-title{
+      margin:0 0 6px;
+      font-size:0;
+      line-height:0;
+    }
+
+    .v-signup-main .v-section-title::after{
+      content:"<?= $step === '1' ? 'Account Information' : 'Bank & Documents' ?>";
+      display:block;
+      font-size:11px;
+      line-height:1.2;
+      font-weight:800;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:#9ca3af;
+      margin:0 0 14px;
+      padding-bottom:11px;
+      border-bottom:1px solid #e5e7eb;
+    }
+
+    .v-signup-main .v-section-desc{
+      margin:0 0 22px;
+      color:#6b7280;
+      font-size:14px;
+      line-height:1.55;
+      font-weight:500;
+    }
+
+    .v-signup-main .v-form{
+      margin-top:0;
+      width:100%;
+    }
+
+    .v-signup-main .v-subsection{
+      margin:0 0 24px;
+    }
+
+    .v-signup-main .v-subsection-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin:0 0 14px;
+      padding-bottom:9px;
+      border-bottom:1px solid #e5e7eb;
+    }
+
+    .v-signup-main .v-subsection-title{
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:#9ca3af;
+    }
+
+    .v-signup-main .v-pill,
+    .v-signup-main .v-pill-muted{
+      background:transparent !important;
+      border:0 !important;
+      padding:0 !important;
+      color:#004cac !important;
+      font-size:11px !important;
+      font-weight:800 !important;
+      text-transform:none;
+      box-shadow:none !important;
+    }
+
+    .v-signup-main .v-divider{
+      display:none;
+    }
+
+    .v-signup-main .v-form-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:14px;
+      margin:0;
+    }
+
+    .v-signup-main .v-span-2{
+      grid-column:span 2;
+    }
+
+    .v-signup-main .v-field{
+      margin:0 0 14px;
+    }
+
+    .v-signup-main .v-label{
+      display:block;
+      margin:0 0 7px;
+      color:#111827;
+      font-size:12px;
+      line-height:1.2;
+      font-weight:750;
+      letter-spacing:.01em;
+    }
+
+    .v-signup-main .v-input,
+    .v-signup-main .v-select,
+    .v-signup-main .v-textarea{
+      width:100%;
+      min-height:40px;
+      height:40px;
+      padding:10px 14px;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      background:#f9fafb;
+      color:#111827;
+      font-size:14px;
+      font-weight:500;
+      outline:none;
+      box-shadow:none;
+      transition:border-color .2s ease, background .2s ease;
+    }
+
+    .v-signup-main .v-textarea{
+      height:auto;
+      min-height:86px;
+      resize:vertical;
+      padding-top:11px;
+    }
+
+    .v-signup-main .v-input:hover,
+    .v-signup-main .v-select:hover,
+    .v-signup-main .v-textarea:hover{
+      border-color:#d1d5db;
+    }
+
+    .v-signup-main .v-input:focus,
+    .v-signup-main .v-select:focus,
+    .v-signup-main .v-textarea:focus{
+      border-color:#8b5cf6;
+      background:rgba(139,92,246,.06);
+      box-shadow:none;
+    }
+
+    .v-signup-main input[type="file"].v-input{
+      padding:8px 10px;
+      height:auto;
+      min-height:40px;
+      cursor:pointer;
+    }
+
+    .v-signup-main input[type="file"].v-input::file-selector-button{
+      border:0;
+      border-radius:8px;
+      padding:8px 12px;
+      background:#004cac;
+      color:#fff;
+      font-weight:800;
+      margin-right:12px;
+      cursor:pointer;
+    }
+
+    .v-signup-main .v-alert{
+      margin:0 0 22px;
+      padding:13px 16px;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:650;
+      box-shadow:none;
+    }
+
+    .v-signup-main .v-alert-danger{
+      background:rgba(239,68,68,.08);
+      border:1px solid rgba(239,68,68,.22);
+      color:#dc2626;
+    }
+
+    .v-signup-main .v-actions{
+      display:flex;
+      gap:12px;
+      margin-top:16px;
+      align-items:center;
+    }
+
+    .v-signup-main .v-actions .v-btn{
+      min-height:46px;
+      border-radius:12px;
+      box-shadow:none;
+      font-size:14px;
+      font-weight:850;
+    }
+
+    .v-signup-main .v-actions .v-btn-primary{
+      flex:1;
+      background:#004cac !important;
+      border-color:#004cac !important;
+      color:#fff !important;
+    }
+
+    .v-signup-main .v-actions .v-btn-primary:hover{
+      background:#ffffff !important;
+      border-color:#004cac !important;
+      color:#004cac !important;
+      box-shadow:0 12px 24px rgba(0,76,172,.12) !important;
+    }
+
+    .v-signup-main .v-actions .v-btn-outline{
+      background:#fff !important;
+      border:1px solid #e5e7eb !important;
+      color:#374151 !important;
+    }
+
+    .v-signup-main .v-actions .v-btn-outline:hover{
+      border-color:#004cac !important;
+      color:#004cac !important;
+      background:#ffffff !important;
+      box-shadow:0 10px 20px rgba(0,76,172,.10) !important;
+    }
+
+    @media (max-width: 900px){
+      .v-signup-shell{
+        display:block;
+      }
+
+      .v-signup-side{
+        position:relative;
+        width:100%;
+        min-height:auto;
+        height:auto;
+      }
+
+      .v-signup-side-inner{
+        min-height:auto;
+        padding:28px 22px;
+      }
+
+      .v-signup-brand{
+        margin-bottom:28px;
+      }
+
+      .v-signup-side-title{
+        font-size:24px;
+      }
+
+      .v-signup-side-footer{
+        margin-top:28px;
+      }
+
+      .v-signup-main{
+        padding:34px 16px 50px;
+      }
+
+      .v-signup-main .v-form-grid{
+        grid-template-columns:1fr;
+      }
+
+      .v-signup-main .v-span-2{
+        grid-column:span 1;
+      }
+
+      .v-signup-main .v-actions{
+        flex-direction:column;
+      }
+
+      .v-signup-main .v-actions .v-btn{
+        width:100%;
+      }
+    }
+
+    /* Final requested fixes */
+    .v-signup-check{
+      background:#ffffff !important;
+      color:#004cac !important;
+    }
+
+    .v-signup-brand-mark{
+      width:65px !important;
+      height:65px !important;
+      background:#ffffff !important;
+      border-radius:50% !important;
+      box-shadow:0 8px 18px rgba(0,0,0,.14) !important;
+    }
+
+    .v-signup-brand-mark img{
+      width:65px !important;
+      height:65px !important;
+      object-fit:contain !important;
+      opacity:1 !important;
+      display:block !important;
+    }
+
+    .v-signup-main .v-actions .v-btn-primary:hover,
+    .v-signup-main .v-actions .v-btn-primary:focus,
+    .v-signup-main .v-actions .v-btn-primary:active{
+      background:#ffffff !important;
+      border-color:#004cac !important;
+      color:#004cac !important;
+      box-shadow:0 12px 24px rgba(0,76,172,.12) !important;
+      transform:translateY(-1px) !important;
+    }
+
+    .v-signup-main .v-actions .v-btn-outline:hover,
+    .v-signup-main .v-actions .v-btn-outline:focus,
+    .v-signup-main .v-actions .v-btn-outline:active{
+      background:#ffffff !important;
+      border-color:#004cac !important;
+      color:#004cac !important;
+      box-shadow:0 10px 20px rgba(0,76,172,.10) !important;
+      transform:translateY(-1px) !important;
+    }
+
+  </style>
+
+</head>
       <body>
         <div class="v-wrap">
           <div class="v-topbar">
@@ -320,10 +844,521 @@ if ($step === "2" && empty($old["email"])) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================================
+       Vendor signup split layout - matches labor signup look
+       This only changes layout/design. Form fields and PHP logic unchanged.
+    ========================================================= */
+    body{
+      margin:0;
+      background:#fff !important;
+      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:#111827;
+    }
+
+    .v-signup-shell{
+      min-height:100vh;
+      display:flex;
+      background:#fff;
+    }
+
+    .v-signup-side{
+      width:360px;
+      flex:0 0 360px;
+      min-height:100vh;
+      background:#004cac;
+      color:#fff;
+      position:sticky;
+      top:0;
+      align-self:flex-start;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+
+    .v-signup-side-inner{
+      min-height:100vh;
+      padding:52px 32px 28px;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .v-signup-brand{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:72px;
+      color:#fff;
+      text-decoration:none;
+    }
+
+   .v-signup-brand-mark{
+  width:56px !important;
+  height:56px !important;
+  border-radius:50% !important;
+  overflow:hidden !important;
+  background:#ffffff !important;
+}
+
+.v-signup-brand-mark img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  transform:scale(1.9) !important;
+}
+    .v-signup-brand-mark img{
+      width:56px;
+      height:56px;
+      object-fit:contain;
+      opacity:1;
+      display:block;
+    }
+
+    .v-signup-brand-text{
+      font-size:18px;
+      font-weight:800;
+      letter-spacing:-.02em;
+      color:#fff;
+    }
+
+    .v-signup-kicker{
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:rgba(255,255,255,.68);
+      margin-bottom:16px;
+    }
+
+    .v-signup-side-title{
+      margin:0 0 14px;
+      max-width:305px;
+      color:#fff;
+      font-size:26px;
+      line-height:1.16;
+      font-weight:850;
+      letter-spacing:-.04em;
+    }
+
+    .v-signup-side-text{
+      margin:0;
+      max-width:300px;
+      color:rgba(255,255,255,.57);
+      font-size:14px;
+      line-height:1.7;
+      font-weight:500;
+    }
+
+    .v-signup-benefits{
+      list-style:none;
+      padding:0;
+      margin:34px 0 0;
+      display:flex;
+      flex-direction:column;
+      gap:15px;
+    }
+
+    .v-signup-benefits li{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:rgba(255,255,255,.76);
+      font-size:14px;
+      line-height:1.3;
+      font-weight:500;
+    }
+
+    .v-signup-check{
+      width:14px;
+      height:14px;
+      border-radius:999px;
+      background:#ffffff;
+      color:#004cac;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:10px;
+      font-weight:900;
+      flex-shrink:0;
+    }
+
+    .v-signup-side-footer{
+      margin-top:auto;
+      color:rgba(255,255,255,.58);
+      font-size:13px;
+      font-weight:500;
+    }
+
+    .v-signup-side-footer a{
+      color:#fff;
+      font-weight:800;
+      text-decoration:none;
+    }
+
+    .v-signup-side-footer a:hover{
+      text-decoration:underline;
+    }
+
+    .v-signup-main{
+      flex:1;
+      min-width:0;
+      background:#fff;
+      display:flex;
+      justify-content:center;
+      padding:58px 40px 70px;
+    }
+
+    .v-signup-main .v-wrap{
+      width:100%;
+      max-width:660px;
+      margin:0;
+      padding:0;
+    }
+
+    .v-signup-main .v-topbar{
+      position:static;
+      margin:0 0 34px;
+      padding:0;
+      display:block;
+      background:transparent;
+      border:0;
+      box-shadow:none;
+      backdrop-filter:none;
+    }
+
+    .v-signup-main .v-topbar h1{
+      margin:0 0 6px;
+      font-size:26px;
+      line-height:1.15;
+      font-weight:850;
+      letter-spacing:-.03em;
+      color:#111827;
+    }
+
+    .v-signup-main .v-subtitle{
+      margin:0;
+      font-size:14px;
+      color:#6b7280;
+      font-weight:500;
+    }
+
+    .v-signup-main .v-topbar .v-links{
+      display:none;
+    }
+
+    .v-signup-main .v-section{
+      margin:0;
+      padding:0;
+      border:0;
+      border-radius:0;
+      box-shadow:none;
+      background:#fff;
+    }
+
+    .v-signup-main .v-section::before,
+    .v-signup-main .v-card::before,
+    .v-signup-main .v-add-card::before{
+      display:none !important;
+      content:none !important;
+      background:none !important;
+    }
+
+    .v-signup-main .v-section-title{
+      margin:0 0 6px;
+      font-size:0;
+      line-height:0;
+    }
+
+    .v-signup-main .v-section-title::after{
+      content:"<?= $step === '1' ? 'Account Information' : 'Bank & Documents' ?>";
+      display:block;
+      font-size:11px;
+      line-height:1.2;
+      font-weight:800;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:#9ca3af;
+      margin:0 0 14px;
+      padding-bottom:11px;
+      border-bottom:1px solid #e5e7eb;
+    }
+
+    .v-signup-main .v-section-desc{
+      margin:0 0 22px;
+      color:#6b7280;
+      font-size:14px;
+      line-height:1.55;
+      font-weight:500;
+    }
+
+    .v-signup-main .v-form{
+      margin-top:0;
+      width:100%;
+    }
+
+    .v-signup-main .v-subsection{
+      margin:0 0 24px;
+    }
+
+    .v-signup-main .v-subsection-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin:0 0 14px;
+      padding-bottom:9px;
+      border-bottom:1px solid #e5e7eb;
+    }
+
+    .v-signup-main .v-subsection-title{
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:#9ca3af;
+    }
+
+    .v-signup-main .v-pill,
+    .v-signup-main .v-pill-muted{
+      background:transparent !important;
+      border:0 !important;
+      padding:0 !important;
+      color:#004cac !important;
+      font-size:11px !important;
+      font-weight:800 !important;
+      text-transform:none;
+      box-shadow:none !important;
+    }
+
+    .v-signup-main .v-divider{
+      display:none;
+    }
+
+    .v-signup-main .v-form-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:14px;
+      margin:0;
+    }
+
+    .v-signup-main .v-span-2{
+      grid-column:span 2;
+    }
+
+    .v-signup-main .v-field{
+      margin:0 0 14px;
+    }
+
+    .v-signup-main .v-label{
+      display:block;
+      margin:0 0 7px;
+      color:#111827;
+      font-size:12px;
+      line-height:1.2;
+      font-weight:750;
+      letter-spacing:.01em;
+    }
+
+    .v-signup-main .v-input,
+    .v-signup-main .v-select,
+    .v-signup-main .v-textarea{
+      width:100%;
+      min-height:40px;
+      height:40px;
+      padding:10px 14px;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      background:#f9fafb;
+      color:#111827;
+      font-size:14px;
+      font-weight:500;
+      outline:none;
+      box-shadow:none;
+      transition:border-color .2s ease, background .2s ease;
+    }
+
+    .v-signup-main .v-textarea{
+      height:auto;
+      min-height:86px;
+      resize:vertical;
+      padding-top:11px;
+    }
+
+    .v-signup-main .v-input:hover,
+    .v-signup-main .v-select:hover,
+    .v-signup-main .v-textarea:hover{
+      border-color:#d1d5db;
+    }
+
+    .v-signup-main .v-input:focus,
+    .v-signup-main .v-select:focus,
+    .v-signup-main .v-textarea:focus{
+      border-color:#8b5cf6;
+      background:rgba(139,92,246,.06);
+      box-shadow:none;
+    }
+
+    .v-signup-main input[type="file"].v-input{
+      padding:8px 10px;
+      height:auto;
+      min-height:40px;
+      cursor:pointer;
+    }
+
+    .v-signup-main input[type="file"].v-input::file-selector-button{
+      border:0;
+      border-radius:8px;
+      padding:8px 12px;
+      background:#004cac;
+      color:#fff;
+      font-weight:800;
+      margin-right:12px;
+      cursor:pointer;
+    }
+
+    .v-signup-main .v-alert{
+      margin:0 0 22px;
+      padding:13px 16px;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:650;
+      box-shadow:none;
+    }
+
+    .v-signup-main .v-alert-danger{
+      background:rgba(239,68,68,.08);
+      border:1px solid rgba(239,68,68,.22);
+      color:#dc2626;
+    }
+
+    .v-signup-main .v-actions{
+      display:flex;
+      gap:12px;
+      margin-top:16px;
+      align-items:center;
+    }
+
+    .v-signup-main .v-actions .v-btn{
+      min-height:46px;
+      border-radius:12px;
+      box-shadow:none;
+      font-size:14px;
+      font-weight:850;
+    }
+
+    .v-signup-main .v-actions .v-btn-primary{
+      flex:1;
+      background:#004cac !important;
+      border-color:#004cac !important;
+      color:#fff !important;
+    }
+
+    .v-signup-main .v-actions .v-btn-primary:hover{
+      background:#ffffff !important;
+      border-color:#004cac !important;
+      color:#004cac !important;
+      box-shadow:0 12px 24px rgba(0,76,172,.12) !important;
+    }
+
+    .v-signup-main .v-actions .v-btn-outline{
+      background:#fff !important;
+      border:1px solid #e5e7eb !important;
+      color:#374151 !important;
+    }
+
+    .v-signup-main .v-actions .v-btn-outline:hover{
+      border-color:#004cac !important;
+      color:#004cac !important;
+      background:#ffffff !important;
+      box-shadow:0 10px 20px rgba(0,76,172,.10) !important;
+    }
+
+    @media (max-width: 900px){
+      .v-signup-shell{
+        display:block;
+      }
+
+      .v-signup-side{
+        position:relative;
+        width:100%;
+        min-height:auto;
+        height:auto;
+      }
+
+      .v-signup-side-inner{
+        min-height:auto;
+        padding:28px 22px;
+      }
+
+      .v-signup-brand{
+        margin-bottom:28px;
+      }
+
+      .v-signup-side-title{
+        font-size:24px;
+      }
+
+      .v-signup-side-footer{
+        margin-top:28px;
+      }
+
+      .v-signup-main{
+        padding:34px 16px 50px;
+      }
+
+      .v-signup-main .v-form-grid{
+        grid-template-columns:1fr;
+      }
+
+      .v-signup-main .v-span-2{
+        grid-column:span 1;
+      }
+
+      .v-signup-main .v-actions{
+        flex-direction:column;
+      }
+
+      .v-signup-main .v-actions .v-btn{
+        width:100%;
+      }
+    }
+  </style>
+
 </head>
 <body>
 
-<div class="v-wrap">
+<div class="v-signup-shell">
+  <aside class="v-signup-side">
+    <div class="v-signup-side-inner">
+      <a class="v-signup-brand" href="../home.php">
+        <span class="v-signup-brand-mark">
+          <img src="../assets/images/Logo.png" alt="SetupForge">
+        </span>
+        <span class="v-signup-brand-text">SetupForge</span>
+      </a>
+
+      <div class="v-signup-kicker">FOR VENDORS</div>
+      <h2 class="v-signup-side-title">Start selling to businesses that are ready to buy.</h2>
+      <p class="v-signup-side-text">
+        List your products, manage orders, and grow your business through SetupForge.
+      </p>
+
+      <ul class="v-signup-benefits">
+        <li><span class="v-signup-check">✓</span> Reach business customers</li>
+        <li><span class="v-signup-check">✓</span> Showcase your products</li>
+        <li><span class="v-signup-check">✓</span> Manage orders easily</li>
+        <li><span class="v-signup-check">✓</span> Track sales on your dashboard</li>
+      </ul>
+
+      <div class="v-signup-side-footer">
+        Already have an account? <a href="../auth/login.php">Sign in</a>
+      </div>
+    </div>
+  </aside>
+
+  <main class="v-signup-main">
+    <div class="v-wrap">
 
   <?php if ($step === "1"): ?>
 
@@ -517,6 +1552,8 @@ if ($step === "2" && empty($old["email"])) {
 
   <?php endif; ?>
 
+</div>
+  </main>
 </div>
 
 </body>

@@ -275,18 +275,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }],
     3: [
       {
-        el:    indoorEl,   // direct DOM element reference
-        title: 'Indoor Tables',
-        text:  'How many tables do you have inside? We\'ll use this to size your furniture order.',
-      },
-      {
-        el:    outdoorEl,  // direct DOM element reference — tooltip slides down to this
-        title: 'Outdoor Tables',
-        text:  'Got a terrace or outdoor seating? Add it here — we\'ll account for it separately.',
-      },
-    ],
-    4: [
-      {
         el:    '#area_range',
         title: 'Why do we ask about area?',
         text:  'Indoor area only — this determines how many AC units you need and at what capacity.',
@@ -295,6 +283,18 @@ document.addEventListener('DOMContentLoaded', function () {
         el:    multifloorEl,
         title: 'Multiple Floors',
         text:  'Check this if your restaurant has more than one floor — we\'ll multiply the AC calculation accordingly.',
+      },
+    ],
+    4: [
+      {
+        el:    indoorEl,
+        title: 'Indoor Tables',
+        text:  'How many tables do you have inside? We\'ll use this to size your furniture order.',
+      },
+      {
+        el:    outdoorEl,
+        title: 'Outdoor Tables',
+        text:  'Got a terrace or outdoor seating? Add it here — we\'ll account for it separately.',
       },
     ],
     5: [{

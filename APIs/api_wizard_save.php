@@ -79,7 +79,7 @@ try {
     $exists = ($check && pg_num_rows($check) > 0);
 
     if ($exists) {
-        $updateRes = pg_query_params($conn, "
+        pg_query_params($conn, "
             UPDATE businesses SET
                 business_name = CASE WHEN $2 IS NOT NULL AND $2 <> '' THEN $2 ELSE business_name END,
                 business_type         = COALESCE($3, business_type),
@@ -112,8 +112,6 @@ try {
             $step,
             $status,
         ]);
-    file_put_contents(__DIR__ . "/api_error.log",
-            date("c") . " wizard_save step=$step user=$user_id affected=" . pg_affected_rows($updateRes) . " error=" . pg_last_error($conn) . "\n", FILE_APPEND);
     } else {
         pg_query_params($conn, "
             INSERT INTO businesses (

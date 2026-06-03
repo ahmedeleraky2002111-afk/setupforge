@@ -25,6 +25,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _placing = false;
   List<Map<String, dynamic>> _items = [];
   double _total = 0;
+  String _paymentMethod = 'cash';
 
   @override
   void initState() {
@@ -62,40 +63,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _placeOrder() async {
-    if (_nameC.text.trim().isEmpty ||
-        _phoneC.text.trim().isEmpty ||
-        _addressC.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields')),
-      );
+    if (_nameC.text.trim().isEmpty || _phoneC.text.trim().isEmpty || _addressC.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in all required fields')));
       return;
     }
-
     setState(() => _placing = true);
-
     final res = await api.placeShopOrder(
       deliveryName: _nameC.text.trim(),
       deliveryPhone: _phoneC.text.trim(),
       deliveryLocation: _addressC.text.trim(),
       orderNotes: _notesC.text.trim(),
+      paymentMethod: _paymentMethod,
     );
-
     if (!mounted) return;
     setState(() => _placing = false);
-
     if (res["ok"] == true) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/order-success',
-        (route) => route.settings.name == '/app-shell',
-        arguments: {"order_id": res["order_id"], "total": res["total"]},
-      );
+      if (_paymentMethod == 'card' && res["iframe_url"] != null) {
+        Navigator.pushNamed(context, '/setup-payment', arguments: {"iframe_url": res["iframe_url"], "order_id": res["order_id"], "flow": "shop", "total": _total.toInt()});
+      } else {
+        Navigator.pushNamedAndRemoveUntil(context, '/order-success', (route) => route.settings.name == '/app-shell', arguments: {"order_id": res["order_id"], "total": res["total"]});
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(res["error"]?.toString() ?? "Failed to place order"),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res["error"]?.toString() ?? "Failed to place order")));
     }
   }
 
@@ -148,6 +137,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           Icons.note_outlined,
                           maxLines: 2,
                         ),
+
+                        const SizedBox(height: 20),
+                        _sectionTitle('Payment Method'),
+                        const SizedBox(height: 12),
+                        _paymentTile('Cash on Delivery', 'cash', Icons.payments_outlined),
+                        const SizedBox(height: 8),
+                        _paymentTile('Card (Online)', 'card', Icons.credit_card_outlined),
 
                         const SizedBox(height: 20),
 
@@ -293,6 +289,40 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _paymentTile(String label, String value, IconData icon) {
+    final selected = _paymentMethod == value;
+    return GestureDetector(
+      onTap: () => setState(() => _paymentMethod = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(
+            color: selected ? sfBlue : const Color(0xFFE5E7EB),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: selected ? sfBlue : sfMuted, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? sfBlue : sfText,
+                ),
+              ),
+            ),
+            if (selected) const Icon(Icons.check_circle, color: sfBlue, size: 18),
+          ],
+        ),
+      ),
     );
   }
 

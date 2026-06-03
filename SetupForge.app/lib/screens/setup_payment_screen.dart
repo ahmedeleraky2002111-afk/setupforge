@@ -6,11 +6,15 @@ const Color sfBlue = Color(0xFF004CAC);
 class SetupPaymentScreen extends StatefulWidget {
   final String iframeUrl;
   final int orderId;
+  final String flow;
+  final int total;
 
   const SetupPaymentScreen({
     super.key,
     required this.iframeUrl,
     required this.orderId,
+    this.flow = 'setup',
+    this.total = 0,
   });
 
   @override
@@ -54,12 +58,21 @@ class _SetupPaymentScreenState extends State<SetupPaymentScreen> {
       if (url.contains('success=true') || url.contains('success.php')) {
         // Payment successful
         _handled = true;
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/app-shell',
-          (route) => false,
-          arguments: {'forceRefresh': true, 'initialIndex': 3},
-        );
+        if (widget.flow == 'shop') {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/order-success',
+            (route) => route.settings.name == '/app-shell',
+            arguments: {'order_id': widget.orderId, 'total': widget.total},
+          );
+        } else {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/app-shell',
+            (route) => false,
+            arguments: {'forceRefresh': true, 'initialIndex': 3},
+          );
+        }
       } else if (url.contains('success=false') ||
           url.contains('payment_failed')) {
         // Payment failed

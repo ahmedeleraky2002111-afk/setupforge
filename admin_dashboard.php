@@ -1,844 +1,795 @@
-  <?php
+<?php
 session_start();
 require "db.php";
 
-/* ---------- ADMIN CHECK ---------- */
 if (!isset($_SESSION["user_id"]) || ($_SESSION["user_type"] ?? "") !== "admin") {
-    header("Location: auth/login.php");
-    exit();
+    header("Location: auth/login.php"); exit();
 }
 
-/* ---------- QUICK STATS ---------- */
-$totalBusinesses = pg_fetch_result(pg_query($conn, "
-    SELECT COUNT(*) FROM businesses
-"), 0, 0);
+/* ---------- NAVBAR STATS (today) ---------- */
+$orders_today = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM orders WHERE DATE(order_date) = CURRENT_DATE"), 0, 0);
 
-$totalVendors = pg_fetch_result(pg_query($conn, "
-    SELECT COUNT(*) FROM vendors
-"), 0, 0);
+$revenue_today_res = pg_query($conn,
+    "SELECT COALESCE(SUM(vof.gross_amount),0)
+     FROM vendor_order_fulfillments vof
+     JOIN orders o ON o.id = vof.order_id
+     WHERE o.payment_status = 'paid'
+       AND DATE(o.paid_at) = CURRENT_DATE");
+$revenue_today = (float)pg_fetch_result($revenue_today_res, 0, 0);
 
-$totalLabors = pg_fetch_result(pg_query($conn, "
-    SELECT COUNT(*) FROM labors
-"), 0, 0);
+$pending_total = (int)pg_fetch_result(pg_query($conn,
+    "SELECT (SELECT COUNT(*) FROM vendors WHERE status='pending') +
+            (SELECT COUNT(*) FROM labors  WHERE status='pending')"), 0, 0);
 
-$totalOrders = pg_fetch_result(pg_query($conn, "
-    SELECT COUNT(*) FROM orders
-"), 0, 0);
+/* ---------- ALERT STRIP ---------- */
+$pending_vendors = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM vendors WHERE status='pending'"), 0, 0);
+$pending_labors  = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM labors WHERE status='pending'"), 0, 0);
+$stuck_orders    = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM orders
+     WHERE payment_status != 'paid'
+       AND order_date <= NOW() - INTERVAL '3 days'"), 0, 0);
 
-$totalProducts = pg_fetch_result(pg_query($conn, "
-    SELECT COUNT(*) FROM products
-"), 0, 0);
+/* ---------- KPI CARDS ---------- */
+$rev_month = (float)pg_fetch_result(pg_query($conn,
+    "SELECT COALESCE(SUM(vof.gross_amount),0)
+     FROM vendor_order_fulfillments vof
+     JOIN orders o ON o.id = vof.order_id
+     WHERE o.payment_status='paid'
+       AND DATE_TRUNC('month', o.paid_at) = DATE_TRUNC('month', CURRENT_DATE)"), 0, 0);
 
-$pendingVendorApprovals = pg_fetch_result(pg_query($conn, "
-    SELECT COUNT(*) FROM vendors WHERE status = 'pending'
-"), 0, 0);
+$rev_last = (float)pg_fetch_result(pg_query($conn,
+    "SELECT COALESCE(SUM(vof.gross_amount),0)
+     FROM vendor_order_fulfillments vof
+     JOIN orders o ON o.id = vof.order_id
+     WHERE o.payment_status='paid'
+       AND DATE_TRUNC('month', o.paid_at) = DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'"), 0, 0);
 
-$pendingLaborApprovals = pg_fetch_result(pg_query($conn, "
-    SELECT COUNT(*) FROM labors WHERE status = 'pending'
-"), 0, 0);
+$profit_month = (float)pg_fetch_result(pg_query($conn,
+    "SELECT COALESCE(SUM(vof.commission_amount),0)
+     FROM vendor_order_fulfillments vof
+     JOIN orders o ON o.id = vof.order_id
+     WHERE o.payment_status='paid'
+       AND DATE_TRUNC('month', o.paid_at) = DATE_TRUNC('month', CURRENT_DATE)"), 0, 0);
 
-/* ---------- BUSINESS SETUPS THIS MONTH ---------- */
-$businessSetupsThisMonth = pg_fetch_result(pg_query($conn, "
-    SELECT COUNT(DISTINCT business_user_id)
-    FROM orders
-    WHERE business_user_id IS NOT NULL
-      AND DATE_TRUNC('month', order_date) = DATE_TRUNC('month', CURRENT_DATE)
-"), 0, 0);
+$profit_last = (float)pg_fetch_result(pg_query($conn,
+    "SELECT COALESCE(SUM(vof.commission_amount),0)
+     FROM vendor_order_fulfillments vof
+     JOIN orders o ON o.id = vof.order_id
+     WHERE o.payment_status='paid'
+       AND DATE_TRUNC('month', o.paid_at) = DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'"), 0, 0);
 
-/* ---------- MARKETPLACE FINANCIALS (paid orders only) ---------- */
-$financialsRes = pg_query($conn, "
-    SELECT
-        COALESCE(SUM(vof.gross_amount), 0)      AS total_marketplace_sales,
-        COALESCE(SUM(vof.commission_amount), 0) AS total_platform_profit,
-        COALESCE(SUM(vof.vendor_payout), 0)     AS total_vendor_payouts
-    FROM vendor_order_fulfillments vof
-    JOIN orders o ON o.id = vof.order_id
-    WHERE o.payment_status = 'paid'
-");
-$financials = $financialsRes ? pg_fetch_assoc($financialsRes) : [];
+$biz_month = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM businesses
+     WHERE DATE_TRUNC('month', (SELECT created_at FROM users WHERE id = user_id))
+         = DATE_TRUNC('month', CURRENT_DATE)"), 0, 0);
 
-$totalMarketplaceSales = (float)($financials["total_marketplace_sales"] ?? 0);
-$totalPlatformProfit   = (float)($financials["total_platform_profit"]   ?? 0);
-$totalVendorPayouts    = (float)($financials["total_vendor_payouts"]    ?? 0);
+$biz_last_month = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM businesses
+     WHERE DATE_TRUNC('month', (SELECT created_at FROM users WHERE id = user_id))
+         = DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'"), 0, 0);
 
-/* ---------- MONTHLY REVENUE TREND (last 6 months, paid only) ---------- */
-$monthlyRes = pg_query($conn, "
-    SELECT
-        TO_CHAR(DATE_TRUNC('month', o.paid_at), 'Mon YYYY') AS month_label,
-        DATE_TRUNC('month', o.paid_at)                      AS month_ts,
-        COALESCE(SUM(vof.gross_amount), 0)                  AS sales,
-        COALESCE(SUM(vof.commission_amount), 0)             AS profit
-    FROM vendor_order_fulfillments vof
-    JOIN orders o ON o.id = vof.order_id
-    WHERE o.payment_status = 'paid'
-      AND o.paid_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
-    GROUP BY DATE_TRUNC('month', o.paid_at)
-    ORDER BY month_ts ASC
-");
+$completed_setups = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM businesses WHERE setup_status = 'completed'
+     AND DATE_TRUNC('month', (SELECT created_at FROM users WHERE id = user_id))
+         = DATE_TRUNC('month', CURRENT_DATE)"), 0, 0);
 
-$monthlyLabels  = [];
-$monthlySales   = [];
-$monthlyProfit  = [];
+$orders_month = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM orders
+     WHERE DATE_TRUNC('month', order_date) = DATE_TRUNC('month', CURRENT_DATE)"), 0, 0);
 
-if ($monthlyRes) {
-    while ($row = pg_fetch_assoc($monthlyRes)) {
-        $monthlyLabels[] = $row["month_label"];
-        $monthlySales[]  = (float)$row["sales"];
-        $monthlyProfit[] = (float)$row["profit"];
-    }
-}
+$orders_last_month = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM orders
+     WHERE DATE_TRUNC('month', order_date) = DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'"), 0, 0);
 
-/* ---------- PER-VENDOR COMMISSION BREAKDOWN (paid only) ---------- */
-$vendorBreakdownRes = pg_query($conn, "
-    SELECT
-        u.name                                  AS vendor_name,
-        u.email                                 AS vendor_email,
-        COUNT(DISTINCT vof.order_id)            AS order_count,
-        COALESCE(SUM(vof.gross_amount), 0)      AS gross_amount,
-        COALESCE(AVG(vof.commission_rate), 0)   AS avg_commission_rate,
-        COALESCE(SUM(vof.commission_amount), 0) AS commission_amount,
-        COALESCE(SUM(vof.vendor_payout), 0)     AS vendor_payout
-    FROM vendor_order_fulfillments vof
-    JOIN orders o ON o.id = vof.order_id
-    JOIN users u ON u.id = vof.vendor_user_id
-    WHERE o.payment_status = 'paid'
-    GROUP BY u.id, u.name, u.email
-    ORDER BY gross_amount DESC
-");
-
-/* ---------- TOP VENDORS BY SALES (paid only, top 5) ---------- */
-$topVendorsRes = pg_query($conn, "
-    SELECT
-        u.name                             AS vendor_name,
-        COALESCE(SUM(vof.gross_amount), 0) AS total_sales
-    FROM vendor_order_fulfillments vof
-    JOIN orders o ON o.id = vof.order_id
-    JOIN users u ON u.id = vof.vendor_user_id
-    WHERE o.payment_status = 'paid'
-    GROUP BY u.id, u.name
-    ORDER BY total_sales DESC
-    LIMIT 5
-");
-
-$topVendorLabels = [];
-$topVendorSales  = [];
-
-if ($topVendorsRes) {
-    while ($row = pg_fetch_assoc($topVendorsRes)) {
-        $topVendorLabels[] = $row["vendor_name"];
-        $topVendorSales[]  = (float)$row["total_sales"];
-    }
-}
-
-/* ---------- ORDERS BY STATUS ---------- */
-$orderStatusResult = pg_query($conn, "
-    SELECT status, COUNT(*) AS total
-    FROM orders
-    GROUP BY status
-    ORDER BY status
-");
-
-$orderStatusLabels = [];
-$orderStatusCounts = [];
-
-if ($orderStatusResult) {
-    while ($row = pg_fetch_assoc($orderStatusResult)) {
-        $orderStatusLabels[] = $row["status"];
-        $orderStatusCounts[] = (int)$row["total"];
-    }
-}
-
-/* ---------- RECENT ORDERS ---------- */
-$recentOrders = pg_query($conn, "
-    SELECT
-        o.id,
-        o.order_date,
-        o.status,
-        o.payment_status,
-        o.order_total,
-        u.name AS business_name
-    FROM orders o
-    LEFT JOIN users u ON u.id = o.business_user_id
-    ORDER BY o.id DESC
-    LIMIT 5
-");
-
-/* ---------- PENDING VENDORS ---------- */
-$pendingVendors = pg_query($conn, "
-    SELECT
-        u.id,
-        u.name,
-        u.email,
-        v.items_type,
-        v.status
-    FROM vendors v
-    INNER JOIN users u ON u.id = v.user_id
-    WHERE v.status = 'pending'
-    ORDER BY u.id DESC
-    LIMIT 5
-");
-
-/* ---------- PENDING LABORS ---------- */
-$pendingLabors = pg_query($conn, "
-    SELECT
-        u.id,
-        u.name,
-        u.email,
-        l.skills,
-        l.status
-    FROM labors l
-    INNER JOIN users u ON u.id = l.user_id
-    WHERE l.status = 'pending'
-    ORDER BY u.id DESC
-    LIMIT 5
-");
-
-function money($n){
+$vendors_res = pg_query($conn, "SELECT COUNT(*) FROM vendors");
+$active_vendors = $vendors_res ? (int)pg_fetch_result($vendors_res, 0, 0) : 0;
+/* ---------- HELPERS ---------- */
+function money($n) {
     return number_format((float)$n, 0) . " EGP";
 }
+function delta($now, $prev) {
+    if ($prev == 0) return ['pct' => null, 'dir' => 'neutral'];
+    $pct = round((($now - $prev) / $prev) * 100);
+    return ['pct' => $pct, 'dir' => $pct >= 0 ? 'up' : 'down'];
+}
+
+$rev_delta    = delta($rev_month, $rev_last);
+$profit_delta = delta($profit_month, $profit_last);
+$biz_delta    = delta($biz_month, $biz_last_month);
+$ord_delta    = delta($orders_month, $orders_last_month);
+
+/* ---------- MONTHLY REVENUE CHART (last 6 months) ---------- */
+$monthlyRes = pg_query($conn,
+    "SELECT TO_CHAR(DATE_TRUNC('month', o.paid_at), 'Mon YY') AS lbl,
+            COALESCE(SUM(vof.gross_amount),0)      AS sales,
+            COALESCE(SUM(vof.commission_amount),0) AS profit
+     FROM vendor_order_fulfillments vof
+     JOIN orders o ON o.id = vof.order_id
+     WHERE o.payment_status='paid'
+       AND o.paid_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+     GROUP BY DATE_TRUNC('month', o.paid_at)
+     ORDER BY DATE_TRUNC('month', o.paid_at) ASC");
+$mLabels = []; $mSales = []; $mProfit = [];
+if ($monthlyRes) {
+    while ($r = pg_fetch_assoc($monthlyRes)) {
+        $mLabels[] = $r['lbl']; $mSales[] = (float)$r['sales']; $mProfit[] = (float)$r['profit'];
+    }
+}
+
+/* ---------- BUSINESS TYPE BREAKDOWN ---------- */
+$bizTypeRes = pg_query($conn,
+    "SELECT COALESCE(business_type,'Other') AS btype, COUNT(*) AS total
+     FROM businesses GROUP BY business_type ORDER BY total DESC LIMIT 6");
+$btLabels = []; $btCounts = [];
+if ($bizTypeRes) {
+    while ($r = pg_fetch_assoc($bizTypeRes)) {
+        $btLabels[] = ucfirst($r['btype']); $btCounts[] = (int)$r['total'];
+    }
+}
+
+/* ---------- ORDER STATUS BREAKDOWN ---------- */
+$orderStatusRes = pg_query($conn,
+    "SELECT status, COUNT(*) AS total FROM orders GROUP BY status ORDER BY total DESC");
+$osLabels = []; $osCounts = [];
+if ($orderStatusRes) {
+    while ($r = pg_fetch_assoc($orderStatusRes)) {
+        $osLabels[] = ucfirst($r['status']); $osCounts[] = (int)$r['total'];
+    }
+}
+
+/* ---------- TOP PRODUCTS ---------- */
+$topProducts = pg_query($conn,
+    "SELECT p.product_name, COUNT(oi.id) AS order_count
+     FROM order_items oi
+     JOIN products p ON p.id = oi.product_id
+     GROUP BY p.product_name ORDER BY order_count DESC LIMIT 5");
+
+/* ---------- TOP VENDORS ---------- */
+$topVendors = pg_query($conn,
+    "SELECT u.name AS vname,
+            COUNT(DISTINCT vof.order_id) AS orders,
+            COALESCE(SUM(vof.gross_amount),0) AS sales,
+            COALESCE(SUM(vof.commission_amount),0) AS comm
+     FROM vendor_order_fulfillments vof
+     JOIN orders o ON o.id = vof.order_id
+     JOIN users u ON u.id = vof.vendor_user_id
+     WHERE o.payment_status='paid'
+     GROUP BY u.id, u.name ORDER BY sales DESC LIMIT 5");
+
+/* ---------- RECENT ORDERS ---------- */
+$recentOrders = pg_query($conn,
+    "SELECT o.id, o.order_date, o.status, o.payment_status,
+            o.order_total, o.order_type, u.name AS bname
+     FROM orders o
+     LEFT JOIN users u ON u.id = o.business_user_id
+     ORDER BY o.id DESC LIMIT 7");
+
+/* ---------- CITIES BREAKDOWN ---------- */
+$citiesRes = pg_query($conn,
+    "SELECT COALESCE(u.city,'Unknown') AS city, COUNT(*) AS total
+     FROM businesses b JOIN users u ON u.id = b.user_id
+     WHERE u.city IS NOT NULL AND u.city != ''
+     GROUP BY u.city ORDER BY total DESC LIMIT 6");
+$cityMax = 1; $cities = [];
+if ($citiesRes) {
+    while ($r = pg_fetch_assoc($citiesRes)) { $cities[] = $r; }
+    if (!empty($cities)) $cityMax = max(array_column($cities, 'total'));
+}
+
+/* ---------- SETUP FUNNEL ---------- */
+$funnel_started   = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM businesses WHERE setup_step > 0"), 0, 0);
+$funnel_completed = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(*) FROM businesses WHERE setup_status = 'completed'"), 0, 0);
+$funnel_ordered   = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(DISTINCT business_user_id) FROM orders WHERE business_user_id IS NOT NULL"), 0, 0);
+$funnel_paid      = (int)pg_fetch_result(pg_query($conn,
+    "SELECT COUNT(DISTINCT business_user_id) FROM orders
+     WHERE payment_status = 'paid' AND business_user_id IS NOT NULL"), 0, 0);
+$funnel_max = max($funnel_started, 1);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin Dashboard - SetupForge</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="admin.css?v=2" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <style>
-    .admin-hero-badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 12px;
-      border-radius:999px;
-      background:rgba(0,76,172,.06);
-      color:#004cac;
-      border:1px solid rgba(0,76,172,.10);
-      font-size:12px;
-      font-weight:800;
-      margin-bottom:14px;
-    }
-    .admin-hero-badge::before{
-      content:"";
-      width:8px;
-      height:8px;
-      border-radius:50%;
-      background:linear-gradient(135deg,#004cac,#009994);
-      box-shadow:0 0 0 4px rgba(0,153,148,.10);
-    }
-    .admin-topbar-actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-    }
-    .admin-soft-chip{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:10px 14px;
-      border-radius:999px;
-      background:#fff;
-      color:#004cac;
-      border:1px solid rgba(0,76,172,.10);
-      box-shadow:0 8px 18px rgba(15,23,42,.05);
-      font-size:13px;
-      font-weight:800;
-      white-space:nowrap;
-    }
-    .admin-summary-row{
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:18px;
-      margin:0 0 28px;
-    }
-    .admin-summary-card{
-      padding:18px 20px;
-      border-radius:20px;
-      background:#fff;
-      border:1px solid rgba(15,23,42,.06);
-      box-shadow:0 14px 28px rgba(15,23,42,.05);
-    }
-    .admin-summary-label{
-      margin:0 0 6px;
-      font-size:12px;
-      font-weight:800;
-      color:#64748b;
-      text-transform:uppercase;
-      letter-spacing:.05em;
-    }
-    .admin-summary-value{
-      font-size:28px;
-      font-weight:900;
-      line-height:1;
-      letter-spacing:-.03em;
-      color:#0f1f43;
-    }
-    .admin-summary-sub{
-      font-size:11px;
-      color:#94a3b8;
-      font-weight:600;
-      margin-top:6px;
-    }
-    .admin-cards.admin-cards-financial{
-      grid-template-columns:repeat(3,1fr);
-    }
-    .admin-chart-box canvas{
-      max-height:320px;
-    }
-    .admin-status-pill.is-payment{
-      background:rgba(0,153,148,.08);
-      border-color:rgba(0,153,148,.12);
-      color:#087a75;
-    }
-    .admin-table strong{
-      color:#0f172a;
-      font-weight:900;
-    }
-    .admin-profile-label{
-      display:none;
-    }
-    .admin-section-title{
-      font-size:13px;
-      font-weight:800;
-      color:#64748b;
-      text-transform:uppercase;
-      letter-spacing:.06em;
-      margin:32px 0 14px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    .admin-section-title::after{
-      content:"";
-      flex:1;
-      height:1px;
-      background:rgba(15,23,42,.06);
-    }
-    .commission-rate-badge{
-      display:inline-block;
-      padding:2px 8px;
-      border-radius:999px;
-      background:rgba(0,153,148,.08);
-      color:#087a75;
-      font-size:11px;
-      font-weight:800;
-    }
-    @media(max-width:1100px){
-      .admin-summary-row,
-      .admin-cards.admin-cards-financial{
-        grid-template-columns:1fr;
-      }
-    }
-  </style>
+  <title>Overview — SetupForge Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="admin.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
-<!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark sf-navbar">
-  <div class="container d-flex align-items-center">
-    <div class="d-flex align-items-center flex-grow-1">
-      <a class="navbar-brand d-flex align-items-center gap-2" href="admin_dashboard.php">
-        <div class="sf-logo"><img src="assets/images/Logo.png" alt="SetupForge Logo"></div>
-        <span class="fw-bold text-white">SetupForge</span>
-      </a>
+<!-- ===== NAVBAR ===== -->
+<nav class="ad-nav">
+  <a href="admin_dashboard.php" class="ad-nav-left">
+    <div class="ad-nav-logo">
+      <img src="assets/images/Logo.png" alt="SetupForge">
     </div>
-    <div class="d-none d-lg-flex justify-content-center flex-grow-1">
-      <ul class="navbar-nav align-items-center gap-3">
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle sf-navlink" href="products.php" data-bs-toggle="dropdown">Products</a>
-          <ul class="dropdown-menu sf-dropdown">
-            <li><span class="dropdown-item-text text-muted">Coming soon</span></li>
-          </ul>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link sf-navlink" href="services.php">Services</a>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle sf-navlink" href="#" data-bs-toggle="dropdown">Resources</a>
-          <ul class="dropdown-menu sf-dropdown">
-            <li><a class="dropdown-item" href="help-center.php">Help Center</a></li>
-            <li><a class="dropdown-item" href="faq.php">FAQ</a></li>
-            <li><a class="dropdown-item" href="about.php">About Us</a></li>
-          </ul>
-        </li>
-      </ul>
+    <div class="ad-nav-brand">
+      SetupForge
+      <small>Admin Panel</small>
     </div>
-    <div class="d-flex justify-content-end flex-grow-1 gap-2">
-      <div class="admin-profile">
-        <a href="#" class="admin-profile-btn" aria-label="Admin Profile">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" fill="currentColor"/>
-            <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+  </a>
+
+  <div class="ad-nav-stats">
+    <div class="ad-nav-stat">
+      <i class="bi bi-receipt ad-nav-stat-icon"></i>
+      <div class="ad-nav-stat-divider"></div>
+      <span class="ad-nav-stat-label">Orders today</span>
+      <span class="ad-nav-stat-value"><?= $orders_today ?></span>
+    </div>
+    <div class="ad-nav-stat">
+      <i class="bi bi-coin ad-nav-stat-icon"></i>
+      <div class="ad-nav-stat-divider"></div>
+      <span class="ad-nav-stat-label">Revenue today</span>
+      <span class="ad-nav-stat-value"><?= money($revenue_today) ?></span>
+    </div>
+    <div class="ad-nav-stat">
+      <i class="bi bi-person-check ad-nav-stat-icon"></i>
+      <div class="ad-nav-stat-divider"></div>
+      <span class="ad-nav-stat-label">Pending</span>
+      <span class="ad-nav-stat-value <?= $pending_total > 0 ? 'is-alert' : '' ?>">
+        <?= $pending_total ?>
+      </span>
+    </div>
+  </div>
+
+  <div class="ad-nav-right">
+    <div class="ad-nav-icon-btn" tabindex="0" aria-label="Notifications">
+      <i class="bi bi-bell"></i>
+      <?php if ($pending_total > 0): ?>
+        <div class="ad-nav-badge"><?= $pending_total ?></div>
+      <?php endif; ?>
+      <div class="ad-dropdown" style="min-width:240px">
+        <div class="ad-dropdown-header">
+          <div class="ad-dropdown-title">Needs attention</div>
+        </div>
+        <?php if ($pending_vendors > 0): ?>
+        <a href="admin_approvals.php?tab=vendors" class="ad-dropdown-item">
+          <i class="bi bi-shop"></i>
+          <span>Vendor applications</span>
+          <span class="ad-dd-count" style="background:var(--ad-warning-bg);color:var(--ad-warning-text)"><?= $pending_vendors ?></span>
         </a>
-        <div class="admin-profile-menu">
-          <a class="admin-profile-link logout" href="auth/logout.php">Logout</a>
+        <?php endif; ?>
+        <?php if ($pending_labors > 0): ?>
+        <a href="admin_approvals.php?tab=labor" class="ad-dropdown-item">
+          <i class="bi bi-person-badge"></i>
+          <span>Labor applications</span>
+          <span class="ad-dd-count" style="background:var(--ad-warning-bg);color:var(--ad-warning-text)"><?= $pending_labors ?></span>
+        </a>
+        <?php endif; ?>
+        <?php if ($stuck_orders > 0): ?>
+        <a href="admin_orders.php?filter=unpaid" class="ad-dropdown-item">
+          <i class="bi bi-exclamation-circle"></i>
+          <span>Unpaid orders (3d+)</span>
+          <span class="ad-dd-count" style="background:var(--ad-danger-bg);color:var(--ad-danger-text)"><?= $stuck_orders ?></span>
+        </a>
+        <?php endif; ?>
+        <?php if ($pending_total == 0 && $stuck_orders == 0): ?>
+        <div class="ad-dropdown-item" style="color:var(--ad-hint);cursor:default">
+          <i class="bi bi-check-circle"></i> All clear
+        </div>
+        <?php endif; ?>
+        <div class="ad-dropdown-footer">
+          <a href="admin_approvals.php" class="ad-dropdown-item" style="justify-content:center;color:var(--ad-info-text)">
+            View all approvals
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="ad-nav-avatar" tabindex="0" aria-label="Admin profile">
+      AD
+      <div class="ad-dropdown" style="min-width:180px">
+        <div class="ad-dropdown-header">
+          <div class="ad-dropdown-title" style="font-size:13px;color:var(--ad-text);text-transform:none;letter-spacing:0">Admin</div>
+          <div style="font-size:11px;color:var(--ad-hint);margin-top:2px">admin@setupforge.com</div>
+        </div>
+        <a href="#" class="ad-dropdown-item"><i class="bi bi-person"></i> My account</a>
+        <div class="ad-dropdown-footer">
+          <a href="auth/logout.php" class="ad-dropdown-item is-danger"><i class="bi bi-box-arrow-right"></i> Logout</a>
         </div>
       </div>
     </div>
   </div>
 </nav>
 
-<div class="admin-shell">
-  <div class="admin-container">
+<!-- ===== SHELL ===== -->
+<div class="ad-shell">
 
-    <div class="admin-topbar">
-      <div>
-        <div class="admin-hero-badge">Admin Control Center</div>
-        <h1>Welcome, Admin</h1>
-        <p class="mb-0 text-muted">Overview of SetupForge operations, approvals, and marketplace revenue.</p>
-      </div>
-      <div class="admin-topbar-actions">
-        <span class="admin-soft-chip">Operations Overview</span>
-        <span class="admin-soft-chip">Revenue Monitoring</span>
-      </div>
-    </div>
-
-    <!-- REVENUE SUMMARY (paid orders only) -->
-    <div class="admin-summary-row">
-      <div class="admin-summary-card">
-        <div class="admin-summary-label">Marketplace Sales</div>
-        <div class="admin-summary-value"><?php echo money($totalMarketplaceSales); ?></div>
-        <div class="admin-summary-sub">Paid orders only</div>
-      </div>
-      <div class="admin-summary-card">
-        <div class="admin-summary-label">Platform Profit</div>
-        <div class="admin-summary-value"><?php echo money($totalPlatformProfit); ?></div>
-        <div class="admin-summary-sub">Commission earned · paid orders only</div>
-      </div>
-      <div class="admin-summary-card">
-        <div class="admin-summary-label">Business Setups This Month</div>
-        <div class="admin-summary-value"><?php echo $businessSetupsThisMonth; ?></div>
-        <div class="admin-summary-sub">Unique businesses · current month</div>
-      </div>
-    </div>
-
-    <!-- OPERATIONS CARDS (removed duplicate Business Setups) -->
-    <div class="admin-section-title">Operations</div>
-    <div class="admin-cards">
-      <div class="admin-card">
-        <h3>Total Businesses</h3>
-        <div class="admin-value"><?php echo $totalBusinesses; ?></div>
-        <small>Registered business accounts</small>
-      </div>
-      <div class="admin-card">
-        <h3>Total Vendors</h3>
-        <div class="admin-value"><?php echo $totalVendors; ?></div>
-        <small>Marketplace vendor accounts</small>
-      </div>
-      <div class="admin-card">
-        <h3>Total Labors</h3>
-        <div class="admin-value"><?php echo $totalLabors; ?></div>
-        <small>Available labor profiles</small>
-      </div>
-      <div class="admin-card">
-        <h3>Total Orders</h3>
-        <div class="admin-value"><?php echo $totalOrders; ?></div>
-        <small>Orders recorded on the platform</small>
-      </div>
-      <div class="admin-card">
-        <h3>Total Products</h3>
-        <div class="admin-value"><?php echo $totalProducts; ?></div>
-        <small>Products currently listed</small>
-      </div>
-      <div class="admin-card">
-        <h3>Pending Vendor Approvals</h3>
-        <div class="admin-value"><?php echo $pendingVendorApprovals; ?></div>
-        <small>Vendor applications awaiting review</small>
-      </div>
-      <div class="admin-card">
-        <h3>Pending Labor Approvals</h3>
-        <div class="admin-value"><?php echo $pendingLaborApprovals; ?></div>
-        <small>Labor applications awaiting review</small>
-      </div>
-    </div>
-
-    <!-- FINANCIAL CARDS (paid only) -->
-    <div class="admin-section-title">Revenue · Paid Orders Only</div>
-    <div class="admin-cards admin-cards-financial">
-      <div class="admin-card">
-        <h3>Total Marketplace Sales</h3>
-        <div class="admin-value"><?php echo money($totalMarketplaceSales); ?></div>
-        <small>Gross revenue · paid orders only</small>
-      </div>
-      <div class="admin-card">
-        <h3>Platform Profit</h3>
-        <div class="admin-value"><?php echo money($totalPlatformProfit); ?></div>
-        <small>Commission earned by SetupForge</small>
-      </div>
-      <div class="admin-card">
-        <h3>Total Vendor Payouts</h3>
-        <div class="admin-value"><?php echo money($totalVendorPayouts); ?></div>
-        <small>Net payouts allocated to vendors</small>
-      </div>
-    </div>
-
-    <!-- CHARTS ROW -->
-    <div class="admin-grid-2 mt-4">
-
-      <!-- MONTHLY REVENUE TREND -->
-      <div class="admin-chart-box">
-        <div class="admin-box-head">
-          <h2>Monthly Revenue Trend</h2>
-          <span class="admin-box-badge">Last 6 Months · Paid</span>
-        </div>
-        <div class="admin-chart-area">
-          <canvas id="revenueChart" height="120"></canvas>
-        </div>
-      </div>
-
-      <!-- TOP VENDORS BY SALES -->
-      <div class="admin-chart-box">
-        <div class="admin-box-head">
-          <h2>Top Vendors by Sales</h2>
-          <span class="admin-box-badge">Top 5 · Paid</span>
-        </div>
-        <div class="admin-chart-area">
-          <canvas id="topVendorsChart" height="120"></canvas>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ORDERS BY STATUS CHART -->
-    <div class="admin-chart-box mt-4">
-      <div class="admin-box-head">
-        <h2>Orders by Status</h2>
-        <span class="admin-box-badge">Live Distribution</span>
-      </div>
-      <div class="admin-chart-area">
-        <canvas id="ordersChart" height="90"></canvas>
-      </div>
-    </div>
-
-    <!-- PER-VENDOR COMMISSION BREAKDOWN -->
-    <div class="admin-section-title">Commission Breakdown by Vendor</div>
-    <div class="admin-table-box">
-      <div class="admin-box-head">
-        <h2>Vendor Commission Breakdown</h2>
-        <span class="admin-box-badge">Paid Orders Only</span>
-      </div>
-
-      <?php if ($vendorBreakdownRes && pg_num_rows($vendorBreakdownRes) > 0): ?>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th>Email</th>
-                <th>Orders</th>
-                <th>Gross Sales</th>
-                <th>Avg Rate</th>
-                <th>Commission (SetupForge)</th>
-                <th>Vendor Payout</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php while($row = pg_fetch_assoc($vendorBreakdownRes)): ?>
-                <tr>
-                  <td><strong><?php echo htmlspecialchars($row["vendor_name"]); ?></strong></td>
-                  <td><?php echo htmlspecialchars($row["vendor_email"]); ?></td>
-                  <td><?php echo (int)$row["order_count"]; ?></td>
-                  <td><?php echo money($row["gross_amount"]); ?></td>
-                  <td><span class="commission-rate-badge"><?php echo number_format((float)$row["avg_commission_rate"], 1); ?>%</span></td>
-                  <td><strong><?php echo money($row["commission_amount"]); ?></strong></td>
-                  <td><?php echo money($row["vendor_payout"]); ?></td>
-                </tr>
-              <?php endwhile; ?>
-            </tbody>
-          </table>
-        </div>
-      <?php else: ?>
-        <div class="admin-empty">No vendor data yet.</div>
+  <!-- SIDEBAR -->
+  <aside class="ad-sidebar">
+    <div class="ad-sidebar-section">Main</div>
+    <a href="admin_dashboard.php" class="ad-sidebar-link active">
+      <i class="bi bi-grid-1x2"></i> Overview
+    </a>
+    <a href="admin_approvals.php" class="ad-sidebar-link">
+      <i class="bi bi-person-check"></i> Approvals
+      <?php if ($pending_total > 0): ?>
+        <span class="ad-sidebar-badge"><?= $pending_total ?></span>
       <?php endif; ?>
+    </a>
+
+    <div class="ad-sidebar-section">Management</div>
+    <a href="admin_businesses.php" class="ad-sidebar-link">
+      <i class="bi bi-building"></i> Businesses
+    </a>
+    <a href="admin_users.php" class="ad-sidebar-link">
+      <i class="bi bi-people"></i> All users
+    </a>
+    <a href="admin_vendors.php" class="ad-sidebar-link">
+      <i class="bi bi-shop"></i> Vendors
+    </a>
+    <a href="admin_labor.php" class="ad-sidebar-link">
+      <i class="bi bi-person-badge"></i> Labor
+    </a>
+    <a href="admin_products.php" class="ad-sidebar-link">
+      <i class="bi bi-box-seam"></i> Products
+    </a>
+    <a href="admin_orders.php" class="ad-sidebar-link">
+      <i class="bi bi-receipt"></i> Orders
+    </a>
+
+    <div class="ad-sidebar-section">Finance</div>
+    <a href="admin_reports.php" class="ad-sidebar-link">
+      <i class="bi bi-bar-chart-line"></i> Reports
+    </a>
+    <a href="admin_reports.php?export=1" class="ad-sidebar-link">
+      <i class="bi bi-download"></i> Exports
+    </a>
+
+    <div class="ad-sidebar-section">System</div>
+    <a href="admin_settings.php" class="ad-sidebar-link">
+      <i class="bi bi-gear"></i> Settings
+    </a>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="ad-main">
+
+    <div class="ad-page-header">
+      <div class="ad-page-title">Overview</div>
+      <div class="ad-page-sub">Platform pulse — <?= date('l, d F Y') ?></div>
     </div>
 
-    <!-- RECENT ORDERS + PENDING VENDORS -->
-    <div class="admin-grid-2 mt-4">
-      <div class="admin-table-box">
-        <div class="admin-box-head">
-          <h2>Recent Orders</h2>
-          <span class="admin-box-badge">Latest 5</span>
+    <!-- ALERT STRIP -->
+    <?php if ($pending_vendors > 0 || $pending_labors > 0 || $stuck_orders > 0): ?>
+    <div class="ad-alert is-warning">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <div class="ad-alert-items">
+        <?php if ($pending_vendors > 0): ?>
+          <div class="ad-alert-item">
+            <div class="ad-alert-dot"></div>
+            <span><?= $pending_vendors ?> vendor <?= $pending_vendors == 1 ? 'application' : 'applications' ?> pending —
+              <a href="admin_approvals.php?tab=vendors" class="ad-alert-link">review now</a>
+            </span>
+          </div>
+        <?php endif; ?>
+        <?php if ($pending_labors > 0): ?>
+          <div class="ad-alert-item">
+            <div class="ad-alert-dot"></div>
+            <span><?= $pending_labors ?> labor <?= $pending_labors == 1 ? 'application' : 'applications' ?> waiting —
+              <a href="admin_approvals.php?tab=labor" class="ad-alert-link">review now</a>
+            </span>
+          </div>
+        <?php endif; ?>
+        <?php if ($stuck_orders > 0): ?>
+          <div class="ad-alert-item">
+            <div class="ad-alert-dot"></div>
+            <span><?= $stuck_orders ?> unpaid <?= $stuck_orders == 1 ? 'order' : 'orders' ?> older than 3 days —
+              <a href="admin_orders.php?filter=unpaid" class="ad-alert-link">view orders</a>
+            </span>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- KPI CARDS -->
+    <div class="ad-kpi-grid">
+
+      <div class="ad-kpi">
+        <div class="ad-kpi-icon blue"><i class="bi bi-currency-exchange"></i></div>
+        <div class="ad-kpi-label">Revenue this month</div>
+        <div class="ad-kpi-value is-money"><?= money($rev_month) ?></div>
+        <?php if ($rev_delta['pct'] !== null): ?>
+        <div class="ad-kpi-delta <?= $rev_delta['dir'] ?>">
+          <i class="bi bi-arrow-<?= $rev_delta['dir'] == 'up' ? 'up' : 'down' ?>-short"></i>
+          <?= abs($rev_delta['pct']) ?>% vs last month
         </div>
-        <?php if ($recentOrders && pg_num_rows($recentOrders) > 0): ?>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
+        <?php endif; ?>
+        <div class="ad-kpi-sub">Paid orders only</div>
+      </div>
+
+      <div class="ad-kpi">
+        <div class="ad-kpi-icon green"><i class="bi bi-graph-up-arrow"></i></div>
+        <div class="ad-kpi-label">Platform profit</div>
+        <div class="ad-kpi-value is-money"><?= money($profit_month) ?></div>
+        <?php if ($profit_delta['pct'] !== null): ?>
+        <div class="ad-kpi-delta <?= $profit_delta['dir'] ?>">
+          <i class="bi bi-arrow-<?= $profit_delta['dir'] == 'up' ? 'up' : 'down' ?>-short"></i>
+          <?= abs($profit_delta['pct']) ?>% vs last month
+        </div>
+        <?php endif; ?>
+        <div class="ad-kpi-sub">Commissions earned</div>
+      </div>
+
+      <div class="ad-kpi">
+        <div class="ad-kpi-icon blue"><i class="bi bi-building-add"></i></div>
+        <div class="ad-kpi-label">New businesses</div>
+        <div class="ad-kpi-value"><?= $biz_month ?></div>
+        <?php if ($biz_delta['pct'] !== null): ?>
+        <div class="ad-kpi-delta <?= $biz_delta['dir'] ?>">
+          <i class="bi bi-arrow-<?= $biz_delta['dir'] == 'up' ? 'up' : 'down' ?>-short"></i>
+          <?= abs($biz_delta['pct']) ?>% vs last month
+        </div>
+        <?php endif; ?>
+        <div class="ad-kpi-sub">Registered this month</div>
+      </div>
+
+      <div class="ad-kpi">
+        <div class="ad-kpi-icon green"><i class="bi bi-check2-all"></i></div>
+        <div class="ad-kpi-label">Completed setups</div>
+        <div class="ad-kpi-value"><?= $completed_setups ?></div>
+        <div class="ad-kpi-delta neutral">
+          <?= $biz_month > 0 ? round($completed_setups / $biz_month * 100) : 0 ?>% completion rate
+        </div>
+        <div class="ad-kpi-sub">Of <?= $biz_month ?> new this month</div>
+      </div>
+
+      <div class="ad-kpi">
+        <div class="ad-kpi-icon amber"><i class="bi bi-receipt"></i></div>
+        <div class="ad-kpi-label">Orders this month</div>
+        <div class="ad-kpi-value"><?= $orders_month ?></div>
+        <?php if ($ord_delta['pct'] !== null): ?>
+        <div class="ad-kpi-delta <?= $ord_delta['dir'] ?>">
+          <i class="bi bi-arrow-<?= $ord_delta['dir'] == 'up' ? 'up' : 'down' ?>-short"></i>
+          <?= abs($ord_delta['pct']) ?>% vs last month
+        </div>
+        <?php endif; ?>
+        <div class="ad-kpi-sub">Setup + shop orders</div>
+      </div>
+
+      <div class="ad-kpi">
+        <div class="ad-kpi-icon blue"><i class="bi bi-shop"></i></div>
+        <div class="ad-kpi-label">Active vendors</div>
+        <div class="ad-kpi-value"><?= $active_vendors ?></div>
+        <?php if ($pending_vendors > 0): ?>
+        <div class="ad-kpi-delta neutral"><?= $pending_vendors ?> pending approval</div>
+        <?php endif; ?>
+        <div class="ad-kpi-sub">Approved only</div>
+      </div>
+
+    </div>
+
+    <!-- CHARTS ROW 1: revenue trend + business types -->
+    <div class="ad-section-title">
+      Trends & distribution
+      <a href="admin_reports.php">Full reports →</a>
+    </div>
+    <div class="ad-chart-grid cols-2" style="margin-bottom:24px">
+
+      <div class="ad-box">
+        <div class="ad-box-head">
+          <div>
+            <div class="ad-box-title">Revenue trend</div>
+            <div class="ad-box-sub">Last 6 months · paid orders only</div>
+          </div>
+          <span class="ad-pill info">EGP</span>
+        </div>
+        <div class="ad-box-body">
+          <div class="ad-chart-wrap">
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="ad-box">
+        <div class="ad-box-head">
+          <div>
+            <div class="ad-box-title">Business types</div>
+            <div class="ad-box-sub">All registered businesses</div>
+          </div>
+        </div>
+        <div class="ad-box-body">
+          <div class="ad-chart-wrap">
+            <canvas id="bizTypeChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CHARTS ROW 2: funnel + cities -->
+    <div class="ad-chart-grid cols-2" style="margin-bottom:24px">
+
+      <div class="ad-box">
+        <div class="ad-box-head">
+          <div>
+            <div class="ad-box-title">Setup funnel</div>
+            <div class="ad-box-sub">All time · how many businesses convert to paid</div>
+          </div>
+        </div>
+        <div class="ad-box-body">
+          <div class="ad-funnel-row">
+            <div class="ad-funnel-label">Started wizard</div>
+            <div class="ad-funnel-track"><div class="ad-funnel-fill" style="width:100%"></div></div>
+            <div class="ad-funnel-val"><?= $funnel_started ?></div>
+          </div>
+          <div class="ad-funnel-row">
+            <div class="ad-funnel-label">Completed wizard</div>
+            <div class="ad-funnel-track"><div class="ad-funnel-fill" style="width:<?= $funnel_started > 0 ? round($funnel_completed/$funnel_started*100) : 0 ?>%;opacity:.85"></div></div>
+            <div class="ad-funnel-val"><?= $funnel_completed ?></div>
+          </div>
+          <div class="ad-funnel-row">
+            <div class="ad-funnel-label">Placed order</div>
+            <div class="ad-funnel-track"><div class="ad-funnel-fill" style="width:<?= $funnel_started > 0 ? round($funnel_ordered/$funnel_started*100) : 0 ?>%;opacity:.7"></div></div>
+            <div class="ad-funnel-val"><?= $funnel_ordered ?></div>
+          </div>
+          <div class="ad-funnel-row">
+            <div class="ad-funnel-label">Paid</div>
+            <div class="ad-funnel-track"><div class="ad-funnel-fill" style="width:<?= $funnel_started > 0 ? round($funnel_paid/$funnel_started*100) : 0 ?>%;opacity:.55"></div></div>
+            <div class="ad-funnel-val"><?= $funnel_paid ?></div>
+          </div>
+          <div style="margin-top:14px;font-size:12px;color:var(--ad-hint)">
+            <?php
+              $conv = $funnel_started > 0 ? round($funnel_paid/$funnel_started*100) : 0;
+              echo $conv . '% of started setups convert to a paid order';
+            ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="ad-box">
+        <div class="ad-box-head">
+          <div>
+            <div class="ad-box-title">Businesses by city</div>
+            <div class="ad-box-sub">Top 6 cities</div>
+          </div>
+        </div>
+        <div class="ad-box-body">
+          <?php foreach ($cities as $c): ?>
+          <div class="ad-hbar-row">
+            <div class="ad-hbar-label"><?= htmlspecialchars($c['city']) ?></div>
+            <div class="ad-hbar-track">
+              <div class="ad-hbar-fill" style="width:<?= round($c['total']/$cityMax*100) ?>%"></div>
+            </div>
+            <div class="ad-hbar-val"><?= $c['total'] ?></div>
+          </div>
+          <?php endforeach; ?>
+          <?php if (empty($cities)): ?>
+            <div class="ad-empty"><i class="bi bi-geo-alt"></i><p>No city data yet</p></div>
+          <?php endif; ?>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TABLES ROW: top vendors + recent orders -->
+    <div class="ad-section-title">
+      Activity
+      <a href="admin_orders.php">All orders →</a>
+    </div>
+    <div class="ad-chart-grid cols-2" style="margin-bottom:24px">
+
+      <div class="ad-box">
+        <div class="ad-box-head">
+          <div class="ad-box-title">Top vendors by sales</div>
+          <span class="ad-pill info">Paid only</span>
+        </div>
+        <div class="ad-box-body no-pad">
+          <div class="ad-table-wrap">
+            <table class="ad-table">
               <thead>
                 <tr>
-                  <th>Order ID</th>
+                  <th>Vendor</th>
+                  <th>Orders</th>
+                  <th>Sales</th>
+                  <th>Commission</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if ($topVendors && pg_num_rows($topVendors) > 0): ?>
+                  <?php while ($r = pg_fetch_assoc($topVendors)): ?>
+                  <tr>
+                    <td><strong><?= htmlspecialchars($r['vname']) ?></strong></td>
+                    <td class="mono"><?= (int)$r['orders'] ?></td>
+                    <td class="mono"><?= money($r['sales']) ?></td>
+                    <td class="mono"><?= money($r['comm']) ?></td>
+                  </tr>
+                  <?php endwhile; ?>
+                <?php else: ?>
+                  <tr><td colspan="4"><div class="ad-empty"><p>No vendor data yet</p></div></td></tr>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="ad-box">
+        <div class="ad-box-head">
+          <div class="ad-box-title">Recent orders</div>
+          <span class="ad-pill neutral">Latest 7</span>
+        </div>
+        <div class="ad-box-body no-pad">
+          <div class="ad-table-wrap">
+            <table class="ad-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
                   <th>Business</th>
-                  <th>Status</th>
-                  <th>Payment</th>
                   <th>Total</th>
+                  <th>Payment</th>
                 </tr>
               </thead>
               <tbody>
-                <?php while($row = pg_fetch_assoc($recentOrders)): ?>
+                <?php if ($recentOrders && pg_num_rows($recentOrders) > 0): ?>
+                  <?php while ($r = pg_fetch_assoc($recentOrders)):
+                    $pstatus = $r['payment_status'] ?? 'pending';
+                    $pillClass = $pstatus === 'paid' ? 'success' : ($pstatus === 'pending' ? 'warning' : 'danger');
+                  ?>
                   <tr>
-                    <td><strong>#<?php echo htmlspecialchars($row["id"]); ?></strong></td>
-                    <td><?php echo htmlspecialchars($row["business_name"] ?? "—"); ?></td>
-                    <td><span class="admin-status-pill"><?php echo htmlspecialchars($row["status"]); ?></span></td>
-                    <td><span class="admin-status-pill is-payment"><?php echo htmlspecialchars($row["payment_status"] ?? "pending"); ?></span></td>
-                    <td><?php echo money($row["order_total"]); ?></td>
+                    <td><span class="mono">#<?= $r['id'] ?></span></td>
+                    <td><strong><?= htmlspecialchars($r['bname'] ?? '—') ?></strong></td>
+                    <td class="mono"><?= money($r['order_total']) ?></td>
+                    <td><span class="ad-pill <?= $pillClass ?>"><?= ucfirst($pstatus) ?></span></td>
                   </tr>
-                <?php endwhile; ?>
+                  <?php endwhile; ?>
+                <?php else: ?>
+                  <tr><td colspan="4"><div class="ad-empty"><p>No orders yet</p></div></td></tr>
+                <?php endif; ?>
               </tbody>
             </table>
           </div>
-        <?php else: ?>
-          <div class="admin-empty">No orders found.</div>
-        <?php endif; ?>
+        </div>
       </div>
 
-      <div class="admin-table-box">
-        <div class="admin-box-head">
-          <h2>Pending Vendor Approvals</h2>
-          <span class="admin-box-badge">Review Queue</span>
-        </div>
-        <?php if ($pendingVendors && pg_num_rows($pendingVendors) > 0): ?>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Items Type</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php while($row = pg_fetch_assoc($pendingVendors)): ?>
-                  <tr>
-                    <td><strong><?php echo htmlspecialchars($row["name"]); ?></strong></td>
-                    <td><?php echo htmlspecialchars($row["email"]); ?></td>
-                    <td><?php echo htmlspecialchars($row["items_type"] ?? "—"); ?></td>
-                    <td>
-                      <a class="admin-action approve" href="approve_vendor.php?id=<?php echo $row['id']; ?>">Approve</a>
-                      <a class="admin-action reject"  href="reject_vendor.php?id=<?php echo $row['id']; ?>">Reject</a>
-                    </td>
-                  </tr>
-                <?php endwhile; ?>
-              </tbody>
-            </table>
+    </div>
+
+    <!-- CHARTS ROW 3: top products + order status -->
+    <div class="ad-chart-grid cols-2">
+
+      <div class="ad-box">
+        <div class="ad-box-head">
+          <div>
+            <div class="ad-box-title">Top products ordered</div>
+            <div class="ad-box-sub">By frequency across all orders</div>
           </div>
-        <?php else: ?>
-          <div class="admin-empty">No pending vendors.</div>
-        <?php endif; ?>
-      </div>
-    </div>
-
-    <!-- PENDING LABORS -->
-    <div class="admin-table-box mt-4">
-      <div class="admin-box-head">
-        <h2>Pending Labor Approvals</h2>
-        <span class="admin-box-badge">Awaiting Approval</span>
-      </div>
-      <?php if ($pendingLabors && pg_num_rows($pendingLabors) > 0): ?>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Skills</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php while($row = pg_fetch_assoc($pendingLabors)): ?>
-                <tr>
-                  <td><strong><?php echo htmlspecialchars($row["name"]); ?></strong></td>
-                  <td><?php echo htmlspecialchars($row["email"]); ?></td>
-                  <td><?php echo htmlspecialchars($row["skills"] ?? "—"); ?></td>
-                  <td><span class="admin-status-pill"><?php echo htmlspecialchars($row["status"]); ?></span></td>
-                </tr>
-              <?php endwhile; ?>
-            </tbody>
-          </table>
         </div>
-      <?php else: ?>
-        <div class="admin-empty">No pending labors.</div>
-      <?php endif; ?>
+        <div class="ad-box-body">
+          <?php
+          $maxProd = 1;
+          $prodRows = [];
+          if ($topProducts && pg_num_rows($topProducts) > 0) {
+              while ($r = pg_fetch_assoc($topProducts)) { $prodRows[] = $r; }
+              $maxProd = max(array_column($prodRows, 'order_count'));
+          }
+          ?>
+          <?php foreach ($prodRows as $r): ?>
+          <div class="ad-hbar-row">
+            <div class="ad-hbar-label" style="width:140px"><?= htmlspecialchars($r['product_name']) ?></div>
+            <div class="ad-hbar-track">
+              <div class="ad-hbar-fill" style="width:<?= round($r['order_count']/$maxProd*100) ?>%"></div>
+            </div>
+            <div class="ad-hbar-val"><?= $r['order_count'] ?></div>
+          </div>
+          <?php endforeach; ?>
+          <?php if (empty($prodRows)): ?>
+            <div class="ad-empty"><i class="bi bi-box-seam"></i><p>No product orders yet</p></div>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <div class="ad-box">
+        <div class="ad-box-head">
+          <div>
+            <div class="ad-box-title">Orders by status</div>
+            <div class="ad-box-sub">All time distribution</div>
+          </div>
+        </div>
+        <div class="ad-box-body">
+          <div class="ad-chart-wrap">
+            <canvas id="orderStatusChart"></canvas>
+          </div>
+        </div>
+      </div>
+
     </div>
 
-  </div>
+  </main>
 </div>
 
 <script>
-/* ---- MONTHLY REVENUE TREND ---- */
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: {
+    legend: { labels: { color: '#5a6a7e', font: { family: "'DM Sans'", size: 12, weight: '500' }, boxWidth: 10, padding: 14 } },
+    tooltip: {
+      backgroundColor: '#0d1b2a',
+      titleColor: '#fff',
+      bodyColor: '#8fa0b4',
+      padding: 10,
+      cornerRadius: 8
+    }
+  }
+};
+
 new Chart(document.getElementById('revenueChart'), {
-  type: 'line',
+  type: 'bar',
   data: {
-    labels: <?php echo json_encode($monthlyLabels); ?>,
+    labels: <?= json_encode($mLabels) ?>,
     datasets: [
       {
         label: 'Sales',
-        data: <?php echo json_encode($monthlySales); ?>,
-        borderColor: 'rgba(0,76,172,0.9)',
-        backgroundColor: 'rgba(0,76,172,0.08)',
-        borderWidth: 2.5,
-        pointRadius: 4,
-        pointBackgroundColor: '#004cac',
-        tension: 0.35,
-        fill: true
+        data: <?= json_encode($mSales) ?>,
+        backgroundColor: 'rgba(0,76,172,0.85)',
+        borderRadius: 6,
+        borderSkipped: false,
       },
       {
-        label: 'Platform Profit',
-        data: <?php echo json_encode($monthlyProfit); ?>,
-        borderColor: 'rgba(0,153,148,0.9)',
-        backgroundColor: 'rgba(0,153,148,0.06)',
-        borderWidth: 2.5,
-        pointRadius: 4,
-        pointBackgroundColor: '#009994',
-        tension: 0.35,
-        fill: true
+        label: 'Profit',
+        data: <?= json_encode($mProfit) ?>,
+        backgroundColor: 'rgba(10,122,69,0.75)',
+        borderRadius: 6,
+        borderSkipped: false,
       }
     ]
   },
   options: {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: true,
-        labels: { color: '#64748b', font: { weight: '700', size: 12 } }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(15,23,42,0.94)',
-        titleColor: '#fff',
-        bodyColor: '#e5eefb',
-        callbacks: {
-          label: ctx => ' ' + ctx.dataset.label + ': ' + Number(ctx.raw).toLocaleString() + ' EGP'
-        }
-      }
-    },
+    ...chartDefaults,
     scales: {
-      x: {
-        ticks: { color: '#64748b', font: { weight: '700' } },
-        grid: { display: false },
-        border: { display: false }
-      },
-      y: {
-        beginAtZero: true,
-        ticks: {
-          color: '#64748b',
-          font: { weight: '700' },
-          callback: v => Number(v).toLocaleString()
-        },
-        grid: { color: 'rgba(15,23,42,0.06)' },
-        border: { display: false }
-      }
+      x: { ticks: { color: '#8fa0b4', font: { family: "'DM Sans'" } }, grid: { display: false }, border: { display: false } },
+      y: { beginAtZero: true, ticks: { color: '#8fa0b4', font: { family: "'DM Sans'" }, callback: v => v.toLocaleString() }, grid: { color: 'rgba(0,0,0,.05)' }, border: { display: false } }
     }
   }
 });
 
-/* ---- TOP VENDORS BY SALES ---- */
-new Chart(document.getElementById('topVendorsChart'), {
-  type: 'bar',
+new Chart(document.getElementById('bizTypeChart'), {
+  type: 'doughnut',
   data: {
-    labels: <?php echo json_encode($topVendorLabels); ?>,
+    labels: <?= json_encode($btLabels) ?>,
     datasets: [{
-      label: 'Sales (EGP)',
-      data: <?php echo json_encode($topVendorSales); ?>,
-      borderWidth: 0,
-      borderRadius: 10,
-      backgroundColor: [
-        'rgba(0,76,172,0.88)',
-        'rgba(0,153,148,0.88)',
-        'rgba(58,123,213,0.88)',
-        'rgba(16,185,129,0.88)',
-        'rgba(14,165,233,0.88)'
-      ]
+      data: <?= json_encode($btCounts) ?>,
+      backgroundColor: ['#004cac','#1D9E75','#EF9F27','#E24B4A','#7F77DD','#8fa0b4'],
+      borderWidth: 2,
+      borderColor: '#fff',
+      hoverOffset: 4
     }]
   },
   options: {
-    responsive: true,
-    indexAxis: 'y',
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: 'rgba(15,23,42,0.94)',
-        titleColor: '#fff',
-        bodyColor: '#e5eefb',
-        callbacks: {
-          label: ctx => ' ' + Number(ctx.raw).toLocaleString() + ' EGP'
-        }
-      }
-    },
-    scales: {
-      x: {
-        beginAtZero: true,
-        ticks: {
-          color: '#64748b',
-          font: { weight: '700' },
-          callback: v => Number(v).toLocaleString()
-        },
-        grid: { color: 'rgba(15,23,42,0.06)' },
-        border: { display: false }
-      },
-      y: {
-        ticks: { color: '#0f172a', font: { weight: '700' } },
-        grid: { display: false },
-        border: { display: false }
-      }
-    }
+    ...chartDefaults,
+    cutout: '62%',
+    plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'right' } }
   }
 });
 
-/* ---- ORDERS BY STATUS ---- */
-new Chart(document.getElementById('ordersChart'), {
-  type: 'bar',
+new Chart(document.getElementById('orderStatusChart'), {
+  type: 'doughnut',
   data: {
-    labels: <?php echo json_encode($orderStatusLabels); ?>,
+    labels: <?= json_encode($osLabels) ?>,
     datasets: [{
-      label: 'Orders',
-      data: <?php echo json_encode($orderStatusCounts); ?>,
-      borderWidth: 0,
-      borderRadius: 10,
-      backgroundColor: [
-        'rgba(0,76,172,0.88)',
-        'rgba(0,153,148,0.88)',
-        'rgba(58,123,213,0.88)',
-        'rgba(16,185,129,0.88)',
-        'rgba(59,130,246,0.88)',
-        'rgba(14,165,233,0.88)'
-      ]
+      data: <?= json_encode($osCounts) ?>,
+      backgroundColor: ['#004cac','#EF9F27','#E24B4A','#1D9E75','#7F77DD','#8fa0b4'],
+      borderWidth: 2,
+      borderColor: '#fff',
+      hoverOffset: 4
     }]
   },
   options: {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: 'rgba(15,23,42,0.94)',
-        titleColor: '#fff',
-        bodyColor: '#e5eefb',
-        borderColor: 'rgba(255,255,255,0.08)',
-        borderWidth: 1,
-        padding: 12
-      }
-    },
-    scales: {
-      x: {
-        ticks: { color: '#64748b', font: { weight: '700' } },
-        grid: { display: false },
-        border: { display: false }
-      },
-      y: {
-        beginAtZero: true,
-        ticks: { precision: 0, color: '#64748b', font: { weight: '700' } },
-        grid: { color: 'rgba(15,23,42,0.06)' },
-        border: { display: false }
-      }
-    }
+    ...chartDefaults,
+    cutout: '62%',
+    plugins: { ...chartDefaults.plugins, legend: { ...chartDefaults.plugins.legend, position: 'right' } }
   }
 });
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

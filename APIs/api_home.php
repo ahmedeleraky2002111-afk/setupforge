@@ -84,11 +84,9 @@ if ($hasPaidOrder) {
     $biz = pg_fetch_assoc($bizRes);
     $setupStatus = $biz["setup_status"] ?? "";
         $setupStep   = (int)($biz["setup_step"] ?? 0);
-        if ($setupStatus === "completed") {
-    $setupState = "completed";
-} elseif ($setupStep > 0) {
-    $setupState = "in_progress";
-}
+        if ($setupStep > 0) {
+            $setupState = "in_progress";
+        }
     }
 }
 

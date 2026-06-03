@@ -1,4 +1,4 @@
-  <?php
+<?php
   // vendor_orders.php (PG / $conn)
   session_start();
   require_once "../db.php";

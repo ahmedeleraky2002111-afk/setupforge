@@ -22,5 +22,16 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // Redirect to main login page
-header("Location: login.php");
-exit;
+?>
+<!doctype html>
+<html>
+<head></head>
+<body>
+<script>
+for(let i=0;i<8;i++) localStorage.removeItem('sf_tut_step_'+i+'_done');
+localStorage.removeItem('sf_tut_packages_done');
+localStorage.removeItem('sf_tut_packages2_done');
+window.location.href = 'login.php';
+</script>
+</body>
+</html>

@@ -47,6 +47,37 @@ function lastMonths($n = 6) {
   return [$labels, $keys];
 }
 
+
+/* =========================
+   Vendor Subscription Status
+   Safe: does not crash if table does not exist yet.
+========================= */
+$isSubscriptionActive = false;
+
+$subTableCheck = pg_query($conn, "SELECT to_regclass('public.vendor_subscriptions') AS table_name");
+$subTableRow = $subTableCheck ? pg_fetch_assoc($subTableCheck) : null;
+
+if (!empty($subTableRow["table_name"])) {
+  $subRes = pg_query_params($conn, "
+    SELECT status, expires_at
+    FROM vendor_subscriptions
+    WHERE vendor_user_id = $1
+    ORDER BY id DESC
+    LIMIT 1
+  ", [$vendorId]);
+
+  $subscription = $subRes ? pg_fetch_assoc($subRes) : null;
+
+  if ($subscription) {
+    $subStatus = strtolower((string)($subscription["status"] ?? ""));
+    $subExpiresAt = $subscription["expires_at"] ?? null;
+    $isSubscriptionActive = $subStatus === "active" && (!$subExpiresAt || strtotime($subExpiresAt) > time());
+  }
+}
+
+$subscriptionNavText = $isSubscriptionActive ? "✓ Activated" : "Subscription";
+$subscriptionNavClass = $isSubscriptionActive ? " is-active" : "";
+
 /* =========================
    Metrics
 ========================= */
@@ -488,10 +519,14 @@ $earningsValuesJson = json_encode($earningsValues, JSON_UNESCAPED_UNICODE);
         <li class="nav-item">
           <a class="nav-link sf-navlink" href="vendor_add_product.php">Add Product</a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link sf-navlink sf-subscription-nav<?= $subscriptionNavClass ?>" href="vendor_subscription.php"><?= h($subscriptionNavText) ?></a>
+        </li>
       </ul>
     </div>
 
     <div class="d-flex justify-content-end flex-grow-1 gap-2">
+      <a href="vendor_subscription.php" class="btn btn-light btn-sm px-3 fw-semibold sf-subscription-mobile-btn d-lg-none"><?= h($subscriptionNavText) ?></a>
       <a href="../auth/logout.php" class="btn btn-outline-light btn-sm px-3 fw-semibold">Logout</a>
     </div>
 
@@ -513,7 +548,6 @@ $earningsValuesJson = json_encode($earningsValues, JSON_UNESCAPED_UNICODE);
         </div>
 
         <div class="v-actions">
-          <a class="v-btn v-btn-outline" href="vendor_products.php">Manage Products</a>
           <a class="v-btn v-btn-primary" href="vendor_add_product.php">Add Product</a>
         </div>
       </div>
