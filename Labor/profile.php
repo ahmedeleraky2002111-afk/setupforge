@@ -118,7 +118,7 @@ $userName = $user["name"] ?? ($_SESSION["name"] ?? "User");
         margin-bottom:28px;
         background:linear-gradient(135deg, rgba(255,255,255,.95), rgba(248,250,252,.95));
         border:1px solid #eef2f7;
-        border-radius:24px;
+        border-radius:5px;
         padding:26px 28px;
         box-shadow:var(--sf-shadow-md);
     }
@@ -149,7 +149,7 @@ $userName = $user["name"] ?? ($_SESSION["name"] ?? "User");
     .profile-chip{
         background:#fff;
         border:1px solid var(--sf-border);
-        border-radius:16px;
+        border-radius:5px;
         padding:14px 18px;
         box-shadow:var(--sf-shadow-sm);
         color:#2558a8;
@@ -160,7 +160,7 @@ $userName = $user["name"] ?? ($_SESSION["name"] ?? "User");
     .profile-card{
         background:#fff;
         padding:30px;
-        border-radius:24px;
+        border-radius:5px;
         box-shadow:var(--sf-shadow-md);
         border:1px solid #edf2f7;
         overflow:hidden;
@@ -188,7 +188,7 @@ $userName = $user["name"] ?? ($_SESSION["name"] ?? "User");
     .avatar{
         width:120px;
         height:120px;
-        background:linear-gradient(135deg, var(--sf-primary), var(--sf-secondary));
+        background:#004cac;
         border-radius:50%;
         display:flex;
         align-items:center;
@@ -218,10 +218,10 @@ $userName = $user["name"] ?? ($_SESSION["name"] ?? "User");
     .badge-role{
         display:inline-flex;
         align-items:center;
-        background:linear-gradient(135deg, rgba(0,76,172,.09), rgba(0,153,148,.12));
-        color:#1554b3;
+        background:#e8f0fb;
+        color:#004cac;
         padding:9px 14px;
-        border-radius:999px;
+        border-radius:5px;
         font-size:14px;
         font-weight:800;
         margin-top:10px;
@@ -236,16 +236,16 @@ $userName = $user["name"] ?? ($_SESSION["name"] ?? "User");
     }
 
     .info-box{
-        background:linear-gradient(180deg, #ffffff, #fbfdff);
+        background:#ffffff;
         border:1px solid #e6eefc;
-        border-radius:18px;
+        border-radius:5px;
         padding:20px;
         box-shadow:var(--sf-shadow-sm);
     }
 
     .info-box h4{
         margin:0 0 10px 0;
-        color:#1554b3;
+        color:#004cac;
         font-size:.92rem;
         font-weight:900;
         text-transform:uppercase;
@@ -272,28 +272,23 @@ $userName = $user["name"] ?? ($_SESSION["name"] ?? "User");
     }
 
     .stat-box{
-        background:linear-gradient(180deg, #ffffff, #fcfdff);
+        background:#ffffff;
         padding:22px;
-        border-radius:20px;
+        border-radius:5px;
         text-align:center;
         border:1px solid #edf2f7;
+        border-top:3px solid #004cac;
         box-shadow:var(--sf-shadow-sm);
         position:relative;
         overflow:hidden;
     }
 
     .stat-box::before{
-        content:"";
-        position:absolute;
-        top:0;
-        left:0;
-        right:0;
-        height:5px;
-        background:linear-gradient(90deg, var(--sf-primary), var(--sf-secondary));
+        display:none;
     }
 
     .stat-box h3{
-        color:#1554b3;
+        color:#004cac;
         margin:0 0 8px 0;
         font-size:2rem;
         font-weight:900;
@@ -309,27 +304,27 @@ $userName = $user["name"] ?? ($_SESSION["name"] ?? "User");
 
     .edit-btn{
         margin-top:26px;
-        background:linear-gradient(135deg, var(--sf-primary), #0a63c8);
-        color:white;
-        border:none;
+        background:#004cac;
+        color:#fff;
+        border:1.5px solid #004cac;
         padding:14px 18px;
-        border-radius:14px;
+        border-radius:5px;
         cursor:pointer;
         width:100%;
-        transition:.2s ease;
+        transition:background .2s ease, color .2s ease;
         text-align:center;
         display:inline-flex;
         align-items:center;
         justify-content:center;
         text-decoration:none;
         font-weight:800;
-        box-shadow:0 8px 18px rgba(0,76,172,.18);
+        box-shadow:none;
     }
 
     .edit-btn:hover{
-        background:linear-gradient(135deg, var(--sf-primary-dark), var(--sf-primary));
-        color:#fff;
-        transform:translateY(-1px);
+        background:#ffffff;
+        color:#004cac;
+        transform:none;
     }
 
     @media (max-width: 1100px){

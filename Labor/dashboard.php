@@ -284,71 +284,45 @@ function formatTimeAgo($datetime) {
 <body>
 
 <nav class="navbar navbar-expand-lg navbar-dark sf-navbar">
-    <div class="container">
-
+    <div class="container-fluid px-4">
         <a class="navbar-brand sf-brand-wrap" href="dashboard.php">
             <div class="sf-logo">
                 <img src="../assets/images/Logo.png" alt="SetupForge Logo">
             </div>
             <span class="fw-bold">SetupForge</span>
         </a>
-
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#laborNavbar" aria-controls="laborNavbar" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#laborNavbar">
             <span class="navbar-toggler-icon"></span>
         </button>
-
         <div class="collapse navbar-collapse justify-content-center" id="laborNavbar">
             <ul class="navbar-nav gap-3">
-                <li class="nav-item">
-                    <a class="nav-link sf-navlink" href="dashboard.php">Dashboard</a>
-                </li>
-
+                <li class="nav-item"><a class="nav-link sf-navlink" href="dashboard.php">Dashboard</a></li>
                 <?php if ($provider_type === "technician"): ?>
-                    <li class="nav-item">
-                        <a class="nav-link sf-navlink" href="laborjobs.php">Available Jobs</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link sf-navlink" href="mybids.php">My Bids</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link sf-navlink" href="laborjobs.php">Available Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link sf-navlink" href="mybids.php">My Bids</a></li>
                 <?php else: ?>
-                    <li class="nav-item">
-                        <a class="nav-link sf-navlink" href="laborjobs.php">Available Jobs</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link sf-navlink" href="laborjobs.php">Available Jobs</a></li>
                 <?php endif; ?>
-
-                <li class="nav-item">
-                    <a class="nav-link sf-navlink" href="myjobs.php">My Jobs</a>
-                </li>
-
-                <li class="nav-item">
-                    <a class="nav-link sf-navlink" href="profile.php">Profile</a>
-                </li>
+                <li class="nav-item"><a class="nav-link sf-navlink" href="myjobs.php">My Jobs</a></li>
+                <li class="nav-item"><a class="nav-link sf-navlink" href="profile.php">Profile</a></li>
             </ul>
         </div>
-
         <div class="sf-nav-actions">
-
             <div class="dropdown">
-                <button class="btn sf-icon-btn sf-bell-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                <button class="btn sf-icon-btn sf-bell-btn" type="button" data-bs-toggle="dropdown">
                     <i class="bi bi-bell"></i>
                     <?php if ($notificationCount > 0): ?>
                         <span class="sf-bell-count"><?php echo $notificationCount > 9 ? '9+' : $notificationCount; ?></span>
                     <?php endif; ?>
                 </button>
-
                 <div class="dropdown-menu dropdown-menu-end sf-dropdown sf-notification-dropdown">
                     <div class="sf-dropdown-title">Notifications</div>
-
                     <?php if ($notificationCount > 0): ?>
                         <div class="sf-dropdown-notice-list">
                             <?php foreach ($notifications as $notice): ?>
                                 <div class="sf-dropdown-notice-item">
-                                    <div class="sf-dropdown-notice-icon">
-                                        <i class="bi bi-bell"></i>
-                                    </div>
-                                    <div class="sf-dropdown-notice-text">
-                                        <?php echo htmlspecialchars($notice); ?>
-                                    </div>
+                                    <div class="sf-dropdown-notice-icon"><i class="bi bi-bell"></i></div>
+                                    <div class="sf-dropdown-notice-text"><?php echo htmlspecialchars($notice); ?></div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
@@ -357,24 +331,18 @@ function formatTimeAgo($datetime) {
                     <?php endif; ?>
                 </div>
             </div>
-
             <div class="dropdown">
-                <button class="btn sf-profile-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="btn sf-profile-btn" data-bs-toggle="dropdown">
                     <i class="bi bi-person-fill"></i>
                 </button>
-
                 <ul class="dropdown-menu dropdown-menu-end sf-dropdown">
-                    <li class="px-3 py-2 fw-semibold">
-                        <?php echo htmlspecialchars($userName); ?>
-                    </li>
+                    <li class="px-3 py-2 fw-semibold"><?php echo htmlspecialchars($userName); ?></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="profile.php">Profile</a></li>
                     <li><a class="dropdown-item" href="../auth/logout.php">Logout</a></li>
                 </ul>
             </div>
-
         </div>
-
     </div>
 </nav>
 
@@ -486,55 +454,48 @@ function formatTimeAgo($datetime) {
             </div>
 
             <?php if ($activeJobsList && pg_num_rows($activeJobsList) > 0): ?>
-                <div class="active-jobs-wrap">
-                    <?php while ($activeJob = pg_fetch_assoc($activeJobsList)): ?>
-                        <div class="active-job-card">
-                            <h3><?php echo htmlspecialchars($activeJob["title"]); ?></h3>
-                            <p><strong>Location:</strong> <?php echo htmlspecialchars($activeJob["location"]); ?></p>
-
-                            <?php if ($provider_type === "technician"): ?>
-                                <p><strong>Price:</strong> <?php echo number_format((float)$activeJob["price"], 2); ?> EGP</p>
-                            <?php else: ?>
-<p><strong>Salary:</strong> <?php echo number_format((float)$activeJob["salary_amount"], 2); ?> EGP</p>
-                            <?php endif; ?>
-
-                            <p><strong>Started:</strong> <?php echo !empty($activeJob["created_at"]) ? date("M j, Y", strtotime($activeJob["created_at"])) : "N/A"; ?></p>
-
-                            <div class="active-job-footer">
-                                <span class="status-badge <?php echo formatStatusClass($activeJob["status"]); ?>">
-                                    <?php echo htmlspecialchars($activeJob["status"]); ?>
-                                </span>
-                                <a href="myjobs.php" class="small-btn">Manage Job</a>
-                            </div>
-                        </div>
-                    <?php endwhile; ?>
+                <div class="table-wrap">
+                    <table>
+                        <tr>
+                            <th>Job Title</th>
+                            <th>Location</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th><?php echo ($provider_type === 'technician') ? 'Price' : 'Salary'; ?></th>
+                            <th>Action</th>
+                        </tr>
+                        <?php while ($activeJob = pg_fetch_assoc($activeJobsList)): ?>
+                            <tr>
+                                <td class="job-title"><?php echo htmlspecialchars($activeJob["title"]); ?></td>
+                                <td><?php echo htmlspecialchars($activeJob["location"]); ?></td>
+                                <td><?php echo !empty($activeJob["created_at"]) ? date("M j, Y", strtotime($activeJob["created_at"])) : "N/A"; ?></td>
+                                <td>
+                                    <span class="status-badge <?php echo formatStatusClass($activeJob["status"]); ?>">
+                                        <?php echo htmlspecialchars($activeJob["status"]); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php
+                                    if ($provider_type === 'technician') {
+                                        echo number_format((float)$activeJob["price"], 2) . " EGP";
+                                    } else {
+                                        echo number_format((float)$activeJob["salary_amount"], 2) . " EGP";
+                                    }
+                                    ?>
+                                </td>
+                                <td>
+                                    <a href="myjobs.php" class="small-btn">Manage Job</a>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </table>
                 </div>
             <?php else: ?>
                 <div class="empty-box">No active jobs right now.</div>
             <?php endif; ?>
         </div>
 
-        <div class="panel">
-            <div class="panel-header">
-                <h2>Notifications</h2>
-                <span class="sub">Useful reminders for your account</span>
-            </div>
 
-            <?php if ($notificationCount > 0): ?>
-                <div class="notice-list">
-                    <?php foreach ($notifications as $notice): ?>
-                        <div class="notice-item">
-                            <div class="notice-icon">
-                                <i class="bi bi-bell"></i>
-                            </div>
-                            <p><?php echo htmlspecialchars($notice); ?></p>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <div class="empty-box">No notifications right now.</div>
-            <?php endif; ?>
-        </div>
 
     </div>
 
@@ -589,50 +550,7 @@ echo number_format((float)$row["salary_amount"], 2) . " EGP";
             <?php endif; ?>
         </div>
 
-        <div class="panel">
-            <div class="panel-header">
-                <h2>Recent Activity</h2>
-                <span class="sub">Latest actions on your jobs</span>
-            </div>
 
-            <div class="activity-list">
-                <?php if ($recentActivity && pg_num_rows($recentActivity) > 0): ?>
-                    <?php while ($activity = pg_fetch_assoc($recentActivity)): ?>
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                <?php if ($activity["status"] === "completed"): ?>
-                                    <i class="bi bi-check2-circle"></i>
-                                <?php elseif (in_array($activity["status"], ["active", "assigned", "processing"])): ?>
-                                    <i class="bi bi-briefcase"></i>
-                                <?php else: ?>
-                                    <i class="bi bi-clock-history"></i>
-                                <?php endif; ?>
-                            </div>
-
-                            <div class="activity-content">
-                                <h4><?php echo htmlspecialchars($activity["title"]); ?></h4>
-                                <p>
-                                    Status: <?php echo htmlspecialchars(ucfirst($activity["status"])); ?>
-                                    •
-                                    <?php
-                                    if ($provider_type === "technician") {
-                                        echo number_format((float)$activity["price"], 2) . " EGP";
-                                    } else {
-echo number_format((float)$activity["salary_amount"], 2) . " EGP";
-                                    }
-                                    ?>
-                                </p>
-                                <div class="activity-time">
-                                    <?php echo htmlspecialchars(formatTimeAgo($activity["created_at"])); ?>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endwhile; ?>
-                <?php else: ?>
-                    <div class="empty-box">No activity yet.</div>
-                <?php endif; ?>
-            </div>
-        </div>
 
     </div>
 

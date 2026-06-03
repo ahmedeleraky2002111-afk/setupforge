@@ -1,4 +1,3 @@
-<?php echo "FAQ works"; exit; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,7 +16,7 @@
 
   <style>
     /* PAGE BACKGROUND */
-    .sf-faq-page{
+    .sf-faq-page {
       padding: 110px 0 70px;
       background:
         radial-gradient(circle at top left, rgba(0,76,172,.08), transparent 30%),
@@ -26,7 +25,7 @@
       min-height: 100vh;
     }
 
-    .sf-faq-title{
+    .sf-faq-title {
       text-align: center;
       font-size: 42px;
       font-weight: 800;
@@ -34,7 +33,7 @@
       color: #111;
     }
 
-    .sf-faq-item{
+    .sf-faq-item {
       background: #fff;
       border-radius: 18px;
       margin-bottom: 18px;
@@ -44,11 +43,11 @@
       transition: 0.3s ease;
     }
 
-    .sf-faq-item:hover{
+    .sf-faq-item:hover {
       transform: translateY(-3px);
     }
 
-    .sf-faq-question{
+    .sf-faq-question {
       width: 100%;
       padding: 20px;
       font-weight: 700;
@@ -59,13 +58,19 @@
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
+      text-align: left;
+      color: #111;
     }
 
-    .sf-faq-question:hover{
+    .sf-faq-question:hover {
       background: #f5f9ff;
     }
 
-    .sf-faq-answer{
+    .sf-faq-question:focus {
+      outline: none;
+    }
+
+    .sf-faq-answer {
       display: none;
       padding: 0 20px 20px;
       color: #666;
@@ -73,21 +78,45 @@
       font-size: 15px;
     }
 
-    .sf-faq-item.active .sf-faq-answer{
+    .sf-faq-item.active .sf-faq-answer {
       display: block;
     }
 
-    .sf-faq-icon{
+    .sf-faq-icon {
       font-size: 20px;
       transition: 0.3s;
+      color: #004cac;
+      flex-shrink: 0;
+      margin-left: 15px;
     }
 
-    .sf-faq-item.active .sf-faq-icon{
+    .sf-faq-item.active .sf-faq-icon {
       transform: rotate(45deg);
     }
-  </style>
 
+    @media (max-width: 768px) {
+      .sf-faq-page {
+        padding: 90px 0 50px;
+      }
+
+      .sf-faq-title {
+        font-size: 32px;
+        margin-bottom: 35px;
+      }
+
+      .sf-faq-question {
+        font-size: 15px;
+        padding: 18px;
+      }
+
+      .sf-faq-answer {
+        font-size: 14px;
+        padding: 0 18px 18px;
+      }
+    }
+  </style>
 </head>
+
 <body>
 
   <?php include 'includes/navbar.php'; ?>
@@ -97,10 +126,9 @@
 
       <h1 class="sf-faq-title">Frequently Asked Questions</h1>
 
-      <!-- FAQ ITEM -->
       <div class="sf-faq-item">
-        <button class="sf-faq-question">
-          What is SetupForge?
+        <button type="button" class="sf-faq-question">
+          <span>What is SetupForge?</span>
           <i class="bi bi-plus-lg sf-faq-icon"></i>
         </button>
         <div class="sf-faq-answer">
@@ -109,8 +137,8 @@
       </div>
 
       <div class="sf-faq-item">
-        <button class="sf-faq-question">
-          How can I start using SetupForge?
+        <button type="button" class="sf-faq-question">
+          <span>How can I start using SetupForge?</span>
           <i class="bi bi-plus-lg sf-faq-icon"></i>
         </button>
         <div class="sf-faq-answer">
@@ -119,8 +147,8 @@
       </div>
 
       <div class="sf-faq-item">
-        <button class="sf-faq-question">
-          Do you provide support?
+        <button type="button" class="sf-faq-question">
+          <span>Do you provide support?</span>
           <i class="bi bi-plus-lg sf-faq-icon"></i>
         </button>
         <div class="sf-faq-answer">
@@ -129,8 +157,8 @@
       </div>
 
       <div class="sf-faq-item">
-        <button class="sf-faq-question">
-          Can I find vendors and suppliers here?
+        <button type="button" class="sf-faq-question">
+          <span>Can I find vendors and suppliers here?</span>
           <i class="bi bi-plus-lg sf-faq-icon"></i>
         </button>
         <div class="sf-faq-answer">
@@ -141,15 +169,15 @@
     </div>
   </main>
 
-  <!-- SCRIPT -->
   <script>
-    document.querySelectorAll(".sf-faq-question").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const item = btn.parentElement;
+    document.querySelectorAll(".sf-faq-question").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const item = btn.closest(".sf-faq-item");
 
-        // close others (optional)
-        document.querySelectorAll(".sf-faq-item").forEach(i => {
-          if(i !== item) i.classList.remove("active");
+        document.querySelectorAll(".sf-faq-item").forEach(function(otherItem) {
+          if (otherItem !== item) {
+            otherItem.classList.remove("active");
+          }
         });
 
         item.classList.toggle("active");

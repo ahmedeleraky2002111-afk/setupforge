@@ -8596,3 +8596,13 @@ div#sfWwTrack {
   letter-spacing: .03em;
   z-index: 1;
 }
+
+
+
+/* Navbar Sign Up hover */
+.sf-navbar .btn-light:hover,
+.sf-navbar .btn-light:focus {
+  background: #ffffff !important;
+  color: #004cac !important;
+  border-color: #ffffff !important;
+}
