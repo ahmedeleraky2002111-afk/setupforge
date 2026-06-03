@@ -1,5 +1,8 @@
 <?php
 ob_start();
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/shop_order_error.log');
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 header("Content-Type: application/json");
@@ -73,10 +76,11 @@ try {
     ", [$user_id, $grandTotal, $deliveryLocation]);
 
     if (!$orderRes || pg_num_rows($orderRes) === 0) {
-        pg_query($conn, "ROLLBACK");
-        echo json_encode(["ok" => false, "error" => "Failed to create order"]);
-        exit;
-    }
+    pg_query($conn, "ROLLBACK");
+    $pgError = pg_last_error($conn);
+    echo json_encode(["ok" => false, "error" => "Failed to create order", "pg_error" => $pgError]);
+    exit;
+}
 
     $order_id = (int)pg_fetch_assoc($orderRes)["id"];
 
@@ -106,6 +110,7 @@ try {
     file_put_contents(__DIR__ . "/api_error.log",
         date("c") . " api_shop_place_order: " . $e->getMessage() . "\n", FILE_APPEND);
     http_response_code(500);
+    file_put_contents(__DIR__ . "/../debug_order.txt", date("c") . "\n" . json_encode($input) . "\nUSER: " . $user_id . "\nTOTAL: " . $grandTotal . "\nORDER: " . ($order_id ?? 'FAILED') . "\n\n", FILE_APPEND);
     echo json_encode(["ok" => false, "error" => "Server error"]);
 } finally {
     ob_end_flush();
