@@ -86,21 +86,8 @@
       return settleTime(last + CARD_STAGGER + 40);
     }
 
-    /* ── Step 3: Tables ── */
+    /* ── Step 3: Area + Multifloor ── */
     if (step === 3) {
-      var h1      = document.querySelector('.sf-name-title');
-      var sub     = document.querySelector('.sf-name-sub');
-      var sliders = Array.from(document.querySelectorAll('.sf-slider-block'));
-      var acts    = document.querySelector('.sf-actions');
-
-      animList([h1, sub], 80, STAGGER);
-      var last = animList(sliders, 80 + STAGGER * 2, STAGGER);
-      animEl(acts, last + STAGGER + 40);
-      return settleTime(last + STAGGER + 40);
-    }
-
-    /* ── Step 4: Area + Multifloor ── */
-    if (step === 4) {
       var h1         = document.querySelector('.sf-name-title');
       var sub        = document.querySelector('.sf-name-sub');
       var areaBlock  = document.querySelector('.sf-slider-block');
@@ -110,6 +97,19 @@
       animList([h1, sub, areaBlock, floorBlock, acts], 80, STAGGER);
       var last = 80 + STAGGER * 4;
       return settleTime(last);
+    }
+
+    /* ── Step 4: Tables ── */
+    if (step === 4) {
+      var h1      = document.querySelector('.sf-name-title');
+      var sub     = document.querySelector('.sf-name-sub');
+      var sliders = Array.from(document.querySelectorAll('.sf-slider-block'));
+      var acts    = document.querySelector('.sf-actions');
+
+      animList([h1, sub], 80, STAGGER);
+      var last = animList(sliders, 80 + STAGGER * 2, STAGGER);
+      animEl(acts, last + STAGGER + 40);
+      return settleTime(last + STAGGER + 40);
     }
 
     /* ── Step 5: Budget ── */

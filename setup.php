@@ -146,6 +146,7 @@ if (!$userId && !isset($_GET['step']) && !empty($_SESSION['wizard'])) {
     $guestStep = 0;
     if (!empty($w['budget']))           $guestStep = 6;
     elseif ((int)($w['indoor_seats'] ?? 0) > 0) $guestStep = 5;
+    elseif ((int)($w['area_sqm'] ?? 0) > 0) $guestStep = 4;
     elseif (!empty($w['business_type'])) $guestStep = ($w['business_type'] === 'Restaurant' ? 2 : 3);
     elseif (!empty($w['business_name'])) $guestStep = 1;
 
@@ -273,7 +274,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   if ($currentStep === 1) {
     $selectedBusiness = $_POST["business_type"] ?? null;
     $_SESSION["wizard"]["business_type"] = $selectedBusiness;
-$nextStep = $selectedBusiness === "Restaurant" ? 2 : ($hasEquipment ? 3 : ($hasInstall ? 4 : 7));
+$nextStep = $selectedBusiness === "Restaurant" ? 2 : ($hasEquipment ? 3 : ($hasInstall ? 3 : 7));
 if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
 
     if ($selectedBusiness === "Restaurant") {
@@ -288,7 +289,7 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
     }
     // If no equipment but has staff or install → skip tables
     if (!$hasEquipment) {
-        if ($hasInstall) redirect_step(4);
+        if ($hasInstall) redirect_step(3); // was 4
         else redirect_step(7);
     }
     redirect_step(3);
@@ -311,8 +312,8 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
     }
     
     if (!$hasEquipment && $hasInstall) {
-    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 4);
-    redirect_step(4);
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 3);
+    redirect_step(3);
 } elseif (!$hasEquipment && $hasStaff) {
     if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7);
     redirect_step(7);
@@ -323,43 +324,40 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
 }
 
   if ($currentStep === 3) {
-    $indoorTbls  = max(1, (int)($_POST["indoor_tables"]  ?? 1));
-    $outdoorTbls = max(0, (int)($_POST["outdoor_tables"] ?? 0));
-    $_SESSION["wizard"]["indoor_tables"]  = $indoorTbls;
-    $_SESSION["wizard"]["outdoor_tables"] = $outdoorTbls;
-    $_SESSION["wizard"]["indoor_seats"]   = $indoorTbls * 4;
-    $_SESSION["wizard"]["outdoor_seats"]  = $outdoorTbls * 4;
-    // Area step only needed if installation selected
-    if ($hasInstall) {
-        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 4);
-        redirect_step(4);
-    } else {
-        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
-        redirect_step(5);
-    }
-}
-
-  if ($currentStep === 4) {
     $_SESSION["wizard"]["area_sqm"]    = max(10, (int)($_POST["area_sqm"] ?? 50));
     $_SESSION["wizard"]["floor_count"] = max(1, (int)($_POST["floor_count"] ?? 1));
 
     $rt = $_SESSION["wizard"]["restaurant_type"] ?? "standard_dining";
     if ($rt === "cloud_kitchen") {
         $_SESSION["wizard"]["modules"] = ["kitchen","pos"];
-    } elseif ($rt === "premium_dining") {
-        $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ac"];
     } else {
         $_SESSION["wizard"]["modules"] = ["kitchen","pos","furniture","electronics","ac"];
     }
 
-    // If no equipment, skip budget step
-    if (!$hasEquipment) {
+    if ($hasEquipment) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 4);
+        redirect_step(4);
+    } elseif ($hasInstall) {
         if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 6);
         redirect_step(6);
+    } elseif ($hasStaff) {
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 7);
+        redirect_step(7);
     } else {
-        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
-        redirect_step(5);
+        if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 3, 'completed');
+        header("Location: service_jobs.php"); exit;
     }
+}
+
+  if ($currentStep === 4) {
+    $indoorTbls  = max(1, (int)($_POST["indoor_tables"]  ?? 1));
+    $outdoorTbls = max(0, (int)($_POST["outdoor_tables"] ?? 0));
+    $_SESSION["wizard"]["indoor_tables"]  = $indoorTbls;
+    $_SESSION["wizard"]["outdoor_tables"] = $outdoorTbls;
+    $_SESSION["wizard"]["indoor_seats"]   = $indoorTbls * 4;
+    $_SESSION["wizard"]["outdoor_seats"]  = $outdoorTbls * 4;
+    if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], 5);
+    redirect_step(5);
 }
 
   if ($currentStep === 5) {
@@ -503,7 +501,7 @@ $modulesList = [
 /* ---------- GUARD: prevent jumping ahead ---------- */
 if ($step === 2 && $business !== "Restaurant") {
     if ($hasEquipment) redirect_step(3);
-    elseif ($hasInstall) redirect_step(4);
+    elseif ($hasInstall) redirect_step(3);
     elseif ($hasStaff) redirect_step(7);
     else redirect_step(3);
 }
@@ -513,8 +511,8 @@ if ($step < 0 || $step > 7) redirect_step(0);
 if ($step > 0 && $businessName === "") redirect_step(0);
 if ($step > 1 && $business === "") redirect_step(1);
 if ($step > 2 && $business === "Restaurant" && $restaurantType === "") redirect_step(2);
-if ($hasEquipment && $step > 3 && $indoorSeats < 1) redirect_step(3);
-if ($hasEquipment && $step === 4 && ($indoorTables < 1)) redirect_step(3);
+if ($hasEquipment && $step > 4 && $indoorSeats < 1) redirect_step(4);
+if ($step > 3 && $areaSqm < 1 && ($hasInstall || $hasEquipment)) redirect_step(3);
 if ($hasEquipment && $step > 5 && $budget <= 0) redirect_step(5);
 
 $totalSteps = 9;
@@ -558,14 +556,14 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     <!-- PROGRESS BAR -->
     <div class="sf-wiz-progress">
       <?php
-  $allSteps = [0=>"Name", 1=>"Type", 2=>"Style", 3=>"Tables", 4=>"Space", 5=>"Budget", 6=>"Services", 7=>"Staff"];
+  $allSteps = [0=>"Name", 1=>"Type", 2=>"Style", 3=>"Space", 4=>"Tables", 5=>"Budget", 6=>"Services", 7=>"Staff"];
   
   // Build display steps based on selected services
   $display = [0, 1, 2]; // always show name, type, restaurant type
-  if ($hasEquipment) $display[] = 3; // tables
-  if ($hasInstall)   $display[] = 4; // area
-  if ($hasEquipment) $display[] = 5; // budget
-  if ($hasInstall)   $display[] = 6; // installation
+  if ($hasEquipment || $hasInstall) $display[] = 3; // area
+if ($hasEquipment) $display[] = 4; // tables
+if ($hasEquipment) $display[] = 5; // budget
+if ($hasInstall)   $display[] = 6; // installation
   if ($hasStaff)     $display[] = 7; // staff
   $display = array_unique($display);
   sort($display);
@@ -794,93 +792,11 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <?php elseif ($step === 3): ?>
 
 <div class="sf-step3-wrap">
-  <h1 class="sf-name-title"style="text-align:center; margin-bottom:8px;">How many tables do you have?</h1>
-  <p class="sf-name-sub" style="text-align:center; margin-bottom:28px;">Indoor and outdoor seating helps us size your furniture and equipment.</p>
-
-  <form method="post" class="sf-step3-form">
-    <input type="hidden" name="step" value="3">
-
-    <div class="sf-slider-block">
-      <div class="sf-slider-head">
-        <span class="sf-slider-label">Indoor Tables</span>
-        <div class="sf-slider-presets">
-          <?php foreach ([5, 10, 15, 20] as $p): ?>
-          <button type="button" class="sf-seat-preset" data-field="indoor_tables" data-val="<?= $p ?>"><?= $p ?></button>
-          <?php endforeach; ?>
-        </div>
-        <span class="sf-slider-val" id="indoor-display"><?= $indoorTables > 0 ? h($indoorTables) : 5 ?></span>
-      </div>
-      <input type="range" class="sf-slider-range" id="indoor_range" min="1" max="50" step="1" value="<?= $indoorTables > 0 ? h($indoorTables) : 5 ?>">
-      <input type="number" name="indoor_tables" id="indoor_tables" hidden min="1" value="<?= $indoorTables > 0 ? h($indoorTables) : 5 ?>" required>
-    </div>
-
-    <div class="sf-slider-block">
-      <div class="sf-slider-head">
-        <span class="sf-slider-label">Outdoor Tables</span>
-        <div class="sf-slider-presets">
-          <?php foreach ([0, 5, 10, 15] as $p): ?>
-          <button type="button" class="sf-seat-preset" data-field="outdoor_tables" data-val="<?= $p ?>"><?= $p ?></button>
-          <?php endforeach; ?>
-        </div>
-        <span class="sf-slider-val" id="outdoor-display"><?= h($outdoorTables) ?></span>
-      </div>
-      <input type="range" class="sf-slider-range" id="outdoor_range" min="0" max="50" step="1" value="<?= h($outdoorTables) ?>">
-      <input type="number" name="outdoor_tables" id="outdoor_tables" hidden min="0" value="<?= h($outdoorTables) ?>">
-    </div>
-
-    <div class="sf-actions" style="margin-top:32px;">
-      <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $business === 'Restaurant' ? '2' : '1' ?>">← Back</a>
-      <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
-    </div>
-  </form>
-</div>
-
-<script>
-(function(){
-  const inputs   = { indoor_tables: document.getElementById('indoor_tables'), outdoor_tables: document.getElementById('outdoor_tables') };
-  const ranges   = { indoor_tables: document.getElementById('indoor_range'),  outdoor_tables: document.getElementById('outdoor_range') };
-  const displays = { indoor_tables: document.getElementById('indoor-display'), outdoor_tables: document.getElementById('outdoor-display') };
-
-  function syncPresets(){
-    document.querySelectorAll('.sf-seat-preset').forEach(btn => {
-      const field = btn.dataset.field;
-      if (inputs[field]) btn.classList.toggle('is-active', parseInt(inputs[field].value) === parseInt(btn.dataset.val));
-    });
-  }
-
-  Object.keys(ranges).forEach(field => {
-    ranges[field].addEventListener('input', () => {
-      inputs[field].value = ranges[field].value;
-      displays[field].textContent = ranges[field].value;
-      syncPresets();
-    });
-  });
-
-  document.querySelectorAll('.sf-seat-preset').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const field = btn.dataset.field;
-      if (!inputs[field]) return;
-      const min = field === 'indoor_tables' ? 1 : 0;
-      const val = Math.max(min, parseInt(btn.dataset.val));
-      inputs[field].value = val;
-      ranges[field].value = val;
-      displays[field].textContent = val;
-      syncPresets();
-    });
-  });
-
-  syncPresets();
-})();
-</script>
-
-<?php elseif ($step === 4): ?>
-
-<div class="sf-step3-wrap">
   <h1 class="sf-name-title" style="text-align:center; margin-bottom:8px;">What's your restaurant's area?</h1>
   <p class="sf-name-sub" style="text-align:center; margin-bottom:28px;">Indoor area helps us calculate how many AC units you need.</p>
 
   <form method="post" class="sf-step3-form">
-    <input type="hidden" name="step" value="4">
+    <input type="hidden" name="step" value="3">
 
     <div class="sf-slider-block">
       <div class="sf-slider-head">
@@ -912,12 +828,11 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
           <input type="number" name="floor_count" id="floor_count" hidden min="2" value="2">
         </div>
       </div>
-      <!-- when unchecked, submit floor_count = 1 -->
       <input type="hidden" name="floor_count" id="floor_count_default" value="1">
     </div>
 
     <div class="sf-actions" style="margin-top:32px;">
-      <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasEquipment ? '3' : '2' ?>">← Back</a>
+      <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $business === 'Restaurant' ? '2' : '1' ?>">← Back</a>
       <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
     </div>
   </form>
@@ -971,6 +886,88 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 })();
 </script>
 
+<?php elseif ($step === 4): ?>
+
+<div class="sf-step3-wrap">
+  <h1 class="sf-name-title" style="text-align:center; margin-bottom:8px;">How many tables do you have?</h1>
+  <p class="sf-name-sub" style="text-align:center; margin-bottom:28px;">Indoor and outdoor seating helps us size your furniture and equipment.</p>
+
+  <form method="post" class="sf-step3-form">
+    <input type="hidden" name="step" value="4">
+
+    <div class="sf-slider-block">
+      <div class="sf-slider-head">
+        <span class="sf-slider-label">Indoor Tables</span>
+        <div class="sf-slider-presets">
+          <?php foreach ([5, 10, 15, 20] as $p): ?>
+          <button type="button" class="sf-seat-preset" data-field="indoor_tables" data-val="<?= $p ?>"><?= $p ?></button>
+          <?php endforeach; ?>
+        </div>
+        <span class="sf-slider-val" id="indoor-display"><?= $indoorTables > 0 ? h($indoorTables) : 5 ?></span>
+      </div>
+      <input type="range" class="sf-slider-range" id="indoor_range" min="1" max="50" step="1" value="<?= $indoorTables > 0 ? h($indoorTables) : 5 ?>">
+      <input type="number" name="indoor_tables" id="indoor_tables" hidden min="1" value="<?= $indoorTables > 0 ? h($indoorTables) : 5 ?>" required>
+    </div>
+
+    <div class="sf-slider-block">
+      <div class="sf-slider-head">
+        <span class="sf-slider-label">Outdoor Tables</span>
+        <div class="sf-slider-presets">
+          <?php foreach ([0, 5, 10, 15] as $p): ?>
+          <button type="button" class="sf-seat-preset" data-field="outdoor_tables" data-val="<?= $p ?>"><?= $p ?></button>
+          <?php endforeach; ?>
+        </div>
+        <span class="sf-slider-val" id="outdoor-display"><?= h($outdoorTables) ?></span>
+      </div>
+      <input type="range" class="sf-slider-range" id="outdoor_range" min="0" max="50" step="1" value="<?= h($outdoorTables) ?>">
+      <input type="number" name="outdoor_tables" id="outdoor_tables" hidden min="0" value="<?= h($outdoorTables) ?>">
+    </div>
+
+    <div class="sf-actions" style="margin-top:32px;">
+      <a class="sf-btn-main sf-btn-back" href="setup.php?step=3">← Back</a>
+      <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const inputs   = { indoor_tables: document.getElementById('indoor_tables'), outdoor_tables: document.getElementById('outdoor_tables') };
+  const ranges   = { indoor_tables: document.getElementById('indoor_range'),  outdoor_tables: document.getElementById('outdoor_range') };
+  const displays = { indoor_tables: document.getElementById('indoor-display'), outdoor_tables: document.getElementById('outdoor-display') };
+
+  function syncPresets(){
+    document.querySelectorAll('.sf-seat-preset').forEach(btn => {
+      const field = btn.dataset.field;
+      if (inputs[field]) btn.classList.toggle('is-active', parseInt(inputs[field].value) === parseInt(btn.dataset.val));
+    });
+  }
+
+  Object.keys(ranges).forEach(field => {
+    ranges[field].addEventListener('input', () => {
+      inputs[field].value = ranges[field].value;
+      displays[field].textContent = ranges[field].value;
+      syncPresets();
+    });
+  });
+
+  document.querySelectorAll('.sf-seat-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const field = btn.dataset.field;
+      if (!inputs[field]) return;
+      const min = field === 'indoor_tables' ? 1 : 0;
+      const val = Math.max(min, parseInt(btn.dataset.val));
+      inputs[field].value = val;
+      ranges[field].value = val;
+      displays[field].textContent = val;
+      syncPresets();
+    });
+  });
+
+  syncPresets();
+})();
+</script>
+
 <?php elseif ($step === 6): ?>
 
 <h1 class="sf-name-title" style="margin-bottom:8px; margin-top:-60px;">Installation &amp; Technical Setup</h1>
@@ -1016,7 +1013,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 <p class="sf6-info-note"><i class="bi bi-building"></i> These services are fulfilled by verified local companies, not individual workers.</p>
 <p class="sf6-foot-summary" id="sf6-count-text">0 services selected</p>
 <div class="sf-actions" style="margin-top:24px;">
-  <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasEquipment ? '5' : '4' ?>">← Back</a>
+  <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasEquipment ? '5' : '3' ?>">← Back</a>
   <button class="sf-btn-main sf-btn-next" type="submit">Next →</button>
 </div>
 </form>
@@ -1144,7 +1141,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
   </div>
 
   <div class="sf-actions">
-    <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasInstall ? '4' : '3' ?>">&#8592; Back</a>
+    <a class="sf-btn-main sf-btn-back" href="setup.php?step=<?= $hasEquipment ? '4' : '3' ?>">&#8592; Back</a>
     <button class="sf-btn-main sf-btn-next" type="submit">Next &#8594;</button>
   </div>
 </form>
