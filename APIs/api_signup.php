@@ -61,6 +61,7 @@ if (!in_array($user_type, ["business", "customer", "labor"])) {
   ]);
 
   $id = pg_fetch_result($result, 0, "id");
+  pg_query_params($conn, "INSERT INTO customers (user_id) VALUES ($1) ON CONFLICT DO NOTHING", [$id]);
 
   echo json_encode([
     "ok"        => true,
