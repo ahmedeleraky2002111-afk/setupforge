@@ -23,7 +23,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   Set<int> _cartIds = {};
   int _cartCount = 0;
 
-  // Filters
   String _selectedCategory = '';
   String _selectedBrand = '';
   String _selectedModule = '';
@@ -103,275 +102,213 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = List<Map<String, dynamic>>.from(
-      _data["categories"] ?? [],
-    );
-    final brands = List<String>.from(_data["brands"] ?? []);
-
     return Scaffold(
       backgroundColor: sfBg,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            backgroundColor: sfBlue,
-            pinned: true,
-            automaticallyImplyLeading: false,
-            expandedHeight: 110,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                color: sfBlue,
-                padding: const EdgeInsets.fromLTRB(16, 50, 16, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
+      body: Column(
+        children: [
+          // Header
+          Container(
+            color: sfBlue,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Products',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
+                    const Expanded(
+                      child: Text(
+                        'Products',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
                         ),
-                        // Cart icon with badge
-                        Stack(
-                          children: [
-                            IconButton(
-                              onPressed: () => Navigator.pushNamed(
-                                context,
-                                '/cart',
-                              ).then((_) => _load()),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () =>
+                          setState(() => _showFilters = !_showFilters),
+                      icon: Icon(
+                        _showFilters
+                            ? Icons.filter_list_off
+                            : Icons.filter_list,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 38,
+                  child: TextField(
+                    controller: _searchC,
+                    onSubmitted: (_) => _load(),
+                    style: const TextStyle(fontSize: 13.5, color: sfText),
+                    decoration: InputDecoration(
+                      hintText: 'Search products...',
+                      hintStyle: const TextStyle(
+                        color: sfMuted,
+                        fontSize: 13.5,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 0,
+                      ),
+                      border: const OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: const OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide.none,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        size: 18,
+                        color: sfMuted,
+                      ),
+                      suffixIcon: _searchC.text.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                _searchC.clear();
+                                _load();
+                              },
                               icon: const Icon(
-                                Icons.shopping_cart_outlined,
-                                color: Colors.white,
+                                Icons.close,
+                                size: 16,
+                                color: sfMuted,
                               ),
-                            ),
-                            if (_cartCount > 0)
-                              Positioned(
-                                right: 6,
-                                top: 6,
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      _cartCount > 9 ? '9+' : '$_cartCount',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Filters panel
+          if (_showFilters)
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _filterChip('All', '', _selectedModule == ''),
+                        _filterChip(
+                          'Kitchen',
+                          'kitchen',
+                          _selectedModule == 'kitchen',
                         ),
-                        // Filter toggle
-                        IconButton(
-                          onPressed: () =>
-                              setState(() => _showFilters = !_showFilters),
-                          icon: Icon(
-                            _showFilters
-                                ? Icons.filter_list_off
-                                : Icons.filter_list,
-                            color: Colors.white,
-                          ),
+                        _filterChip('POS', 'pos', _selectedModule == 'pos'),
+                        _filterChip(
+                          'Dining Area',
+                          'furniture',
+                          _selectedModule == 'furniture',
+                        ),
+                        _filterChip('AC', 'ac', _selectedModule == 'ac'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _sortChip('Newest', '', _selectedSort == ''),
+                        _sortChip(
+                          'Price ↑',
+                          'price_low',
+                          _selectedSort == 'price_low',
+                        ),
+                        _sortChip(
+                          'Price ↓',
+                          'price_high',
+                          _selectedSort == 'price_high',
+                        ),
+                        _sortChip(
+                          'Rating',
+                          'rating',
+                          _selectedSort == 'rating',
+                        ),
+                        _sortChip(
+                          'A→Z',
+                          'name_asc',
+                          _selectedSort == 'name_asc',
                         ),
                       ],
                     ),
-                    // Search bar
-                    SizedBox(
-                      height: 36,
-                      child: TextField(
-                        controller: _searchC,
-                        onSubmitted: (_) => _load(),
-                        style: const TextStyle(fontSize: 13.5, color: sfText),
-                        decoration: InputDecoration(
-                          hintText: 'Search products...',
-                          hintStyle: const TextStyle(
-                            color: sfMuted,
-                            fontSize: 13.5,
+                  ),
+                  if (_selectedModule.isNotEmpty ||
+                      _selectedSort.isNotEmpty ||
+                      _selectedCategory.isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _clearFilters,
+                        child: const Text(
+                          'Clear Filters',
+                          style: TextStyle(
+                            color: sfBlue,
+                            fontWeight: FontWeight.w700,
                           ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 0,
-                          ),
-                          border: const OutlineInputBorder(
-                            borderRadius: BorderRadius.zero,
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: const OutlineInputBorder(
-                            borderRadius: BorderRadius.zero,
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: const OutlineInputBorder(
-                            borderRadius: BorderRadius.zero,
-                            borderSide: BorderSide.none,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            size: 18,
-                            color: sfMuted,
-                          ),
-                          suffixIcon: _searchC.text.isNotEmpty
-                              ? IconButton(
-                                  onPressed: () {
-                                    _searchC.clear();
-                                    _load();
-                                  },
-                                  icon: const Icon(
-                                    Icons.close,
-                                    size: 16,
-                                    color: sfMuted,
-                                  ),
-                                )
-                              : null,
                         ),
                       ),
                     ),
-                  ],
+                ],
+              ),
+            ),
+
+          // Product count
+          if (!_loading)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.white,
+              child: Text(
+                '${_products.length} product${_products.length == 1 ? '' : 's'}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: sfMuted,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
+
+          // Products grid
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: sfBlue))
+                : _products.isEmpty
+                ? _emptyState()
+                : RefreshIndicator(
+                    color: sfBlue,
+                    onRefresh: _load,
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 0.58,
+                          ),
+                      itemCount: _products.length,
+                      itemBuilder: (ctx, i) => _productCard(_products[i]),
+                    ),
+                  ),
           ),
         ],
-        body: Column(
-          children: [
-            // Filters panel
-            if (_showFilters)
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    // Module filter
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _filterChip('All', '', _selectedModule == ''),
-                          _filterChip(
-                            'Kitchen',
-                            'kitchen',
-                            _selectedModule == 'kitchen',
-                          ),
-                          _filterChip('POS', 'pos', _selectedModule == 'pos'),
-                          _filterChip(
-                            'Dining Area',
-                            'furniture',
-                            _selectedModule == 'furniture',
-                          ),
-                          _filterChip('AC', 'ac', _selectedModule == 'ac'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Sort
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _sortChip('Newest', '', _selectedSort == ''),
-                          _sortChip(
-                            'Price ↑',
-                            'price_low',
-                            _selectedSort == 'price_low',
-                          ),
-                          _sortChip(
-                            'Price ↓',
-                            'price_high',
-                            _selectedSort == 'price_high',
-                          ),
-                          _sortChip(
-                            'Rating',
-                            'rating',
-                            _selectedSort == 'rating',
-                          ),
-                          _sortChip(
-                            'A→Z',
-                            'name_asc',
-                            _selectedSort == 'name_asc',
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_selectedModule.isNotEmpty ||
-                        _selectedSort.isNotEmpty ||
-                        _selectedCategory.isNotEmpty)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _clearFilters,
-                          child: const Text(
-                            'Clear Filters',
-                            style: TextStyle(
-                              color: sfBlue,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-            // Product count
-            if (!_loading)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                color: Colors.white,
-                child: Text(
-                  '${_products.length} product${_products.length == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: sfMuted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-
-            // Products grid
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: sfBlue),
-                    )
-                  : _products.isEmpty
-                  ? _emptyState()
-                  : RefreshIndicator(
-                      color: sfBlue,
-                      onRefresh: _load,
-                      child: GridView.builder(
-                        padding: const EdgeInsets.all(12),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                              childAspectRatio: 0.58,
-                            ),
-                        itemCount: _products.length,
-                        itemBuilder: (ctx, i) => _productCard(_products[i]),
-                      ),
-                    ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -443,7 +380,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image
           Expanded(
             child: Stack(
               children: [
@@ -484,14 +420,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
               ],
             ),
           ),
-
-          // Info
           Padding(
             padding: const EdgeInsets.all(8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Category badge
                 if ((p["category_name"] ?? "").toString().isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(bottom: 4),
@@ -509,7 +442,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       ),
                     ),
                   ),
-
                 Text(
                   p["product_name"] ?? "—",
                   style: const TextStyle(
@@ -520,7 +452,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-
                 if ((p["brand"] ?? "").toString().isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
@@ -530,9 +461,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-
                 const SizedBox(height: 6),
-
                 Row(
                   children: [
                     Expanded(
@@ -566,10 +495,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       ),
                   ],
                 ),
-
                 const SizedBox(height: 8),
-
-                // Add to cart button
                 SizedBox(
                   width: double.infinity,
                   child: outOfStock
@@ -644,8 +570,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         ),
                 ),
                 const SizedBox(height: 4),
-
-                // Buy Now
                 if (!outOfStock)
                   GestureDetector(
                     onTap: () => Navigator.pushNamed(
