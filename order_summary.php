@@ -227,12 +227,41 @@ foreach($allRows as $r){
     </div>
     <?php endforeach; ?>
 
-    <input type="hidden" name="delivery_location" id="delivery_location_hidden">
+    <!-- Contact & Delivery Info -->
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:3px;overflow:hidden;">
+      <div style="padding:0.75rem 1rem;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px;">
+        <div style="width:28px;height:28px;background:#e6f1fb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">👤</div>
+        <span style="font-size:15px;font-weight:700;color:var(--color-text-primary);">Contact & delivery info</span>
+      </div>
+      <div style="padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:0.75rem;">
 
-<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1rem;">
-  <label style="font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:6px;">Delivery location (optional)</label>
-  <input type="text" id="delivery_location_visible" style="width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="e.g. Cairo, Nasr City, Street name...">
-</div>
+        <!-- First & Last name row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+          <div>
+            <label style="font-size:14px;color:var(--color-text-secondary);display:block;margin-bottom:5px;">First name</label>
+            <input type="text" name="first_name" style="width:100%;font-size:15px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="Ahmed">
+          </div>
+          <div>
+            <label style="font-size:14px;color:var(--color-text-secondary);display:block;margin-bottom:5px;">Last name</label>
+            <input type="text" name="last_name" style="width:100%;font-size:15px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="Hassan">
+          </div>
+        </div>
+
+        <!-- Phone number -->
+        <div>
+          <label style="font-size:14px;color:var(--color-text-secondary);display:block;margin-bottom:5px;">Phone number</label>
+          <input type="tel" name="phone_number" style="width:100%;font-size:15px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="+20 1XX XXX XXXX">
+        </div>
+
+        <!-- Delivery location -->
+        <div>
+          <label style="font-size:14px;color:var(--color-text-secondary);display:block;margin-bottom:5px;">Delivery location <span style="color:var(--color-text-secondary);font-size:13px;">(optional)</span></label>
+          <input type="text" id="delivery_location_visible" style="width:100%;font-size:15px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;" placeholder="e.g. Cairo, Nasr City, Street name...">
+          <input type="hidden" name="delivery_location" id="delivery_location_hidden">
+        </div>
+
+      </div>
+    </div>
 
   </div>
 
