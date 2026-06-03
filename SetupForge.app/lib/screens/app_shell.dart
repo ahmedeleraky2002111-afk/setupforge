@@ -72,14 +72,12 @@ class _AppShellState extends State<AppShell> {
         backgroundColor: const Color(0xFF004CAC),
         elevation: 0,
         titleSpacing: 16,
-        title: Container(
+        title: Image.asset(
+          'assets/logo.png',
+          height: 32,
+          fit: BoxFit.contain,
           color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          child: Image.asset(
-            'assets/logo.png',
-            height: 28,
-            fit: BoxFit.contain,
-          ),
+          colorBlendMode: BlendMode.srcIn,
         ),
         actions: [
           IconButton(
