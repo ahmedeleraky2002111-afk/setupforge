@@ -13,3 +13,5 @@ userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installa
 userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
 userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
 userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
+userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]
+userId=0 hasEquipment=true hasStaff=true services=["equipment","staff","installation","finishing","advertising"]

@@ -67,6 +67,7 @@ function save_wizard_to_db($conn, $userId, $w, $step, $status = 'in_progress') {
         $staffing[$role] = (int)($w[$role . '_count'] ?? 0);
     }
 $staffing['floor_count'] = $floorCount;
+$staffing['floor2_area_sqm'] = (int)($w['floor2_area_sqm'] ?? 0);
 $staffing['services'] = $w['services'] ?? [];
 $staffingJson = json_encode($staffing);
 
@@ -202,12 +203,17 @@ if (!empty($bizRow['staffing_data'])) {
                 foreach ($staffing as $role => $count) {
                     if ($role === 'floor_count') {
                         $_SESSION['wizard']['floor_count'] = (int)$count;
+                    } elseif ($role === 'floor2_area_sqm') {
+                        $_SESSION['wizard']['floor2_area_sqm'] = (int)$count;
+                    } elseif ($role === 'services') {
+                        // already handled above, skip
                     } else {
                         $_SESSION['wizard'][$role . '_count'] = (int)$count;
                     }
                 }
             }
         }
+        unset($_SESSION['wizard']['ac_cart']);
 
         header("Location: setup.php?step=" . $savedStep);
         exit;
@@ -326,6 +332,7 @@ if ($userId) save_wizard_to_db($conn, $userId, $_SESSION["wizard"], $nextStep);
   if ($currentStep === 3) {
     $_SESSION["wizard"]["area_sqm"]    = max(10, (int)($_POST["area_sqm"] ?? 50));
     $_SESSION["wizard"]["floor_count"] = max(1, (int)($_POST["floor_count"] ?? 1));
+    $_SESSION["wizard"]["floor2_area_sqm"] = max(0, (int)($_POST["floor2_area_sqm"] ?? 0));
 
     $rt = $_SESSION["wizard"]["restaurant_type"] ?? "standard_dining";
     if ($rt === "cloud_kitchen") {
@@ -795,7 +802,7 @@ if ($hasInstall)   $display[] = 6; // installation
   <h1 class="sf-name-title" style="text-align:center; margin-bottom:8px;">What's your restaurant's area?</h1>
   <p class="sf-name-sub" style="text-align:center; margin-bottom:28px;">Indoor area helps us calculate how many AC units you need.</p>
 
-  <form method="post" class="sf-step3-form">
+  <form method="post" class="sf-step3-form" id="sf-step3-form">
     <input type="hidden" name="step" value="3">
 
     <div class="sf-slider-block">
@@ -827,8 +834,11 @@ if ($hasInstall)   $display[] = 6; // installation
           <input type="range" class="sf-slider-range" id="floor_range" min="2" max="10" step="1" value="2">
           <input type="number" name="floor_count" id="floor_count" hidden min="2" value="2">
         </div>
+
+        <div id="extra-floor-sliders"></div>
       </div>
       <input type="hidden" name="floor_count" id="floor_count_default" value="1">
+      <input type="hidden" name="floor2_area_sqm" id="floor2_area_sqm_default" value="0">
     </div>
 
     <div class="sf-actions" style="margin-top:32px;">
@@ -855,11 +865,98 @@ if ($hasInstall)   $display[] = 6; // installation
   const floorDefault = document.getElementById('floor_count_default');
   const chk          = document.getElementById('multifloor_chk');
   const floorBlock   = document.getElementById('multifloor_input');
+  const extraSliders = document.getElementById('extra-floor-sliders');
+
+  function buildExtraSliders(count) {
+    extraSliders.innerHTML = '';
+    for (let i = 2; i <= count; i++) {
+      const isFloor2 = i === 2;
+      const div = document.createElement('div');
+      div.className = 'sf-slider-block';
+      div.style.marginTop = '20px';
+      div.innerHTML = `
+        <div class="sf-slider-head">
+          <span class="sf-slider-label">Floor ${i} Area</span>
+          <span class="sf-slider-val" id="floor${i}-area-display">80</span>
+        </div>
+        <input type="range" class="sf-slider-range" id="floor${i}_area_range" min="10" max="500" step="5" value="80">
+        ${isFloor2
+          ? `<input type="number" name="floor2_area_sqm" id="floor2_area_sqm_active" hidden min="10" value="80">`
+          : `<input type="number" hidden min="10" value="80">`
+        }
+      `;
+      extraSliders.appendChild(div);
+
+      const range = document.getElementById(`floor${i}_area_range`);
+      const display = document.getElementById(`floor${i}-area-display`);
+      range.addEventListener('input', () => {
+        display.textContent = range.value;
+        if (isFloor2) {
+          const f2input = document.getElementById('floor2_area_sqm_active');
+          if (f2input) f2input.value = range.value;
+        }
+      });
+    }
+  }
+
+  function buildModalSliders(count) {
+    const body = document.getElementById('floorModalBody');
+    body.innerHTML = '';
+    for (let i = 2; i <= count; i++) {
+      const isFloor2 = i === 2;
+      const div = document.createElement('div');
+      div.className = 'sf-slider-block';
+      div.style.marginTop = i === 2 ? '0' : '20px';
+      div.innerHTML = `
+        <div class="sf-slider-head">
+          <span class="sf-slider-label">Floor ${i} Area</span>
+          <span class="sf-slider-val" id="modal-floor${i}-display">80</span>
+        </div>
+        <input type="range" class="sf-slider-range" id="modal-floor${i}-range" min="10" max="500" step="5" value="80">
+      `;
+      body.appendChild(div);
+
+      const range = document.getElementById(`modal-floor${i}-range`);
+      const display = document.getElementById(`modal-floor${i}-display`);
+      range.addEventListener('input', () => {
+        display.textContent = range.value;
+        if (isFloor2) {
+          let f2 = document.getElementById('floor2_area_sqm_active');
+          if (!f2) {
+            f2 = document.createElement('input');
+            f2.type = 'number';
+            f2.name = 'floor2_area_sqm';
+            f2.id = 'floor2_area_sqm_active';
+            f2.hidden = true;
+            document.getElementById('sf-step3-form').appendChild(f2);
+          }
+          f2.value = range.value;
+        }
+      });
+    }
+  }
+
+  function handleFloorCount(count) {
+    if (count <= 3) {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('floorModal'));
+      if (modal) modal.hide();
+      buildExtraSliders(count);
+      extraSliders.style.display = 'block';
+    } else {
+      extraSliders.style.display = 'none';
+      buildModalSliders(count);
+      new bootstrap.Modal(document.getElementById('floorModal')).show();
+    }
+  }
 
   chk.addEventListener('change', () => {
     floorBlock.style.display = chk.checked ? 'block' : 'none';
     floorDefault.disabled = chk.checked;
     if (floorInput) floorInput.disabled = !chk.checked;
+    const floor2Default = document.getElementById('floor2_area_sqm_default');
+    if (floor2Default) floor2Default.disabled = chk.checked;
+    if (chk.checked) handleFloorCount(parseInt(floorRange?.value || 2));
+    else extraSliders.innerHTML = '';
   });
 
   if (floorRange && floorInput) {
@@ -869,6 +966,7 @@ if ($hasInstall)   $display[] = 6; // installation
       document.querySelectorAll('.sf-seat-preset[data-field="floor_count"]').forEach(btn => {
         btn.classList.toggle('is-active', parseInt(floorRange.value) === parseInt(btn.dataset.val));
       });
+      if (chk.checked) handleFloorCount(parseInt(floorRange.value));
     });
   }
 
@@ -881,8 +979,18 @@ if ($hasInstall)   $display[] = 6; // installation
       document.querySelectorAll('.sf-seat-preset[data-field="floor_count"]').forEach(b => {
         b.classList.toggle('is-active', parseInt(b.dataset.val) === val);
       });
+      if (chk.checked) handleFloorCount(val);
     });
   });
+
+  const savedFloorCount = parseInt(floorInput?.value || '1') || 1;
+  if (savedFloorCount >= 2) {
+    if (chk) chk.checked = true;
+    if (floorBlock) floorBlock.style.display = 'block';
+    if (floorDefault) floorDefault.disabled = true;
+    if (floorInput) floorInput.disabled = false;
+    handleFloorCount(savedFloorCount);
+  }
 })();
 </script>
 
@@ -1240,6 +1348,21 @@ if ($hasInstall)   $display[] = 6; // installation
 <script src="assets/site.js"></script>
 <script src="assets/tutorial.js"></script>
 <script src="assets/setup-anim.js"></script>
+
+<div class="modal fade" id="floorModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content sf-modal-content">
+      <div class="modal-header sf-modal-header">
+        <h5 class="modal-title">Floor Areas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="floorModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="sf-btn-main sf-btn-next" data-bs-dismiss="modal">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

@@ -79,7 +79,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _placing = false);
     if (res["ok"] == true) {
       if (_paymentMethod == 'card' && res["iframe_url"] != null) {
-        Navigator.pushNamed(context, '/setup-payment', arguments: {"iframe_url": res["iframe_url"], "order_id": res["order_id"], "flow": "shop"});
+        Navigator.pushNamed(context, '/setup-payment', arguments: {"iframe_url": res["iframe_url"], "order_id": res["order_id"], "flow": "shop", "total": _total.toInt()});
       } else {
         Navigator.pushNamedAndRemoveUntil(context, '/order-success', (route) => route.settings.name == '/app-shell', arguments: {"order_id": res["order_id"], "total": res["total"]});
       }

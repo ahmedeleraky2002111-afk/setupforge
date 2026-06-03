@@ -7,12 +7,14 @@ class SetupPaymentScreen extends StatefulWidget {
   final String iframeUrl;
   final int orderId;
   final String flow;
+  final int total;
 
   const SetupPaymentScreen({
     super.key,
     required this.iframeUrl,
     required this.orderId,
     this.flow = 'setup',
+    this.total = 0,
   });
 
   @override
@@ -61,7 +63,7 @@ class _SetupPaymentScreenState extends State<SetupPaymentScreen> {
             context,
             '/order-success',
             (route) => route.settings.name == '/app-shell',
-            arguments: {'order_id': widget.orderId, 'total': 0},
+            arguments: {'order_id': widget.orderId, 'total': widget.total},
           );
         } else {
           Navigator.pushNamedAndRemoveUntil(

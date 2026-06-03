@@ -1,6 +1,7 @@
 <?php
 session_start();
-
+unset($_SESSION["wizard"]["hidden_sections"]);
+unset($_SESSION["wizard"]["kitchen_cart"]); 
   if (!isset($_SESSION["user_id"])) {
     header("Location: auth/signup.php?next=" . urlencode("packages.php"));
     exit;
@@ -23,6 +24,11 @@ session_start();
   $budget   = (int)($w["budget"] ?? 0);
   $restaurantType = $w["restaurant_type"] ?? "standard_dining";
   $areaSqm = (int)($w["area_sqm"] ?? 50);
+  $floorCount      = (int)($w["floor_count"] ?? 1);
+  $floor2AreaSqm   = (int)($w["floor2_area_sqm"] ?? 0);
+  $floor2AreaTotal = ($floorCount > 1 && $floor2AreaSqm > 0)
+      ? $floor2AreaSqm * ($floorCount - 1)
+      : 0;
   // normalize size
   $sizeNorm = ucfirst(strtolower($size));
   if (in_array($sizeNorm, ["Small","Medium","Large"], true)) $size = $sizeNorm;
@@ -46,19 +52,19 @@ session_start();
         "kitchen"     => 6,
         "pos"         => 3,
         "furniture"   => 2,
-        "ac"    => 1
+        "ac"    => 3
       ],
       "standard_dining" => [
-        "kitchen"     => 5,
-        "furniture"   => 3,
-        "pos"         => 2,
-        "ac"    => 2
-      ],
+    "kitchen"   => 5,
+    "furniture" => 3,
+    "pos"       => 2,
+    "ac"        => 4
+],
       "premium_dining" => [
         "kitchen"     => 4,
         "furniture"   => 5,
         "pos"         => 2,
-        "ac"    => 3
+        "ac"    => 4
       ],
       "cloud_kitchen" => [
         "kitchen"     => 8,
@@ -130,6 +136,7 @@ $tier            = derive_tier($budget);
   $furnitureCap   = $alloc["furniture"] ?? 0;
   $infraCap = $alloc["infra"] ?? 0;
   $acCap    = $alloc["ac"] ?? 0;
+  $GLOBALS["floor2AreaTotal"] = $floor2AreaTotal;
 
   /* ---------------- Fake catalogs (fallback) ---------------- */
   $POS_CATALOG = [
@@ -148,11 +155,7 @@ $tier            = derive_tier($budget);
       ["id"=>"d2","name"=>"POSIFLEX Cash Drawer","price"=>3000],
       ["id"=>"d3","name"=>"APG Heavy-duty Cash Drawer","price"=>3500],
     ],
-    "software" => [
-      ["id"=>"s1","name"=>"Basic POS License (1 year)","price"=>8000],
-      ["id"=>"s2","name"=>"POS + Inventory (1 year)","price"=>12000],
-      ["id"=>"s3","name"=>"POS Suite + Reporting (1 year)","price"=>18000],
-    ],
+    
     "kds" => [
       ["id"=>"k2","name"=>"Kitchen Display Screen 15\"","price"=>14000],
       ["id"=>"k3","name"=>"Kitchen Display Screen 21\"","price"=>18000],
@@ -772,16 +775,23 @@ $tier            = derive_tier($budget);
   function kitchen_quantities_by_size($indoorSeats, $outdoorSeats){
     $total = $indoorSeats + $outdoorSeats;
     return [
-      "oven"      => 1,
-      "fryer"     => 1,
-      "grill"     => $total >= 30 ? 1 : 0,
-      "microwave" => 1,
-      "fridge"    => $total >= 70 ? 2 : 1,
-      "freezer"   => 1,
-      "blender"   => 1,
-      "mixer"     => $total >= 30 ? 1 : 0,
-      "coffee"    => 1
-    ];
+  "oven"         => 1,
+  "fryer"        => 1,
+  "grill"        => 1,
+  "microwave"    => 1,
+  "fridge"       => 1,
+  "freezer"      => 1,
+  "blender"      => 1,
+  "mixer"        => 1,
+  "coffee"       => 1,
+  "stove"        => 1,
+  "dishwasher"   => 1,
+  "exhaust_hood" => 1,
+  "prep_table"   => 1,
+  "rice_cooker"  => 1,
+  "meat_grinder" => 1,
+  "ice_machine"  => 1,
+];
   }
 
   function furniture_quantities_by_size($indoorSeats, $restaurantType = "standard_dining", $outdoorSeats = 0){
@@ -1115,7 +1125,6 @@ $tier            = derive_tier($budget);
 
     $printer  = pick_best_under_unit_budget($catalog, "printer",  $unitBudgetPeri);
     $drawer   = pick_best_under_unit_budget($catalog, "drawer",   $unitBudgetPeri);
-    $software = pick_best_under_unit_budget($catalog, "software", max(1, (int)floor((int)$cap * 0.15)));
 
     $cart = ["items" => []];
 
@@ -1234,26 +1243,7 @@ $tier            = derive_tier($budget);
         "alternatives"      => build_distinct_alternatives($drawer, $catalog["drawer"] ?? [], 3),
       ];
     }
-    if ($software) {
-      $cart["items"]["software"] = [
-        "product_name"      => $software["name"],
-        "brand"             => $software["brand"] ?? null,
-        "tier"              => $GLOBALS["posTier"],
-        "module"            => "pos",
-        "category_id"       => null,
-        "type"              => "software",
-        "product_id"        => $software["id"],
-        "name"              => $software["name"],
-        "unit"              => (int)$software["price"],
-        "qty"               => 1,
-        "image_url"         => $software["image_url"] ?? null,
-        "vendor_name"       => $software["vendor_name"] ?? null,
-        "product_group_key" => $software["product_group_key"] ?? null,
-        "vendor_user_id"    => $software["vendor_user_id"] ?? null,
-        "avg_rating"        => (float)($software["avg_rating"] ?? 0),
-        "alternatives"      => build_distinct_alternatives($software, $catalog["software"] ?? [], 3),
-      ];
-    }
+    
 
     $remaining = $cap - cart_total($cart);
 
@@ -1314,8 +1304,8 @@ $tier            = derive_tier($budget);
 
     $cart = ["items"=>[]];
 
-    $core  = ["oven","fryer","microwave","fridge","freezer","blender"];
-    $extra = ["grill","mixer","coffee"];
+    $core  = ["oven","fryer","microwave","fridge","freezer","blender","grill","mixer","coffee","stove","dishwasher","exhaust_hood","prep_table","rice_cooker","meat_grinder","ice_machine"];
+$extra = [];
 
     $coreBudget = (int)floor($cap * 0.75);
 
@@ -1423,7 +1413,8 @@ $tier            = derive_tier($budget);
 
 // Find best product matching this seat_count
         $pickedStyle = $GLOBALS["furnitureStyle"] ?? null;
-        $matching = array_filter($catalog["dining_set"] ?? [], function($p) use ($seatCount, $tier, $pickedStyle) {
+        $matching = array_filter($catalog["dining_set_" . $seatCount] ?? [], function($p) use ($seatCount, $tier, $pickedStyle) {
+
           $specs = is_array($p["specs"]) ? $p["specs"] : [];
           if ((int)($specs["seat_count"] ?? 0) !== (int)$seatCount) return false;
           if (strcasecmp((string)($p["tier"] ?? ""), (string)$tier) !== 0) return false;
@@ -1437,7 +1428,8 @@ $tier            = derive_tier($budget);
         usort($matching, fn($a, $b) => (int)$a["price"] <=> (int)$b["price"]);
         $recommended = array_values($matching)[0];
 
-        $altsPool = array_values(array_filter($catalog["dining_set"] ?? [], function($p) use ($seatCount, $tier) {
+        $altsPool = array_values(array_filter($catalog["dining_set_" . $seatCount] ?? [], function($p) use ($seatCount, $tier) {
+
           $specs = is_array($p["specs"]) ? $p["specs"] : [];
           return (int)($specs["seat_count"] ?? 0) === (int)$seatCount
               && strcasecmp((string)($p["tier"] ?? ""), (string)$tier) === 0
@@ -1669,6 +1661,47 @@ $tier            = derive_tier($budget);
       return $cart;
   }
 
+  function build_ac_cart_multifloor($catalog, $areaSqm, $floor2AreaTotal) {
+    $cart1 = build_ac_cart_by_budget($catalog, $areaSqm);
+
+    if ($floor2AreaTotal <= 0) return $cart1;
+
+    $floor1Data = ac_hp_from_area($areaSqm);
+    $floor2Data = ac_hp_from_area($floor2AreaTotal);
+
+    // If either floor needs central AC, return ground cart with a notice flag
+    if ($floor1Data["units"] === 0 || $floor2Data["units"] === 0) {
+        $cart1["upper_central_ac"] = ($floor2Data["units"] === 0);
+        return $cart1;
+    }
+
+    // Case A: same HP — merge quantities into one item
+    if (abs($floor1Data["hp"] - $floor2Data["hp"]) < 0.01) {
+        if (isset($cart1["items"]["ac"])) {
+            $cart1["items"]["ac"]["qty"] = $floor1Data["units"] + $floor2Data["units"];
+        }
+        return $cart1;
+    }
+
+    // Case B: different HP — two separate ac items
+    if (isset($cart1["items"]["ac"])) {
+        $groundItem = $cart1["items"]["ac"];
+        $groundItem["floor_label"] = "Ground Floor";
+        $cart1["items"]["ac_ground"] = $groundItem;
+        unset($cart1["items"]["ac"]);
+    }
+
+    $cart2 = build_ac_cart_by_budget($catalog, $floor2AreaTotal);
+    if (isset($cart2["items"]["ac"])) {
+        $upperItem = $cart2["items"]["ac"];
+        $upperItem["type"]        = "ac_upper";
+        $upperItem["floor_label"] = "Upper Floor(s)";
+        $cart1["items"]["ac_upper"] = $upperItem;
+    }
+
+    return $cart1;
+  }
+
   /* ---------------- Handle actions (Recalc / Qty / Replace) ---------------- */
 
 
@@ -1739,6 +1772,9 @@ $tier            = derive_tier($budget);
       $labels = $allSectionLabels[$mod] ?? [];
 
       $filterType = trim((string)($_POST["filter_type"] ?? ""));
+      if (in_array($filterType, ["ac_ground", "ac_upper"], true)) {
+    $filterType = "ac";
+}
       if ($filterType !== "" && isset($labels[$filterType])) {
         $addableTypes = [$filterType];
       } else {
@@ -1784,14 +1820,21 @@ $tier            = derive_tier($budget);
     }
 
     if (isset($_POST["add_section_item"])) {
-      $mod    = $_POST["module"] ?? "";
-      $type   = $_POST["product_type"] ?? "";
-      $prodId = $_POST["product_id"] ?? "";
-      $allowed = ["pos","kitchen","furniture","ac"];
-      if (!in_array($mod, $allowed, true) || !$type || !$prodId) {
+      $mod     = $_POST["module"] ?? "";
+    $type    = $_POST["product_type"] ?? "";
+    $prodId  = $_POST["product_id"] ?? "";
+    $allowed = ["pos","kitchen","furniture","ac"];
+    if (!in_array($mod, $allowed, true) || !$type || !$prodId) {
         header("Location: packages.php?module=" . urlencode($mod)); exit;
-      }
-      $cartKey = $mod . "_cart";
+    }
+    $cartKey = $mod . "_cart";
+    if ($mod === "ac" && $type === "ac") {
+        if (isset($_SESSION["wizard"][$cartKey]["items"]["ac_ground"])) {
+            $type = "ac_ground";
+        } elseif (isset($_SESSION["wizard"][$cartKey]["items"]["ac_upper"])) {
+            $type = "ac_upper";
+        }
+    }
       $sql = "SELECT p.id, p.product_name, p.product_type, p.price, p.avg_rating, p.tier, p.brand, p.product_group_key, p.vendor_user_id,
                 u.name AS vendor_name,
                 (SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.id ASC LIMIT 1) AS image_url
@@ -1903,9 +1946,8 @@ $tier            = derive_tier($budget);
       if (isset($_SESSION["wizard"]["pos_cart"]["items"][$type])) {
         $qty = (int)$_SESSION["wizard"]["pos_cart"]["items"][$type]["qty"];
         $qty = max(0, $qty + $delta);
-        if ($type === "software") $qty = 1;
 
-        $core = ["terminal","printer","drawer","software"];
+        $core = ["terminal","printer","drawer"];
         if ($qty === 0 && !in_array($type, $core, true)) {
           unset($_SESSION["wizard"]["pos_cart"]["items"][$type]);
         } else {
@@ -2022,7 +2064,11 @@ $tier            = derive_tier($budget);
       exit;
     }
     if (isset($_POST["recalc_ac"])) {
-      $_SESSION["wizard"]["ac_cart"] = build_ac_cart_by_budget($GLOBALS["INFRA_CATALOG_ACTIVE"], $GLOBALS["areaSqm"]);
+      $_SESSION["wizard"]["ac_cart"] = build_ac_cart_multifloor(
+          $GLOBALS["INFRA_CATALOG_ACTIVE"],
+          $GLOBALS["areaSqm"],
+          $GLOBALS["floor2AreaTotal"]
+      );
       header("Location: packages.php?module=ac");
       exit;
     }
@@ -2042,7 +2088,8 @@ $tier            = derive_tier($budget);
       $type  = $_POST["type"] ?? "";
       $newId = $_POST["new_product_id"] ?? "";
       if (isset($_SESSION["wizard"]["ac_cart"]["items"][$type])) {
-        $p = find_by_id($GLOBALS["INFRA_CATALOG_ACTIVE"], $type, $newId);
+        $catalogKey = in_array($type, ["ac_ground", "ac_upper"]) ? "ac" : $type;
+        $p = find_by_id($GLOBALS["INFRA_CATALOG_ACTIVE"], $catalogKey, $newId);
         if ($p) {
           $_SESSION["wizard"]["ac_cart"]["items"][$type]["product_id"]        = $p["id"];
           $_SESSION["wizard"]["ac_cart"]["items"][$type]["name"]              = $p["name"];
@@ -2236,9 +2283,10 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier
     );
   }
   if (empty($_SESSION["wizard"]["ac_cart"])) {
-    $_SESSION["wizard"]["ac_cart"] = build_ac_cart_by_budget(
+    $_SESSION["wizard"]["ac_cart"] = build_ac_cart_multifloor(
       $INFRA_CATALOG_ACTIVE,
-      $areaSqm
+      $areaSqm,
+      $floor2AreaTotal
     );
   }
 
@@ -2400,9 +2448,9 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier
                 ];
                 ?>
                 <?php
-                $allPosTypes = ["terminal","printer","drawer","software","scanner","kds","tablet","customer_display","label_printer","scale"];
+$allPosTypes = ["terminal","printer","drawer","scanner","kds","tablet","customer_display","label_printer","scale"];
                 $inCartPosTypes = array_keys($posCart["items"] ?? []);
-                $missingPosTypes = array_diff($allPosTypes, $inCartPosTypes);
+                $missingPosTypes = array_filter(array_diff($allPosTypes, $inCartPosTypes), fn($t) => empty($POS_CATALOG_ACTIVE[$t]));
                 foreach ($missingPosTypes as $mt) {
                   if (!isset($_SESSION["wizard"]["hidden_sections"]["pos"])) {
                     $_SESSION["wizard"]["hidden_sections"]["pos"] = [];
@@ -2780,9 +2828,10 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier
                   }
                   $userShownKitchen = $_SESSION["wizard"]["shown_sections"]["kitchen"] ?? [];
                   if (!in_array($mt, $_SESSION["wizard"]["hidden_sections"]["kitchen"], true)
-                      && !in_array($mt, $userShownKitchen, true)) {
-                    $_SESSION["wizard"]["hidden_sections"]["kitchen"][] = $mt;
-                  }
+    && !in_array($mt, $userShownKitchen, true)
+    && empty($KITCHEN_CATALOG_ACTIVE[$mt])) {
+  $_SESSION["wizard"]["hidden_sections"]["kitchen"][] = $mt;
+}
                 }
                 $hiddenSections = $_SESSION["wizard"]["hidden_sections"] ?? [];
                 ?>
@@ -3140,9 +3189,9 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier
         ];
         ?>
         <?php
-        $allFurnitureTypes = ["sofa","chair","table","light","bar_stool","outdoor_furniture","reception_desk","shelving","speaker","sound_system","curtain","wall_decor","menu_stand","hostess_stand"];
+        $allFurnitureTypes = ["sofa","bar_stool","outdoor_furniture","reception_desk","shelving","speaker","sound_system","curtain","wall_decor","menu_stand","hostess_stand"];
         $inCartFurnitureTypes = array_keys($furnitureCart["items"] ?? []);
-        $missingFurnitureTypes = array_diff($allFurnitureTypes, $inCartFurnitureTypes);
+        $missingFurnitureTypes = array_filter(array_diff($allFurnitureTypes, $inCartFurnitureTypes), fn($t) => empty($FURNITURE_CATALOG_ACTIVE[$t]));
         foreach ($missingFurnitureTypes as $mt) {
           if (!isset($_SESSION["wizard"]["hidden_sections"]["furniture"])) {
             $_SESSION["wizard"]["hidden_sections"]["furniture"] = [];
@@ -3459,9 +3508,15 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier
       <?php else: ?>
       <div style="background:#f0f6ff;border:1px solid rgba(0,76,172,.12);border-radius:0;padding:12px 16px;margin-bottom:16px;font-size:.85rem;color:#374151;">
         <i class="bi bi-info-circle me-1" style="color:#004cac;"></i>
-        Based on your <strong><?= $areaSqm ?> m²</strong> area — we recommend
-        <strong><?= $acHpData["units"] ?> unit<?= $acHpData["units"] > 1 ? 's' : '' ?></strong>
-        of <strong><?= $acHpData["hp"] ?> HP</strong> each.
+        <?php if ($floorCount > 1 && $floor2AreaTotal > 0): ?>
+          Ground floor: <strong><?= $areaSqm ?> m²</strong> &middot;
+          Upper floors: <strong><?= $floor2AreaTotal ?> m²</strong> total
+          (<?= $floorCount - 1 ?> floor<?= ($floorCount - 1) > 1 ? 's' : '' ?> &times; <?= $floor2AreaSqm ?> m²)
+        <?php else: ?>
+          Based on your <strong><?= $areaSqm ?> m²</strong> area — we recommend
+          <strong><?= $acHpData["units"] ?> unit<?= $acHpData["units"] > 1 ? 's' : '' ?></strong>
+          of <strong><?= $acHpData["hp"] ?> HP</strong> each.
+        <?php endif; ?>
       </div>
       <?php endif; ?>
 
@@ -3480,6 +3535,8 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier
         <?php
         $acSectionLabels = [
           "ac"          => "AC Units",
+          "ac_ground"   => "AC Units — Ground Floor",
+          "ac_upper"    => "AC Units — Upper Floor(s)",
           "exhaust_fan" => "Exhaust / Ventilation Fans",
           "air_curtain" => "Air Curtains",
           "ceiling_fan" => "Fans",
@@ -3513,6 +3570,9 @@ if (($_SESSION["wizard"]["furniture_cart_tier"] ?? null) !== $furnitureTier
                 <!-- RECOMMENDED CARD -->
                 <article class="sf-pkg-card sf-pkg-card--rec" id="row_ac_<?= htmlspecialchars($type) ?>" data-product-id="<?= htmlspecialchars($it['product_id']) ?>" style="position:relative;">
                   <div class="sf-pkg-rec-badge"><i class="bi bi-patch-check-fill"></i> Recommended</div>
+                  <?php if (!empty($it["floor_label"])): ?>
+                  <div class="sf-floor-label-badge"><?= htmlspecialchars($it["floor_label"]) ?></div>
+                  <?php endif; ?>
                   <div class="sf-card-icons">
                     <form method="post" class="m-0">
                       <input type="hidden" name="delete_section" value="1">
