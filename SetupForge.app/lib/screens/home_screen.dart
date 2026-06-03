@@ -96,249 +96,190 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         color: sfBlue,
         onRefresh: _load,
-        child: CustomScrollView(
-          slivers: [
-            // Top bar
-            SliverAppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              pinned: true,
-              automaticallyImplyLeading: false,
-              titleSpacing: 0,
-              title: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Row(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Welcome text
+              Text(
+                name.isNotEmpty
+                    ? 'Welcome back, $name 👋'
+                    : 'Welcome to SetupForge',
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: sfMuted,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Build your business,\nfaster.',
+                style: TextStyle(
+                  fontSize: 26,
+                  height: 1.2,
+                  fontWeight: FontWeight.w900,
+                  color: sfText,
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Hero card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: sfBlue,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: sfBlue.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Logo
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: sfBlue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.bolt_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
                     const Text(
-                      'SetupForge',
+                      'We build your setup.\nYou build your business.',
                       style: TextStyle(
-                        color: Color(0xFF111827),
-                        fontSize: 17,
+                        fontSize: 20,
+                        height: 1.3,
                         fontWeight: FontWeight.w900,
+                        color: Colors.white,
                       ),
                     ),
-                    const Spacer(),
-                    // Cart icon
-                    IconButton(
-                      onPressed: () => Navigator.pushNamed(context, '/cart'),
-                      icon: const Icon(
-                        Icons.shopping_cart_outlined,
-                        color: Color(0xFF111827),
-                        size: 24,
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Buy the right equipment and we\'ll deliver, install, and prepare your place so you can open faster.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
                       ),
-                      padding: EdgeInsets.zero,
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () => _handleHeroBtn(btnRoute),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: sfBlue,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              btnText,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward_rounded, size: 16),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(1),
-                child: Container(height: 1, color: const Color(0xFFE5E7EB)),
+
+              const SizedBox(height: 28),
+
+              // Our Services
+              const Text(
+                'Our Services',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: sfText,
+                ),
               ),
-            ),
-
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Welcome text
-                  Text(
-                    name.isNotEmpty
-                        ? 'Welcome back, $name 👋'
-                        : 'Welcome to SetupForge',
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: sfMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Build your business,\nfaster.',
-                    style: TextStyle(
-                      fontSize: 26,
-                      height: 1.2,
-                      fontWeight: FontWeight.w900,
-                      color: sfText,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Hero card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: sfBlue,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: sfBlue.withOpacity(0.2),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'We build your setup.\nYou build your business.',
-                          style: TextStyle(
-                            fontSize: 20,
-                            height: 1.3,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Buy the right equipment and we\'ll deliver, install, and prepare your place so you can open faster.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.5,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: () => _handleHeroBtn(btnRoute),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: sfBlue,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  btnText,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 14.5,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 16,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // Our Services
-                  const Text(
-                    'Our Services',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: sfText,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Everything you need to plan, build, and operate your setup.',
-                    style: TextStyle(fontSize: 13, color: sfMuted, height: 1.4),
-                  ),
-                  const SizedBox(height: 14),
-
-                  _serviceCard(
-                    icon: Icons.inventory_2_outlined,
-                    title: 'Smart Setup Packages',
-                    desc: 'Generate tailored setup packages...',
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      '/service-select',
-                      arguments: {'preselect': 'equipment'},
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _serviceCard(
-                    icon: Icons.build_outlined,
-                    title: 'Installation & Setup',
-                    desc: 'Get professional installation...',
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      '/service-select',
-                      arguments: {'preselect': 'installation'},
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _serviceCard(
-                    icon: Icons.people_outline_rounded,
-                    title: 'Staffing',
-                    desc: 'Hire workers to support...',
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      '/service-select',
-                      arguments: {'preselect': 'staff'},
-                    ),
-                  ),
-
-                  // How it works — only if setup not complete
-                  if (!setupComplete) ...[
-                    const SizedBox(height: 28),
-                    const Text(
-                      'How it works',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: sfText,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _stepTile(
-                      '01',
-                      'Tell us about your business',
-                      'Type, size, budget, and what services you need.',
-                    ),
-                    const SizedBox(height: 10),
-                    _stepTile(
-                      '02',
-                      'Get smart recommendations',
-                      'We generate packages tailored to your exact needs.',
-                    ),
-                    const SizedBox(height: 10),
-                    _stepTile(
-                      '03',
-                      'Place your order',
-                      'Review, confirm, and pay — all from your phone.',
-                    ),
-                  ],
-                ]),
+              const SizedBox(height: 4),
+              const Text(
+                'Everything you need to plan, build, and operate your setup.',
+                style: TextStyle(fontSize: 13, color: sfMuted, height: 1.4),
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+
+              _serviceCard(
+                icon: Icons.inventory_2_outlined,
+                title: 'Smart Setup Packages',
+                desc: 'Generate tailored setup packages...',
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/service-select',
+                  arguments: {'preselect': 'equipment'},
+                ),
+              ),
+              const SizedBox(height: 12),
+              _serviceCard(
+                icon: Icons.build_outlined,
+                title: 'Installation & Setup',
+                desc: 'Get professional installation...',
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/service-select',
+                  arguments: {'preselect': 'installation'},
+                ),
+              ),
+              const SizedBox(height: 12),
+              _serviceCard(
+                icon: Icons.people_outline_rounded,
+                title: 'Staffing',
+                desc: 'Hire workers to support...',
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/service-select',
+                  arguments: {'preselect': 'staff'},
+                ),
+              ),
+
+              // How it works
+              if (!setupComplete) ...[
+                const SizedBox(height: 28),
+                const Text(
+                  'How it works',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: sfText,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _stepTile(
+                  '01',
+                  'Tell us about your business',
+                  'Type, size, budget, and what services you need.',
+                ),
+                const SizedBox(height: 10),
+                _stepTile(
+                  '02',
+                  'Get smart recommendations',
+                  'We generate packages tailored to your exact needs.',
+                ),
+                const SizedBox(height: 10),
+                _stepTile(
+                  '03',
+                  'Place your order',
+                  'Review, confirm, and pay — all from your phone.',
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
