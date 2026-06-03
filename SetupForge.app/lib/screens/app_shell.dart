@@ -16,9 +16,8 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   late int _selectedIndex;
-  String _setupState = "none"; // none, in_progress, completed
+  String _setupState = "none";
   final api = ApiService();
-
   bool _stateLoaded = false;
 
   @override
@@ -31,7 +30,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_stateLoaded) return; // ← this line must be there
+    if (!_stateLoaded) return;
     final args = ModalRoute.of(context)?.settings.arguments as Map?;
     if (args?['forceRefresh'] == true) {
       _loadSetupState();
@@ -63,7 +62,6 @@ class _AppShellState extends State<AppShell> {
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
-    // Refresh setup state when switching tabs
     if (index == 3) _loadSetupState();
   }
 
@@ -74,8 +72,20 @@ class _AppShellState extends State<AppShell> {
         backgroundColor: const Color(0xFF004CAC),
         elevation: 0,
         titleSpacing: 16,
-        title: Image.asset('assets/logo.png', height: 32, fit: BoxFit.contain),
+        title: Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: Image.asset(
+            'assets/logo.png',
+            height: 28,
+            fit: BoxFit.contain,
+          ),
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+            onPressed: () => Navigator.pushNamed(context, '/cart'),
+          ),
           IconButton(
             icon: const Icon(Icons.person_outline_rounded, color: Colors.white),
             onPressed: () => Navigator.pushNamed(context, '/profile'),
